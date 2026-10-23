@@ -51,6 +51,9 @@ yarn-error.log*
 Thumbs.db
 Desktop.ini
 
+## Local scratch
+tmp/
+
 ## Local / secrets
 .env
 .env.*
