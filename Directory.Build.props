@@ -1,0 +1,27 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Antlr4BuildTasks pulls an audited MSBuild package; keep as warning until upstream updates. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1903;NU1902;NU1901</WarningsNotAsErrors>
+    <NoWarn>$(NoWarn);CA1822;CA1859;CA1305;CA1707;IL2026;IL3050</NoWarn>
+    <NuGetAudit>true</NuGetAudit>
+    <!-- AOT annotations deferred until JSON source-gen is wired for MCP/CLI. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <Authors>takahino</Authors>
+    <Company>takahino</Company>
+    <Copyright>Copyright (c) 2026 takahino</Copyright>
+    <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/takahino/ast-grep-antlr</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/takahino/ast-grep-antlr</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Version>0.0.0-dev</Version>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>
