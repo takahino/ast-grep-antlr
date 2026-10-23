@@ -1,0 +1,11 @@
+bin/
+obj/
+out/
+artifacts/
+publish/
+grammars/
+tests/fixtures/
+bench/fixtures/
+node_modules/
+**/*.g.cs
+**/Generated/
