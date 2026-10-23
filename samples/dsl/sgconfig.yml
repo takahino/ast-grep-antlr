@@ -8,9 +8,11 @@ customLanguages:
     extensions:
       - calc
     startRule: program
+    # Most specific first: patterns are compiled with the first rule that parses them, and
+    # `program` would match a whole file's statement list rather than a single statement.
     patternRules:
-      - program
       - statement
       - expr
+      - program
     metaVarPlaceholder: "__MV{0}__"
     ignoreCase: false
