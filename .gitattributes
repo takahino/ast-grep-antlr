@@ -1,0 +1,35 @@
+# Normalize text files to LF in the repo; checkout as LF on all platforms.
+* text=auto eol=lf
+
+# Windows batch scripts need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.snupkg binary
+*.nupkg binary
+*.jar binary
+
+# Diff drivers
+*.cs     diff=csharp
+*.g4     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.json   text eol=lf
+*.md     text eol=lf
+*.props  text eol=lf
+*.csproj text eol=lf
+*.sln    text eol=lf

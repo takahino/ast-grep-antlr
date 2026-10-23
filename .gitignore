@@ -1,0 +1,75 @@
+## Build
+bin/
+obj/
+out/
+artifacts/
+publish/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Test
+TestResults/
+*.trx
+coverage/
+coverage*.json
+coverage*.xml
+*.coverage
+*.coveragexml
+
+## NuGet
+*.nupkg
+*.snupkg
+**/packages/
+project.lock.json
+# Keep packages.lock.json for locked-mode restore
+!**/packages.lock.json
+
+## Node / Prettier
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+## IDE / OS
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+## Local / secrets
+.env
+.env.*
+!.env.example
+*.local
+
+## ANTLR / tools
+*.tokens
+!grammars/**/*.tokens
+.antlr/
+tools/antlr-*.jar
+
+## Cache / bench fixtures (downloaded)
+.cache/
+bench/fixtures/
+**/ag4-cache/
+
+## Generated parser output (kept under obj via MSBuild)
+**/Generated/
+
+## Rider / VS Code local
+.vscode/*.log
