@@ -19,5 +19,13 @@
     <ProjectReference Include="..\..\src\AstGrepAntlr.Core\AstGrepAntlr.Core.csproj" />
     <ProjectReference Include="..\..\src\AstGrepAntlr.Languages\AstGrepAntlr.Languages.csproj" />
     <ProjectReference Include="..\..\src\AstGrepAntlr.Mcp\AstGrepAntlr.Mcp.csproj" />
+    <ProjectReference Include="..\..\src\AstGrepAntlr.Cli\AstGrepAntlr.Cli.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None
+      Include="..\fixtures\**\*"
+      Link="fixtures\%(RecursiveDir)%(Filename)%(Extension)"
+      CopyToOutputDirectory="PreserveNewest"
+    />
   </ItemGroup>
 </Project>

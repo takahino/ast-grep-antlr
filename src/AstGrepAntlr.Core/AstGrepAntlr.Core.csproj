@@ -16,4 +16,7 @@
     <PackageReference Include="Antlr4.Runtime.Standard" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="AstGrepAntlr.Tests" />
+  </ItemGroup>
 </Project>

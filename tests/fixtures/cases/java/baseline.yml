@@ -1,0 +1,32 @@
+language: java
+cases:
+  - id: multi-args
+    pattern: "foo($$$ARGS)"
+    source: |
+      class T { void m() { foo(1,2,3); } }
+    expect:
+      - text: "foo(1,2,3)"
+        meta:
+          ARGS: "1,2,3"
+  - id: multi-empty
+    pattern: "foo($$$ARGS)"
+    source: |
+      class T { void m() { foo(); } }
+    expect:
+      - text: "foo()"
+        meta:
+          ARGS: ""
+  - id: underscore
+    pattern: "bar($_)"
+    source: |
+      class T { void m() { bar(99); } }
+    expect:
+      - text: "bar(99)"
+  - id: println
+    pattern: "System.out.println($A)"
+    source: |
+      class T { void m() { System.out.println(42); } }
+    expect:
+      - text: "System.out.println(42)"
+        meta:
+          A: "42"

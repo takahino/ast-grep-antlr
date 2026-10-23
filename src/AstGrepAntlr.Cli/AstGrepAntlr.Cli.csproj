@@ -22,4 +22,7 @@
     <ProjectReference Include="..\AstGrepAntlr.Languages\AstGrepAntlr.Languages.csproj" />
     <ProjectReference Include="..\AstGrepAntlr.Mcp\AstGrepAntlr.Mcp.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="AstGrepAntlr.Tests" />
+  </ItemGroup>
 </Project>

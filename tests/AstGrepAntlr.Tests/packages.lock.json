@@ -360,6 +360,18 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "astgrepantlr.cli": {
+        "type": "Project",
+        "dependencies": {
+          "AstGrepAntlr.Core": "[0.0.0-dev, )",
+          "AstGrepAntlr.Languages": "[0.0.0-dev, )",
+          "AstGrepAntlr.Mcp": "[0.0.0-dev, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )",
+          "Microsoft.Extensions.Hosting": "[10.0.0, )",
+          "ModelContextProtocol": "[0.4.0-preview.2, )",
+          "System.CommandLine": "[2.0.0, )"
+        }
+      },
       "astgrepantlr.core": {
         "type": "Project",
         "dependencies": {
@@ -438,6 +450,12 @@
           "Microsoft.Extensions.Hosting.Abstractions": "9.0.5",
           "ModelContextProtocol.Core": "0.4.0-preview.2"
         }
+      },
+      "System.CommandLine": {
+        "type": "CentralTransitive",
+        "requested": "[2.0.0, )",
+        "resolved": "2.0.0",
+        "contentHash": "Bjklzc5NoxqAGFi7BcGlY2TWAdB06Bq3a5sfRr3ubMRU80Mf98eyq3Y2UgR6xRV0TLznZmfe5T7mUjOunRNcdA=="
       },
       "YamlDotNet": {
         "type": "CentralTransitive",

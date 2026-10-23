@@ -16,4 +16,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Docs\*.md" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="AstGrepAntlr.Tests" />
+  </ItemGroup>
 </Project>
