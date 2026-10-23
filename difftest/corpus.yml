@@ -1,0 +1,9 @@
+version: 1
+language: java
+repos:
+  - id: commons-lang
+    remote: https://github.com/apache/commons-lang.git
+    ref: rel/commons-lang-3.21.0
+  - id: java-design-patterns
+    remote: https://github.com/iluwatar/java-design-patterns.git
+    ref: 1.9.0

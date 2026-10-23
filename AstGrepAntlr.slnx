@@ -8,4 +8,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/AstGrepAntlr.Tests/AstGrepAntlr.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/AstGrepAntlr.DiffTest/AstGrepAntlr.DiffTest.csproj" />
+  </Folder>
 </Solution>

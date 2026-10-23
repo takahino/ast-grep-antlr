@@ -1,0 +1,69 @@
+# ast-grep / ag4 differential patterns (Java). No kind-based rules in this baseline set.
+language: java
+rules:
+  - id: call-foo
+    rule:
+      pattern: foo($$$ARGS)
+  - id: println
+    rule:
+      pattern: System.out.println($A)
+  - id: if-block
+    rule:
+      pattern: if ($C) { $$$B }
+  - id: class-body
+    rule:
+      pattern: class $N { $$$BODY }
+  - id: qualified-call
+    rule:
+      pattern: $X.$Y($$$ARGS)
+  - id: new-instance
+    rule:
+      pattern: new $T($$$ARGS)
+  - id: return-expr
+    rule:
+      pattern: return $E;
+  - id: throw-expr
+    rule:
+      pattern: throw $E;
+  - id: override-annotation
+    rule:
+      pattern: "@Override"
+  - id: public-method
+    rule:
+      pattern: public $TYPE $NAME($$$PARAMS) { $$$BODY }
+  - id: for-loop
+    rule:
+      pattern: for ($$$INIT; $C; $$$UPDATE) { $$$BODY }
+  - id: while-loop
+    rule:
+      pattern: while ($C) { $$$BODY }
+  - id: try-catch
+    rule:
+      pattern: try { $$$TRY } catch ($$$CATCH) { $$$HANDLER }
+  - id: assignment
+    rule:
+      pattern: $VAR = $VAL;
+  - id: import-type
+    rule:
+      pattern: import $PKG.$TYPE;
+  - id: require-non-null
+    rule:
+      pattern: Objects.requireNonNull($A)
+  - id: string-format
+    rule:
+      pattern: String.format($FMT, $$$ARGS)
+  - id: equals-call
+    rule:
+      pattern: $_.equals($OTHER)
+  - id: instanceof-check
+    rule:
+      pattern: $EXPR instanceof $TYPE
+  - id: wildcard-arg
+    rule:
+      pattern: bar($_)
+  - id: this-call
+    rule:
+      pattern: this($$$ARGS)
+  - id: super-call
+    rule:
+      pattern: super($$$ARGS)

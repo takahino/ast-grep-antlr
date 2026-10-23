@@ -54,6 +54,9 @@ Desktop.ini
 ## Local scratch
 tmp/
 
+## Differential test harness (cloned corpus, npm tools, reports)
+.difftest/
+
 ## Local / secrets
 .env
 .env.*
