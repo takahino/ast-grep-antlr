@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore AstGrepAntlr.slnx --locked-mode
+        continue-on-error: true
+      - name: Restore (unlocked fallback)
+        if: failure()
+        run: dotnet restore AstGrepAntlr.slnx
+      - name: Build
+        run: dotnet build AstGrepAntlr.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test AstGrepAntlr.slnx -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
+
+  format-style:
+    name: dotnet format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore AstGrepAntlr.slnx
+      - name: Verify style
+        run: dotnet format style AstGrepAntlr.slnx --verify-no-changes --severity warn
+      - name: Verify analyzers
+        run: dotnet format analyzers AstGrepAntlr.slnx --verify-no-changes --severity warn
