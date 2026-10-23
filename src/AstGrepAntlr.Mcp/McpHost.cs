@@ -341,16 +341,20 @@ public sealed class Ag4Tools
         }
 
         var changes = new List<object>();
-        foreach (var group in Rewriter.DeduplicateOverlaps(matches).GroupBy(m => m.File))
+        foreach (var group in matches.GroupBy(m => m.File))
         {
-            var original = File.ReadAllText(group.Key);
-            var edits = group.Select(m => (m, Rewriter.ApplyTemplate(fix!, m.MetaVariables, m.Text)));
-            var change = Rewriter.PreviewFile(group.Key, original, edits);
+            var change = Rewriter.RewriteFile(
+                group.Key,
+                group,
+                m => Rewriter.ApplyTemplate(fix!, m.MetaVariables, m.Text),
+                apply: false
+            );
             changes.Add(
                 new
                 {
                     file = change.File,
                     hash = change.OriginalHash,
+                    encoding = change.Detected.Name,
                     diff = change.UnifiedDiff,
                 }
             );
@@ -428,15 +432,20 @@ public sealed class Ag4WriteTools
                     .ToList();
             }
 
-            var original = File.ReadAllText(file);
-            var change = Rewriter.PreviewFile(
+            var change = Rewriter.RewriteFile(
                 file,
-                original,
-                Rewriter
-                    .DeduplicateOverlaps(matches)
-                    .Select(m => (m, Rewriter.ApplyTemplate(fix!, m.MetaVariables, m.Text)))
+                matches,
+                m => Rewriter.ApplyTemplate(fix!, m.MetaVariables, m.Text),
+                apply: false
             );
-            Rewriter.ApplyAtomic(file, change.NewText, hash);
+            if (!string.Equals(change.OriginalHash, hash, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"File '{file}' changed since preview (hash mismatch). Aborting apply."
+                );
+            }
+
+            Rewriter.ApplyAtomic(file, change.NewText, hash, change.Detected);
             applied.Add(file);
         }
 

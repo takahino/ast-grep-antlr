@@ -55,6 +55,7 @@ public static class JsonPrinter
                 },
                 text = m.Text,
                 language = m.Language,
+                encoding = m.Encoding,
                 ruleId = m.RuleId,
                 message = m.Message,
                 severity = m.Severity,

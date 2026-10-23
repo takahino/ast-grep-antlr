@@ -15,4 +15,6 @@ public sealed class MatchResult
     public string? RuleId { get; init; }
     public string? Message { get; init; }
     public string? Severity { get; init; }
+    public string? Encoding { get; init; }
+    public string? FileHash { get; init; }
 }

@@ -47,6 +47,7 @@ public sealed class SgConfig
 {
     public List<string>? RuleDirs { get; set; }
     public List<string>? UtilDirs { get; set; }
+    public string? Encoding { get; set; }
     public Dictionary<string, CustomLanguageConfig>? CustomLanguages { get; set; }
 }
 

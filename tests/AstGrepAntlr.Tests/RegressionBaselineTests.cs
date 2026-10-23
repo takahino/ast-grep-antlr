@@ -153,17 +153,14 @@ public class RegressionBaselineTests
             )
             .ToList();
         Assert.NotEmpty(matches);
-        var original = File.ReadAllText(file);
-        var change = Rewriter.PreviewFile(
+        var change = Rewriter.RewriteFile(
             file,
-            original,
-            Rewriter
-                .DeduplicateOverlaps(matches)
-                .Select(m => (m, Rewriter.ApplyTemplate("System.out.println($A + 1)", m.MetaVariables, m.Text)))
+            matches,
+            m => Rewriter.ApplyTemplate("System.out.println($A + 1)", m.MetaVariables, m.Text),
+            apply: true
         );
         Assert.Contains("1 + 1", change.NewText, StringComparison.Ordinal);
         Assert.False(string.IsNullOrEmpty(change.UnifiedDiff));
-        Rewriter.ApplyAtomic(file, change.NewText, change.OriginalHash);
         Assert.Contains("1 + 1", File.ReadAllText(file), StringComparison.Ordinal);
     }
 
@@ -219,15 +216,12 @@ public class RegressionBaselineTests
                 continue;
             }
 
-            var original = File.ReadAllText(file);
-            var change = Rewriter.PreviewFile(
+            Rewriter.RewriteFile(
                 file,
-                original,
-                Rewriter
-                    .DeduplicateOverlaps(matches)
-                    .Select(m => (m, Rewriter.ApplyTemplate(doc.Fix!, m.MetaVariables, m.Text)))
+                matches,
+                m => Rewriter.ApplyTemplate(doc.Fix!, m.MetaVariables, m.Text),
+                apply: true
             );
-            Rewriter.ApplyAtomic(file, change.NewText, change.OriginalHash);
         }
 
         var text = File.ReadAllText(file);

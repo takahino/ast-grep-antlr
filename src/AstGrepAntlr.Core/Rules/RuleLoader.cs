@@ -64,6 +64,7 @@ public static class RuleLoader
         {
             RuleDirs = GetStringList(root, "ruleDirs"),
             UtilDirs = GetStringList(root, "utilDirs"),
+            Encoding = GetString(root, "encoding"),
         };
 
         if (TryGet(root, "customLanguages", out var customs) && customs is YamlMappingNode cmap)

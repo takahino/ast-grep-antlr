@@ -35,6 +35,10 @@ public static class Ag4Cli
         var jsonOpt = new Option<bool>("--json") { Description = "JSON output" };
         var rewriteOpt = new Option<string?>("--rewrite") { Description = "Rewrite template" };
         var applyOpt = new Option<bool>("--apply") { Description = "Apply rewrites to files" };
+        var encodingOpt = new Option<string?>("--encoding")
+        {
+            Description = "Force file encoding (utf-8, shift_jis, euc-jp, utf-16, ...)",
+        };
         var pathsArg = new Argument<string[]>("paths")
         {
             Arity = ArgumentArity.ZeroOrMore,
@@ -45,6 +49,7 @@ public static class Ag4Cli
         runCmd.Options.Add(jsonOpt);
         runCmd.Options.Add(rewriteOpt);
         runCmd.Options.Add(applyOpt);
+        runCmd.Options.Add(encodingOpt);
         runCmd.Arguments.Add(pathsArg);
         runCmd.SetAction(parseResult =>
         {
@@ -54,6 +59,7 @@ public static class Ag4Cli
             var json = parseResult.GetValue(jsonOpt);
             var rewrite = parseResult.GetValue(rewriteOpt);
             var apply = parseResult.GetValue(applyOpt);
+            var encoding = parseResult.GetValue(encodingOpt);
             var paths = parseResult.GetValue(pathsArg) ?? [];
             if (paths.Length == 0)
             {
@@ -69,24 +75,23 @@ public static class Ag4Cli
                         Registry = registry,
                         LanguageId = lang,
                         Paths = paths,
+                        Encoding = encoding,
                     }
                 )
                 .ToList();
 
             if (!string.IsNullOrEmpty(rewrite))
             {
-                matches = Rewriter.DeduplicateOverlaps(matches).ToList();
-                var byFile = matches.GroupBy(m => m.File);
-                foreach (var group in byFile)
+                foreach (var group in matches.GroupBy(m => m.File))
                 {
-                    var original = File.ReadAllText(group.Key);
-                    var edits = group.Select(m => (m, Rewriter.ApplyTemplate(rewrite!, m.MetaVariables, m.Text)));
-                    var change = Rewriter.PreviewFile(group.Key, original, edits);
-                    if (apply)
-                    {
-                        Rewriter.ApplyAtomic(group.Key, change.NewText, change.OriginalHash);
-                    }
-                    else
+                    var change = Rewriter.RewriteFile(
+                        group.Key,
+                        group,
+                        m => Rewriter.ApplyTemplate(rewrite!, m.MetaVariables, m.Text),
+                        apply,
+                        encoding
+                    );
+                    if (!apply)
                     {
                         stdout.Write(change.UnifiedDiff);
                     }
@@ -110,11 +115,16 @@ public static class Ag4Cli
         var configOpt = new Option<string?>("--config", "-c") { Description = "sgconfig.yml" };
         var scanJson = new Option<bool>("--json");
         var scanUpdate = new Option<bool>("--update-all") { Description = "Apply rule fixes" };
+        var scanEncoding = new Option<string?>("--encoding")
+        {
+            Description = "Force file encoding (utf-8, shift_jis, euc-jp, utf-16, ...)",
+        };
         var scanPaths = new Argument<string[]>("paths") { Arity = ArgumentArity.ZeroOrMore };
         scanCmd.Options.Add(ruleOpt);
         scanCmd.Options.Add(configOpt);
         scanCmd.Options.Add(scanJson);
         scanCmd.Options.Add(scanUpdate);
+        scanCmd.Options.Add(scanEncoding);
         scanCmd.Arguments.Add(scanPaths);
         scanCmd.SetAction(parseResult =>
         {
@@ -122,6 +132,7 @@ public static class Ag4Cli
             var configPath = parseResult.GetValue(configOpt);
             var json = parseResult.GetValue(scanJson);
             var update = parseResult.GetValue(scanUpdate);
+            var encoding = parseResult.GetValue(scanEncoding);
             var paths = parseResult.GetValue(scanPaths) ?? [];
             if (paths.Length == 0)
             {
@@ -129,6 +140,13 @@ public static class Ag4Cli
             }
 
             CustomLanguageBootstrap.ApplyConfig(registry, configPath);
+            string? configEncoding = null;
+            if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
+            {
+                configEncoding = RuleLoader.LoadConfig(File.ReadAllText(configPath)).Encoding;
+            }
+
+            encoding ??= configEncoding;
 
             var docs = new List<SgRuleDocument>();
             if (!string.IsNullOrEmpty(rulePath))
@@ -150,21 +168,28 @@ public static class Ag4Cli
             var all = new List<MatchResult>();
             foreach (var doc in docs)
             {
-                all.AddRange(searcher.RunRule(doc, new SearchOptions { Registry = registry, Paths = paths }));
+                all.AddRange(
+                    searcher.RunRule(
+                        doc,
+                        new SearchOptions
+                        {
+                            Registry = registry,
+                            Paths = paths,
+                            Encoding = encoding,
+                        }
+                    )
+                );
                 if (update && !string.IsNullOrEmpty(doc.Fix))
                 {
-                    var byFile = all.Where(m => m.RuleId == doc.Id).GroupBy(m => m.File);
-                    foreach (var group in byFile)
+                    foreach (var group in all.Where(m => m.RuleId == doc.Id).GroupBy(m => m.File))
                     {
-                        var original = File.ReadAllText(group.Key);
-                        var change = Rewriter.PreviewFile(
+                        Rewriter.RewriteFile(
                             group.Key,
-                            original,
-                            Rewriter
-                                .DeduplicateOverlaps(group)
-                                .Select(m => (m, Rewriter.ApplyTemplate(doc.Fix!, m.MetaVariables, m.Text)))
+                            group,
+                            m => Rewriter.ApplyTemplate(doc.Fix!, m.MetaVariables, m.Text),
+                            apply: true,
+                            encoding
                         );
-                        Rewriter.ApplyAtomic(group.Key, change.NewText, change.OriginalHash);
                     }
                 }
             }

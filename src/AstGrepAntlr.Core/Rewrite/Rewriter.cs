@@ -1,10 +1,16 @@
-using System.Security.Cryptography;
 using System.Text;
 using AstGrepAntlr.Matching;
+using AstGrepAntlr.Text;
 
 namespace AstGrepAntlr.Rewrite;
 
-public sealed record RewriteChange(string File, string OriginalHash, string UnifiedDiff, string NewText);
+public sealed record RewriteChange(
+    string File,
+    string OriginalHash,
+    string UnifiedDiff,
+    string NewText,
+    DetectedEncoding Detected
+);
 
 public static class Rewriter
 {
@@ -43,7 +49,27 @@ public static class Rewriter
 
     public static RewriteChange PreviewFile(
         string path,
+        SourceFile source,
+        IEnumerable<(MatchResult Match, string Replacement)> edits
+    ) => PreviewFile(path, source.Text, source.Hash, source.Detected, edits);
+
+    public static RewriteChange PreviewFile(
+        string path,
         string original,
+        IEnumerable<(MatchResult Match, string Replacement)> edits
+    )
+    {
+        // Legacy overload: treat original as UTF-8 text hash (byte hash unknown).
+        var detected = new DetectedEncoding(new System.Text.UTF8Encoding(false, true), "utf-8", false, 0);
+        var hash = EncodingDetector.Sha256Hex(System.Text.Encoding.UTF8.GetBytes(original));
+        return PreviewFile(path, original, hash, detected, edits);
+    }
+
+    public static RewriteChange PreviewFile(
+        string path,
+        string original,
+        string originalHash,
+        DetectedEncoding detected,
         IEnumerable<(MatchResult Match, string Replacement)> edits
     )
     {
@@ -59,15 +85,18 @@ public static class Rewriter
             text = string.Concat(text.AsSpan(0, match.Start), replacement, text.AsSpan(match.End));
         }
 
-        var hash = Sha256Hex(original);
         var diff = MakeUnifiedDiff(path, original, text);
-        return new RewriteChange(path, hash, diff, text);
+        return new RewriteChange(path, originalHash, diff, text, detected);
     }
 
-    public static void ApplyAtomic(string path, string newText, string expectedHash)
+    /// <summary>
+    /// Atomically write <paramref name="newText"/> using the encoding of the on-disk file,
+    /// aborting if the raw-byte hash no longer matches <paramref name="expectedHash"/>.
+    /// </summary>
+    public static void ApplyAtomic(string path, string newText, string expectedHash, DetectedEncoding? detected = null)
     {
-        var current = File.ReadAllText(path);
-        var hash = Sha256Hex(current);
+        var bytes = File.ReadAllBytes(path);
+        var hash = EncodingDetector.Sha256Hex(bytes);
         if (!string.Equals(hash, expectedHash, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
@@ -75,28 +104,42 @@ public static class Rewriter
             );
         }
 
+        detected ??= EncodingDetector.Detect(bytes);
+        byte[] encoded;
+        try
+        {
+            encoded = EncodingDetector.Encode(newText, detected);
+        }
+        catch (EncoderFallbackException ex)
+        {
+            throw new InvalidOperationException(
+                $"Cannot encode rewritten '{path}' as {detected.Name}: {ex.Message}",
+                ex
+            );
+        }
+
         var tmp = path + ".ag4tmp";
-        // Preserve BOM / newline roughly: write UTF8 without BOM by default; detect BOM from original bytes.
-        var originalBytes = File.ReadAllBytes(path);
-        var encoding = DetectEncoding(originalBytes);
-        File.WriteAllText(tmp, newText, encoding);
+        File.WriteAllBytes(tmp, encoded);
         File.Move(tmp, path, overwrite: true);
     }
 
-    private static string Sha256Hex(string text)
+    /// <summary>Load, preview, and optionally apply rewrites for one file.</summary>
+    public static RewriteChange RewriteFile(
+        string path,
+        IEnumerable<MatchResult> matches,
+        Func<MatchResult, string> template,
+        bool apply,
+        string? explicitEncoding = null
+    )
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(text));
-        return Convert.ToHexString(bytes);
-    }
-
-    private static Encoding DetectEncoding(byte[] bytes)
-    {
-        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        var source = SourceFile.Read(path, explicitEncoding);
+        var change = PreviewFile(path, source, DeduplicateOverlaps(matches).Select(m => (m, template(m))));
+        if (apply)
         {
-            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+            ApplyAtomic(path, change.NewText, change.OriginalHash, change.Detected);
         }
 
-        return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        return change;
     }
 
     private static string MakeUnifiedDiff(string path, string oldText, string newText)
@@ -108,7 +151,7 @@ public static class Rewriter
 
         var oldLines = oldText.Replace("\r\n", "\n").Split('\n');
         var newLines = newText.Replace("\r\n", "\n").Split('\n');
-        var sb = new StringBuilder();
+        var sb = new System.Text.StringBuilder();
         sb.AppendLine($"--- a/{path}");
         sb.AppendLine($"+++ b/{path}");
         sb.AppendLine($"@@ -1,{oldLines.Length} +1,{newLines.Length} @@");

@@ -4,6 +4,7 @@ using AstGrepAntlr.Matching;
 using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Pattern;
 using AstGrepAntlr.Rules;
+using AstGrepAntlr.Text;
 using AstGrepAntlr.Tree;
 
 namespace AstGrepAntlr.Search;
@@ -15,6 +16,7 @@ public sealed class SearchOptions
     public IReadOnlyList<string> Paths { get; init; } = ["."];
     public int MaxResults { get; init; } = int.MaxValue;
     public bool ShowErrors { get; init; }
+    public string? Encoding { get; init; }
     public CancellationToken CancellationToken { get; init; }
 }
 
@@ -96,17 +98,30 @@ public sealed class Searcher
             },
             file =>
             {
-                var tree = TryParseFile(file, language, requiredLiterals, options);
-                if (tree is null)
+                var parsed = TryParseFile(file, language, requiredLiterals, options);
+                if (parsed is null)
                 {
                     return;
                 }
 
                 // One line map per file; every match in it resolves by binary search.
-                var lines = new LineMap(tree.Source);
-                foreach (var (node, env) in match(tree))
+                var lines = new LineMap(parsed.Tree.Source);
+                foreach (var (node, env) in match(parsed.Tree))
                 {
-                    bag.Add(ToMatch(file, language.Id, tree, lines, node, env, ruleId, message, severity));
+                    bag.Add(
+                        ToMatch(
+                            file,
+                            language.Id,
+                            parsed.Tree,
+                            lines,
+                            node,
+                            env,
+                            ruleId,
+                            message,
+                            severity,
+                            parsed.Source
+                        )
+                    );
                 }
             }
         );
@@ -116,7 +131,7 @@ public sealed class Searcher
     }
 
     /// <summary>Returns the parsed tree, or null when the file is skipped (too large, prefiltered out, unparseable).</summary>
-    private SyntaxTree? TryParseFile(
+    private ParsedFile? TryParseFile(
         string file,
         ILanguage language,
         IReadOnlyList<string> requiredLiterals,
@@ -128,18 +143,31 @@ public sealed class Searcher
             return null;
         }
 
-        // ReadAllText strips BOM; do not use UTF8.GetString(ReadAllBytes) which keeps U+FEFF.
-        var text = File.ReadAllText(file);
-        if (!Prefilter.MayContain(text, requiredLiterals, language.IgnoreCase))
+        if (!SourceFile.TryRead(file, out var source, out var readError, options.Encoding))
+        {
+            if (options.ShowErrors)
+            {
+                Console.Error.WriteLine($"ag4: skip {file}: {readError}");
+            }
+
+            return null;
+        }
+
+        if (!Prefilter.MayContain(source!.Text, requiredLiterals, language.IgnoreCase))
         {
             return null;
         }
 
         try
         {
-            return _parser
-                .Parse(language, text, new LanguageParseOptions { CancellationToken = options.CancellationToken })
+            var tree = _parser
+                .Parse(
+                    language,
+                    source.Text,
+                    new LanguageParseOptions { CancellationToken = options.CancellationToken }
+                )
                 .Tree;
+            return new ParsedFile(tree, source);
         }
         catch (Exception ex)
         {
@@ -161,7 +189,8 @@ public sealed class Searcher
         Dictionary<string, string> env,
         string? ruleId,
         string? message,
-        string? severity
+        string? severity,
+        SourceFile source
     )
     {
         var n = tree[node];
@@ -182,8 +211,12 @@ public sealed class Searcher
             RuleId = ruleId,
             Message = message,
             Severity = severity,
+            Encoding = source.EncodingName,
+            FileHash = source.Hash,
         };
     }
+
+    private sealed record ParsedFile(SyntaxTree Tree, SourceFile Source);
 }
 
 /// <summary>
