@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "csharpier.csharpier-vscode",
+    "esbenp.prettier-vscode",
+    "ms-dotnettools.csdevkit",
+    "mike-lischke.vscode-antlr4",
+    "EditorConfig.EditorConfig"
+  ]
+}
