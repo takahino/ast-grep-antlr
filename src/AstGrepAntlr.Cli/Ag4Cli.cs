@@ -87,7 +87,7 @@ public static class Ag4Cli
                     var change = Rewriter.RewriteFile(
                         group.Key,
                         group,
-                        m => Rewriter.ApplyTemplate(rewrite!, m.MetaVariables, m.Text),
+                        m => Rewriter.ApplyTemplate(rewrite!, m.MetaTexts, m.Text),
                         apply,
                         encoding
                     );
@@ -186,7 +186,7 @@ public static class Ag4Cli
                         Rewriter.RewriteFile(
                             group.Key,
                             group,
-                            m => Rewriter.ApplyTemplate(doc.Fix!, m.MetaVariables, m.Text),
+                            m => Rewriter.ApplyTemplate(doc.Fix!, m.MetaTexts, m.Text),
                             apply: true,
                             encoding
                         );

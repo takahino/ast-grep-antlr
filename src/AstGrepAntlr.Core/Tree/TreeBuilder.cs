@@ -12,13 +12,63 @@ public sealed class TreeBuilder
         var nodes = new List<SyntaxNode>();
         var kindIndex = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         var chainKinds = new List<string[]>();
+        // ANTLR CharStreams.fromString reports code-point offsets; .NET strings are UTF-16.
+        var cpToUtf16 = BuildCodePointMap(source);
 
-        BuildNode(language, root, parent: -1, nodes, kindIndex, chainKinds);
+        BuildNode(language, root, parent: -1, nodes, kindIndex, chainKinds, cpToUtf16);
 
         // Second pass: collapse single-child rule chains and set ChainHead / ChainKinds.
         CollapseChains(nodes, chainKinds);
 
         return new SyntaxTree(source, language.Id, nodes.ToArray(), kindIndex, chainKinds.ToArray());
+    }
+
+    private static int[]? BuildCodePointMap(string source)
+    {
+        for (var i = 0; i < source.Length; i++)
+        {
+            if (char.IsSurrogate(source[i]))
+            {
+                var map = new List<int>(source.Length + 1);
+                for (var j = 0; j < source.Length; )
+                {
+                    map.Add(j);
+                    if (char.IsHighSurrogate(source[j]) && j + 1 < source.Length && char.IsLowSurrogate(source[j + 1]))
+                    {
+                        j += 2;
+                    }
+                    else
+                    {
+                        j++;
+                    }
+                }
+
+                map.Add(source.Length);
+                return map.ToArray();
+            }
+        }
+
+        return null;
+    }
+
+    private static int ToUtf16(int codePointOffset, int[]? map, int utf16Length)
+    {
+        if (map is null)
+        {
+            return Math.Clamp(codePointOffset, 0, utf16Length);
+        }
+
+        if (codePointOffset <= 0)
+        {
+            return 0;
+        }
+
+        if (codePointOffset >= map.Length - 1)
+        {
+            return utf16Length;
+        }
+
+        return map[codePointOffset];
     }
 
     private static int BuildNode(
@@ -27,7 +77,8 @@ public sealed class TreeBuilder
         int parent,
         List<SyntaxNode> nodes,
         Dictionary<string, List<int>> kindIndex,
-        List<string[]> chainKinds
+        List<string[]> chainKinds,
+        int[]? cpToUtf16
     )
     {
         var index = nodes.Count;
@@ -41,14 +92,18 @@ public sealed class TreeBuilder
         int end;
         bool isNamed;
 
+        // Source length for clamping is unknown here; use int.MaxValue then clamp via map helper.
+        // Actual source length is recovered from the map sentinel or left unbounded for BMP.
+        var utf16Len = cpToUtf16 is null ? int.MaxValue : cpToUtf16[^1];
+
         if (tree is IErrorNode errorNode)
         {
             var t = errorNode.Symbol;
             kind = t.Type == TokenConstants.InvalidType ? SyntaxNodeKind.Missing : SyntaxNodeKind.Error;
             typeId = t.Type;
             typeName = kind == SyntaxNodeKind.Missing ? "MISSING" : "ERROR";
-            start = Math.Max(0, t.StartIndex);
-            end = Math.Max(start, t.StopIndex + 1);
+            start = ToUtf16(Math.Max(0, t.StartIndex), cpToUtf16, utf16Len);
+            end = ToUtf16(Math.Max(t.StartIndex, t.StopIndex + 1), cpToUtf16, utf16Len);
             isNamed = true;
         }
         else if (tree is ITerminalNode terminal)
@@ -61,8 +116,8 @@ public sealed class TreeBuilder
                 ?? language.Vocabulary.GetDisplayName(t.Type)
                 ?? t.Text
                 ?? "TOKEN";
-            start = Math.Max(0, t.StartIndex);
-            end = t.StopIndex >= t.StartIndex ? t.StopIndex + 1 : start;
+            start = ToUtf16(Math.Max(0, t.StartIndex), cpToUtf16, utf16Len);
+            end = ToUtf16(t.StopIndex >= t.StartIndex ? t.StopIndex + 1 : t.StartIndex, cpToUtf16, utf16Len);
             isNamed = language.IsNamedToken(t, language.Vocabulary);
         }
         else if (tree is ParserRuleContext rule)
@@ -70,8 +125,12 @@ public sealed class TreeBuilder
             kind = SyntaxNodeKind.Rule;
             typeId = rule.RuleIndex;
             typeName = language.RuleNames[rule.RuleIndex];
-            start = rule.Start?.StartIndex ?? 0;
-            end = rule.Stop != null ? rule.Stop.StopIndex + 1 : start;
+            start = ToUtf16(rule.Start?.StartIndex ?? 0, cpToUtf16, utf16Len);
+            end = ToUtf16(
+                rule.Stop != null ? rule.Stop.StopIndex + 1 : rule.Start?.StartIndex ?? 0,
+                cpToUtf16,
+                utf16Len
+            );
             isNamed = true;
         }
         else
@@ -90,7 +149,7 @@ public sealed class TreeBuilder
         for (var i = 0; i < tree.ChildCount; i++)
         {
             var childTree = tree.GetChild(i);
-            var childIndex = BuildNode(language, childTree, index, nodes, kindIndex, chainKinds);
+            var childIndex = BuildNode(language, childTree, index, nodes, kindIndex, chainKinds, cpToUtf16);
             childCount++;
             if (firstChild < 0)
             {

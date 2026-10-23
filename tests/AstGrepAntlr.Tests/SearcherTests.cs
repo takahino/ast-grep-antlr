@@ -28,7 +28,7 @@ public class SearcherTests
                 )
                 .ToList();
             Assert.NotEmpty(hits);
-            Assert.Equal("1", hits[0].MetaVariables["A"]);
+            Assert.Equal("1", hits[0].MetaVariables["A"].Text);
         }
         finally
         {

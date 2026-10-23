@@ -346,7 +346,7 @@ public sealed class Ag4Tools
             var change = Rewriter.RewriteFile(
                 group.Key,
                 group,
-                m => Rewriter.ApplyTemplate(fix!, m.MetaVariables, m.Text),
+                m => Rewriter.ApplyTemplate(fix!, m.MetaTexts, m.Text),
                 apply: false
             );
             changes.Add(
@@ -435,7 +435,7 @@ public sealed class Ag4WriteTools
             var change = Rewriter.RewriteFile(
                 file,
                 matches,
-                m => Rewriter.ApplyTemplate(fix!, m.MetaVariables, m.Text),
+                m => Rewriter.ApplyTemplate(fix!, m.MetaTexts, m.Text),
                 apply: false
             );
             if (!string.Equals(change.OriginalHash, hash, StringComparison.OrdinalIgnoreCase))

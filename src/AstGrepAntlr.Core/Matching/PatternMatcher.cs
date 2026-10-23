@@ -5,7 +5,7 @@ namespace AstGrepAntlr.Matching;
 
 public sealed class PatternMatcher
 {
-    public IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)> MatchAll(
+    public IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)> MatchAll(
         SyntaxTree target,
         CompiledPattern pattern
     )
@@ -18,7 +18,7 @@ public sealed class PatternMatcher
         var seen = new HashSet<(int, int)>();
         foreach (var candidate in candidates)
         {
-            var env = new Dictionary<string, string>(StringComparer.Ordinal);
+            var env = new Dictionary<string, MetaVarValue>(StringComparer.Ordinal);
             if (!MatchNode(target, candidate, pattern.Tree, pattern.Root, pattern.Strictness, env))
             {
                 continue;
@@ -40,7 +40,7 @@ public sealed class PatternMatcher
         SyntaxTree pattern,
         int pIndex,
         Strictness strictness,
-        Dictionary<string, string> env
+        Dictionary<string, MetaVarValue> env
     )
     {
         var p = pattern[pIndex];
@@ -60,12 +60,13 @@ public sealed class PatternMatcher
                 return true;
             }
 
+            var value = new MetaVarValue(text, t.Start, t.End, IsMulti: false);
             if (env.TryGetValue(p.MetaVarName, out var existing))
             {
-                return string.Equals(existing, text, StringComparison.Ordinal);
+                return string.Equals(existing.Text, text, StringComparison.Ordinal);
             }
 
-            env[p.MetaVarName] = text;
+            env[p.MetaVarName] = value;
             return true;
         }
 
@@ -114,7 +115,7 @@ public sealed class PatternMatcher
         SyntaxTree pattern,
         int pIndex,
         Strictness strictness,
-        Dictionary<string, string> env
+        Dictionary<string, MetaVarValue> env
     )
     {
         var pChildren = SelectChildren(pattern, pIndex, strictness).ToList();
@@ -136,7 +137,7 @@ public sealed class PatternMatcher
         SyntaxTree pattern,
         List<int> pChildren,
         Strictness strictness,
-        Dictionary<string, string> env,
+        Dictionary<string, MetaVarValue> env,
         int ti,
         int pi
     )
@@ -154,14 +155,13 @@ public sealed class PatternMatcher
                     // Rest of children
                     if (name is not ("_" or ""))
                     {
-                        var texts = tChildren.Skip(ti).Select(target.Text);
-                        var joined = string.Join(string.Empty, texts);
-                        if (env.TryGetValue(name, out var existing) && existing != joined)
+                        var captured = CaptureSlice(target, tChildren, ti, tChildren.Count);
+                        if (env.TryGetValue(name, out var existing) && existing.Text != captured.Text)
                         {
                             return false;
                         }
 
-                        env[name] = joined;
+                        env[name] = captured;
                     }
 
                     return true;
@@ -169,21 +169,18 @@ public sealed class PatternMatcher
 
                 for (var end = ti; end <= tChildren.Count; end++)
                 {
-                    var envCopy = new Dictionary<string, string>(env, StringComparer.Ordinal);
+                    var envCopy = new Dictionary<string, MetaVarValue>(env, StringComparer.Ordinal);
                     if (MatchSequence(target, tChildren, pattern, pChildren, strictness, envCopy, end, pi))
                     {
                         if (name is not ("_" or ""))
                         {
-                            var joined = string.Join(
-                                string.Empty,
-                                tChildren.Skip(ti).Take(end - ti).Select(target.Text)
-                            );
-                            if (envCopy.TryGetValue(name, out var existing) && existing != joined)
+                            var captured = CaptureSlice(target, tChildren, ti, end);
+                            if (envCopy.TryGetValue(name, out var existing) && existing.Text != captured.Text)
                             {
                                 continue;
                             }
 
-                            envCopy[name] = joined;
+                            envCopy[name] = captured;
                         }
 
                         foreach (var kv in envCopy)
@@ -254,5 +251,24 @@ public sealed class PatternMatcher
         }
 
         return true;
+    }
+
+    /// <summary>Capture $$$ as a contiguous source slice from first to last child (preserves separators).</summary>
+    private static MetaVarValue CaptureSlice(SyntaxTree target, List<int> tChildren, int from, int to)
+    {
+        if (from >= to || from >= tChildren.Count)
+        {
+            // Empty capture: place at the boundary of the neighbor if any.
+            var pos =
+                from < tChildren.Count ? target[tChildren[from]].Start
+                : to > 0 && to - 1 < tChildren.Count ? target[tChildren[to - 1]].End
+                : 0;
+            return new MetaVarValue(string.Empty, pos, pos, IsMulti: true);
+        }
+
+        var start = target[tChildren[from]].Start;
+        var end = target[tChildren[to - 1]].End;
+        var text = start >= 0 && end >= start && end <= target.Source.Length ? target.Source[start..end] : string.Empty;
+        return new MetaVarValue(text, start, end, IsMulti: true);
     }
 }

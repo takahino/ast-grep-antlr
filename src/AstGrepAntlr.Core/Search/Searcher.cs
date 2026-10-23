@@ -81,7 +81,7 @@ public sealed class Searcher
         ILanguage language,
         IReadOnlyList<string> requiredLiterals,
         SearchOptions options,
-        Func<SyntaxTree, IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)>> match,
+        Func<SyntaxTree, IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)>> match,
         string? ruleId,
         string? message,
         string? severity
@@ -106,6 +106,7 @@ public sealed class Searcher
 
                 // One line map per file; every match in it resolves by binary search.
                 var lines = new LineMap(parsed.Tree.Source);
+                var offsets = OffsetMap.ForSource(parsed.Source.Text, parsed.Source.Detected);
                 foreach (var (node, env) in match(parsed.Tree))
                 {
                     bag.Add(
@@ -114,6 +115,7 @@ public sealed class Searcher
                             language.Id,
                             parsed.Tree,
                             lines,
+                            offsets,
                             node,
                             env,
                             ruleId,
@@ -185,8 +187,9 @@ public sealed class Searcher
         string lang,
         SyntaxTree tree,
         LineMap lines,
+        OffsetMap offsets,
         int node,
-        Dictionary<string, string> env,
+        Dictionary<string, MetaVarValue> env,
         string? ruleId,
         string? message,
         string? severity,
@@ -196,12 +199,23 @@ public sealed class Searcher
         var n = tree[node];
         var (sl, sc) = lines.Locate(n.Start);
         var (el, ec) = lines.Locate(n.End);
+        var (byteStart, byteEnd) = offsets.Utf16RangeToBytes(n.Start, n.End);
+        var lineStart = Math.Max(0, n.Start - (sc - 1));
+        var lineEnd = n.End;
+        while (lineEnd < tree.Source.Length && tree.Source[lineEnd] is not ('\n' or '\r'))
+        {
+            lineEnd++;
+        }
+
+        var linesText = tree.Source[lineStart..Math.Min(lineEnd, tree.Source.Length)];
         return new MatchResult
         {
             File = file,
             Language = lang,
             Start = n.Start,
             End = n.End,
+            ByteStart = byteStart,
+            ByteEnd = byteEnd,
             StartLine = sl,
             StartColumn = sc,
             EndLine = el,
@@ -213,6 +227,7 @@ public sealed class Searcher
             Severity = severity,
             Encoding = source.EncodingName,
             FileHash = source.Hash,
+            Lines = linesText,
         };
     }
 

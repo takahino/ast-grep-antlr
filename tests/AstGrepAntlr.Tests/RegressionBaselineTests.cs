@@ -48,7 +48,7 @@ public class RegressionBaselineTests
                     foreach (var (k, v) in exp.Meta)
                     {
                         Assert.True(hit.Meta.ContainsKey(k), $"case {id}: missing meta {k}");
-                        Assert.Equal(v, hit.Meta[k]);
+                        Assert.Equal(v, hit.Meta[k].Text);
                     }
                 }
             }
@@ -64,6 +64,57 @@ public class RegressionBaselineTests
     }
 
     public static IEnumerable<object[]> JavaCases() => CaseFileRunner.Discover("java");
+
+    [Theory]
+    [MemberData(nameof(CppCases))]
+    public void Cpp_case_files(string id, CaseFileEntry entry)
+    {
+        Assert.Equal(id, entry.Id);
+        var lang = new CppLanguage();
+        var tree = new TwoStageParser().Parse(lang, entry.Source).Tree;
+        var strictness = Enum.TryParse<Strictness>(entry.Strictness, true, out var s) ? s : Strictness.Smart;
+        var compiled = new PatternCompiler().Compile(
+            lang,
+            new PatternSpec(entry.Pattern, entry.Entry, Strictness: strictness)
+        );
+        var hits = new PatternMatcher().MatchAll(tree, compiled).ToList();
+
+        if (entry.Expect is { Count: > 0 })
+        {
+            Assert.True(
+                hits.Count >= entry.Expect.Count,
+                $"case {id}: expected >= {entry.Expect.Count} hits, got {hits.Count}"
+            );
+            foreach (var exp in entry.Expect)
+            {
+                var match = hits.FirstOrDefault(h =>
+                    exp.Text is null || string.Equals(tree.Text(h.NodeIndex), exp.Text, StringComparison.Ordinal)
+                );
+                Assert.True(match.Meta is not null || hits.Count > 0, $"case {id}: no hit for text={exp.Text}");
+                var hit = hits.First(h =>
+                    exp.Text is null || string.Equals(tree.Text(h.NodeIndex), exp.Text, StringComparison.Ordinal)
+                );
+                if (exp.Meta is not null)
+                {
+                    foreach (var (k, v) in exp.Meta)
+                    {
+                        Assert.True(hit.Meta.ContainsKey(k), $"case {id}: missing meta {k}");
+                        Assert.Equal(v, hit.Meta[k].Text);
+                    }
+                }
+            }
+        }
+
+        if (entry.RejectTexts is { Count: > 0 })
+        {
+            foreach (var reject in entry.RejectTexts)
+            {
+                Assert.DoesNotContain(hits, h => tree.Text(h.NodeIndex) == reject);
+            }
+        }
+    }
+
+    public static IEnumerable<object[]> CppCases() => CaseFileRunner.Discover("cpp");
 
     [Fact]
     public void Multi_args_matches_filled_and_empty()
@@ -81,7 +132,7 @@ public class RegressionBaselineTests
             var pattern = new PatternCompiler().Compile(lang, new PatternSpec("foo($$$ARGS)"));
             var hits = new PatternMatcher().MatchAll(tree, pattern).ToList();
             Assert.NotEmpty(hits);
-            Assert.Equal(expectArgs, hits[0].Meta["ARGS"]);
+            Assert.Equal(expectArgs, hits[0].Meta["ARGS"].Text);
         }
     }
 
@@ -113,7 +164,7 @@ public class RegressionBaselineTests
             .Tree;
         var hits = new RuleEngine().Match(lang, tree, doc).ToList();
         Assert.Single(hits);
-        Assert.Equal("1", hits[0].Meta["A"]);
+        Assert.Equal("1", hits[0].Meta["A"].Text);
     }
 
     [Fact]
@@ -156,7 +207,7 @@ public class RegressionBaselineTests
         var change = Rewriter.RewriteFile(
             file,
             matches,
-            m => Rewriter.ApplyTemplate("System.out.println($A + 1)", m.MetaVariables, m.Text),
+            m => Rewriter.ApplyTemplate("System.out.println($A + 1)", m.MetaTexts, m.Text),
             apply: true
         );
         Assert.Contains("1 + 1", change.NewText, StringComparison.Ordinal);
@@ -219,7 +270,7 @@ public class RegressionBaselineTests
             Rewriter.RewriteFile(
                 file,
                 matches,
-                m => Rewriter.ApplyTemplate(doc.Fix!, m.MetaVariables, m.Text),
+                m => Rewriter.ApplyTemplate(doc.Fix!, m.MetaTexts, m.Text),
                 apply: true
             );
         }
@@ -259,7 +310,7 @@ public class RegressionBaselineTests
         var pattern = new PatternCompiler().Compile(lang, new PatternSpec("$A = $B;"));
         var hits = new PatternMatcher().MatchAll(tree, pattern).ToList();
         Assert.NotEmpty(hits);
-        Assert.Equal("x", hits[0].Meta["A"]);
+        Assert.Equal("x", hits[0].Meta["A"].Text);
     }
 
     [Fact]

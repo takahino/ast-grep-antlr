@@ -53,7 +53,7 @@ public sealed class RuleEngine
     private CompiledPattern CompilePattern(ILanguage language, PatternSpec spec) =>
         _compiled.GetOrAdd((language.Id, spec), key => _compiler.Compile(language, key.Spec));
 
-    public IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)> Match(
+    public IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)> Match(
         ILanguage language,
         SyntaxTree tree,
         SgRuleDocument doc,
@@ -73,7 +73,7 @@ public sealed class RuleEngine
                 var ok = true;
                 foreach (var (name, constraint) in doc.Constraints)
                 {
-                    if (!env.TryGetValue(name, out var text))
+                    if (!env.TryGetValue(name, out var captured))
                     {
                         ok = false;
                         break;
@@ -81,7 +81,7 @@ public sealed class RuleEngine
 
                     // Constraint applies to the captured text re-parsed as a tiny tree is expensive;
                     // for kind/regex constraints, check against the matched node text / kind roughly.
-                    if (!ConstraintHolds(tree, node, text, constraint))
+                    if (!ConstraintHolds(tree, node, captured.Text, constraint))
                     {
                         ok = false;
                         break;
@@ -98,7 +98,7 @@ public sealed class RuleEngine
         }
     }
 
-    private IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)> MatchRule(
+    private IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)> MatchRule(
         ILanguage language,
         SyntaxTree tree,
         RuleNode rule,
@@ -109,7 +109,7 @@ public sealed class RuleEngine
         if (rule.All is { Count: > 0 })
         {
             // Matches are identified by source range, so `all` is the intersection of its branches.
-            List<(int NodeIndex, Dictionary<string, string> Meta)>? acc = null;
+            List<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)>? acc = null;
             foreach (var child in rule.All)
             {
                 var part = MatchRule(language, tree, child, utils, scopedNode).ToList();
@@ -162,7 +162,7 @@ public sealed class RuleEngine
 
                 if (!inner.Contains(Span(tree, i)))
                 {
-                    yield return (i, new Dictionary<string, string>());
+                    yield return (i, new Dictionary<string, MetaVarValue>());
                 }
             }
 
@@ -179,14 +179,14 @@ public sealed class RuleEngine
             yield break;
         }
 
-        IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)> seeds;
+        IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)> seeds;
         if (rule.Pattern is not null || rule.PatternObject is not null)
         {
             seeds = _matcher.MatchAll(tree, CompilePattern(language, ToPatternSpec(rule)));
         }
         else if (rule.Kind is not null)
         {
-            seeds = tree.NodesMatchingKind(rule.Kind).Select(i => (i, new Dictionary<string, string>()));
+            seeds = tree.NodesMatchingKind(rule.Kind).Select(i => (i, new Dictionary<string, MetaVarValue>()));
         }
         else if (rule.Regex is not null)
         {
@@ -194,7 +194,7 @@ public sealed class RuleEngine
             seeds = Enumerable
                 .Range(0, tree.NodeCount)
                 .Where(i => tree[i].IsNamed && rx.IsMatch(tree.Text(i)))
-                .Select(i => (i, new Dictionary<string, string>()));
+                .Select(i => (i, new Dictionary<string, MetaVarValue>()));
         }
         else
         {
@@ -254,7 +254,7 @@ public sealed class RuleEngine
         }
     }
 
-    /// <summary>Source range of a node — how a match is identified across rule branches.</summary>
+    /// <summary>Source range of a node  Ehow a match is identified across rule branches.</summary>
     private static (int Start, int End) Span(SyntaxTree tree, int node) => (tree[node].Start, tree[node].End);
 
     /// <summary>True when the node falls outside the enclosing node a nested rule is scoped to.</summary>

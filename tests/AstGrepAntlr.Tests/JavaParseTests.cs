@@ -44,6 +44,6 @@ public class JavaParseTests
         var hits = new PatternMatcher().MatchAll(tree, pattern).ToList();
         Assert.NotEmpty(hits);
         Assert.True(hits[0].Meta.ContainsKey("A"));
-        Assert.Equal("42", hits[0].Meta["A"]);
+        Assert.Equal("42", hits[0].Meta["A"].Text);
     }
 }
