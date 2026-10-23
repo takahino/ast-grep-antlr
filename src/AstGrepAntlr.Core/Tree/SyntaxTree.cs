@@ -5,14 +5,14 @@ public sealed class SyntaxTree
 {
     private readonly SyntaxNode[] _nodes;
     private readonly Dictionary<string, List<int>> _kindIndex;
-    private readonly string[] _chainKinds;
+    private readonly string[][] _chainKinds;
 
     public SyntaxTree(
         string source,
         string languageId,
         SyntaxNode[] nodes,
         Dictionary<string, List<int>> kindIndex,
-        string[] chainKinds
+        string[][] chainKinds
     )
     {
         Source = source;
@@ -75,6 +75,10 @@ public sealed class SyntaxTree
         return _kindIndex.TryGetValue(kind, out var list) ? list : Array.Empty<int>();
     }
 
+    /// <summary>
+    /// True when the node is of <paramref name="kind"/>, counting the rule names that were
+    /// collapsed into its single-child chain so `expression` still matches a chain head.
+    /// </summary>
     public bool KindMatches(int index, string kind)
     {
         if (string.Equals(kind, "ERROR", StringComparison.OrdinalIgnoreCase))
@@ -88,11 +92,9 @@ public sealed class SyntaxTree
             head = index;
         }
 
-        // Walk the collapsed single-child chain stored as contiguous TypeName via ChainKinds encoding:
-        // ChainKinds[i] is the joined "a>b>c" for chain head i when available; else match TypeName.
-        if ((uint)head < (uint)_chainKinds.Length && !string.IsNullOrEmpty(_chainKinds[head]))
+        if ((uint)head < (uint)_chainKinds.Length)
         {
-            foreach (var part in _chainKinds[head].Split('>'))
+            foreach (var part in _chainKinds[head])
             {
                 if (string.Equals(part, kind, StringComparison.Ordinal))
                 {
@@ -104,25 +106,49 @@ public sealed class SyntaxTree
         return string.Equals(_nodes[index].TypeName, kind, StringComparison.Ordinal);
     }
 
-    public IEnumerable<int> Descendants(int index, bool namedOnly = false)
+    /// <summary>
+    /// Every node of <paramref name="kind"/>. Scanning with <see cref="KindMatches"/> already
+    /// covers the kind index, since each node is indexed under its own TypeName.
+    /// </summary>
+    public IEnumerable<int> NodesMatchingKind(string kind)
     {
-        var stack = new Stack<int>();
-        foreach (var c in Children(index).Reverse())
+        for (var i = 0; i < _nodes.Length; i++)
         {
-            stack.Push(c);
-        }
-
-        while (stack.Count > 0)
-        {
-            var i = stack.Pop();
-            if (!namedOnly || _nodes[i].IsNamed)
+            if (KindMatches(i, kind))
             {
                 yield return i;
             }
+        }
+    }
 
-            foreach (var c in Children(i).Reverse())
+    /// <summary>Depth-first pre-order descendants of <paramref name="index"/>, excluding the node itself.</summary>
+    public IEnumerable<int> Descendants(int index)
+    {
+        var first = _nodes[index].FirstChild;
+        if (first < 0)
+        {
+            yield break;
+        }
+
+        // Children are a sibling-linked list, so pushing (sibling, then child) walks pre-order
+        // while holding at most one pending node per depth level — no per-node buffering.
+        var stack = new Stack<int>();
+        stack.Push(first);
+        while (stack.Count > 0)
+        {
+            var i = stack.Pop();
+            yield return i;
+
+            var sibling = _nodes[i].NextSibling;
+            if (sibling >= 0)
             {
-                stack.Push(c);
+                stack.Push(sibling);
+            }
+
+            var child = _nodes[i].FirstChild;
+            if (child >= 0)
+            {
+                stack.Push(child);
             }
         }
     }

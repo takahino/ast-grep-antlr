@@ -18,24 +18,7 @@ public static class Rewriter
             result = result.Replace("$$$" + kv.Key, kv.Value, StringComparison.Ordinal);
         }
 
-        result = result.Replace("$$$", matchedText, StringComparison.Ordinal);
-        return PreserveIndent(template, result, matchedText);
-    }
-
-    private static string PreserveIndent(string template, string result, string matchedText)
-    {
-        // If replacement is multi-line, indent subsequent lines like the matched start indent.
-        if (!result.Contains('\n') || !matchedText.Contains('\n'))
-        {
-            return result;
-        }
-
-        var firstLine = matchedText.Split('\n')[0];
-        var indentLen = firstLine.TakeWhile(c => c is ' ' or '\t').Count();
-        // Keep as-is for MVP; indent of inserted lines follows template newlines.
-        _ = indentLen;
-        _ = template;
-        return result;
+        return result.Replace("$$$", matchedText, StringComparison.Ordinal);
     }
 
     public static IEnumerable<MatchResult> DeduplicateOverlaps(IEnumerable<MatchResult> matches)
@@ -100,7 +83,7 @@ public static class Rewriter
         File.Move(tmp, path, overwrite: true);
     }
 
-    public static string Sha256Hex(string text)
+    private static string Sha256Hex(string text)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(text));
         return Convert.ToHexString(bytes);

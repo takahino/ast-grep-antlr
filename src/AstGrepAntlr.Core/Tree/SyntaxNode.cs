@@ -15,7 +15,6 @@ public readonly struct SyntaxNode
     public required int ChildCount { get; init; }
     public required bool IsNamed { get; init; }
     public required int ChainHead { get; init; }
-    public string? FieldName { get; init; }
     public string? MetaVarName { get; init; }
     public bool IsMultiMetaVar { get; init; }
 

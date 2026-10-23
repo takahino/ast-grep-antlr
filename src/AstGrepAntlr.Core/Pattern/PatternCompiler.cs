@@ -20,8 +20,7 @@ public sealed record CompiledPattern(
     int Root,
     Strictness Strictness,
     string EntryRule,
-    IReadOnlyList<string> RequiredLiterals,
-    IReadOnlyDictionary<string, MetaVar.Occurrence> Placeholders
+    IReadOnlyList<string> RequiredLiterals
 );
 
 public sealed class PatternCompiler
@@ -75,7 +74,7 @@ public sealed class PatternCompiler
                 }
 
                 var literals = ExtractRequiredLiterals(result.Tree, placeholders.Keys);
-                return new CompiledPattern(result.Tree, root, spec.Strictness, rule, literals, placeholders);
+                return new CompiledPattern(result.Tree, root, spec.Strictness, rule, literals);
             }
             catch (Exception ex)
             {
@@ -102,13 +101,6 @@ public sealed class PatternCompiler
         try
         {
             var tree = language.InvokeRule(parser, rule);
-            // Require consuming (near) EOF
-            if (tokens.LA(1) != TokenConstants.EOF)
-            {
-                // Allow trailing whitespace-only: if next is EOF after hidden channel, OK.
-                tokens.Seek(tokens.Index);
-            }
-
             var builder = new TreeBuilder();
             var syntax = builder.Build(language, source, tree);
             return new ParseResult(syntax, Array.Empty<ParseDiagnostic>(), rule, false);
@@ -138,8 +130,6 @@ public sealed class PatternCompiler
                 continue;
             }
 
-            // Mark the chain head (or token itself) as meta-var.
-            var head = tree[i].ChainHead >= 0 ? tree[i].ChainHead : i;
             // Walk up single-child parents to the first meaningful pattern node.
             var mark = i;
             var parent = tree[i].Parent;

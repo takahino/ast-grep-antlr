@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using AstGrepAntlr.Language;
 using AstGrepAntlr.Matching;
@@ -10,6 +11,47 @@ public sealed class RuleEngine
 {
     private readonly PatternCompiler _compiler = new();
     private readonly PatternMatcher _matcher = new();
+
+    // A rule's patterns are file-independent, so compiling them once and reusing the result
+    // keeps a scan over N files from paying N parser constructions per pattern.
+    private readonly ConcurrentDictionary<(string LanguageId, PatternSpec Spec), CompiledPattern> _compiled = new();
+
+    /// <summary>
+    /// Literals that must appear in a file for <paramref name="rule"/> to have any chance of
+    /// matching, used to skip parsing entirely. Composite rules that can match without their
+    /// pattern (any/not/matches) contribute nothing, so the filter stays sound.
+    /// </summary>
+    public IReadOnlyList<string> RequiredLiterals(ILanguage language, RuleNode rule)
+    {
+        if (rule.All is { Count: > 0 } all)
+        {
+            // Every branch must match, so each one's literals are required too.
+            return all.SelectMany(child => RequiredLiterals(language, child)).Distinct(StringComparer.Ordinal).ToList();
+        }
+
+        if (rule.Any is { Count: > 0 } || rule.Not is not null || rule.Matches is not null)
+        {
+            return [];
+        }
+
+        if (rule.Pattern is null && rule.PatternObject is null)
+        {
+            return [];
+        }
+
+        try
+        {
+            return CompilePattern(language, ToPatternSpec(rule)).RequiredLiterals;
+        }
+        catch (InvalidOperationException)
+        {
+            // Pattern does not compile for this language; let the matcher report it per file.
+            return [];
+        }
+    }
+
+    private CompiledPattern CompilePattern(ILanguage language, PatternSpec spec) =>
+        _compiled.GetOrAdd((language.Id, spec), key => _compiler.Compile(language, key.Spec));
 
     public IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)> Match(
         ILanguage language,
@@ -56,7 +98,7 @@ public sealed class RuleEngine
         }
     }
 
-    private IEnumerable<(int, Dictionary<string, string>)> MatchRule(
+    private IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)> MatchRule(
         ILanguage language,
         SyntaxTree tree,
         RuleNode rule,
@@ -66,19 +108,19 @@ public sealed class RuleEngine
     {
         if (rule.All is { Count: > 0 })
         {
-            // Intersection of matches by range
-            List<(int, Dictionary<string, string>)>? acc = null;
+            // Matches are identified by source range, so `all` is the intersection of its branches.
+            List<(int NodeIndex, Dictionary<string, string> Meta)>? acc = null;
             foreach (var child in rule.All)
             {
                 var part = MatchRule(language, tree, child, utils, scopedNode).ToList();
-                acc = acc is null
-                    ? part
-                    : acc.Where(a =>
-                            part.Any(p =>
-                                tree[p.Item1].Start == tree[a.Item1].Start && tree[p.Item1].End == tree[a.Item1].End
-                            )
-                        )
-                        .ToList();
+                if (acc is null)
+                {
+                    acc = part;
+                    continue;
+                }
+
+                var spans = part.Select(p => Span(tree, p.NodeIndex)).ToHashSet();
+                acc = acc.Where(a => spans.Contains(Span(tree, a.NodeIndex))).ToList();
             }
 
             foreach (var x in acc ?? [])
@@ -96,8 +138,7 @@ public sealed class RuleEngine
             {
                 foreach (var m in MatchRule(language, tree, child, utils, scopedNode))
                 {
-                    var key = (tree[m.Item1].Start, tree[m.Item1].End);
-                    if (seen.Add(key))
+                    if (seen.Add(Span(tree, m.NodeIndex)))
                     {
                         yield return m;
                     }
@@ -110,16 +151,16 @@ public sealed class RuleEngine
         if (rule.Not is not null)
         {
             var inner = MatchRule(language, tree, rule.Not, utils, scopedNode)
-                .Select(m => (tree[m.Item1].Start, tree[m.Item1].End))
+                .Select(m => Span(tree, m.NodeIndex))
                 .ToHashSet();
             for (var i = 0; i < tree.NodeCount; i++)
             {
-                if (scopedNode >= 0 && (tree[i].Start < tree[scopedNode].Start || tree[i].End > tree[scopedNode].End))
+                if (IsOutsideScope(tree, i, scopedNode))
                 {
                     continue;
                 }
 
-                if (!inner.Contains((tree[i].Start, tree[i].End)))
+                if (!inner.Contains(Span(tree, i)))
                 {
                     yield return (i, new Dictionary<string, string>());
                 }
@@ -138,19 +179,14 @@ public sealed class RuleEngine
             yield break;
         }
 
-        IEnumerable<(int, Dictionary<string, string>)> seeds;
+        IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)> seeds;
         if (rule.Pattern is not null || rule.PatternObject is not null)
         {
-            var spec = ToPatternSpec(rule);
-            var compiled = _compiler.Compile(language, spec);
-            seeds = _matcher.MatchAll(tree, compiled);
+            seeds = _matcher.MatchAll(tree, CompilePattern(language, ToPatternSpec(rule)));
         }
         else if (rule.Kind is not null)
         {
-            seeds = tree.NodesOfKind(rule.Kind)
-                .Concat(Enumerable.Range(0, tree.NodeCount).Where(i => tree.KindMatches(i, rule.Kind)))
-                .Distinct()
-                .Select(i => (i, new Dictionary<string, string>()));
+            seeds = tree.NodesMatchingKind(rule.Kind).Select(i => (i, new Dictionary<string, string>()));
         }
         else if (rule.Regex is not null)
         {
@@ -167,7 +203,7 @@ public sealed class RuleEngine
 
         foreach (var (node, env) in seeds)
         {
-            if (scopedNode >= 0 && (tree[node].Start < tree[scopedNode].Start || tree[node].End > tree[scopedNode].End))
+            if (IsOutsideScope(tree, node, scopedNode))
             {
                 continue;
             }
@@ -217,6 +253,13 @@ public sealed class RuleEngine
             yield return (node, env);
         }
     }
+
+    /// <summary>Source range of a node — how a match is identified across rule branches.</summary>
+    private static (int Start, int End) Span(SyntaxTree tree, int node) => (tree[node].Start, tree[node].End);
+
+    /// <summary>True when the node falls outside the enclosing node a nested rule is scoped to.</summary>
+    private static bool IsOutsideScope(SyntaxTree tree, int node, int scopedNode) =>
+        scopedNode >= 0 && (tree[node].Start < tree[scopedNode].Start || tree[node].End > tree[scopedNode].End);
 
     private static PatternSpec ToPatternSpec(RuleNode rule)
     {

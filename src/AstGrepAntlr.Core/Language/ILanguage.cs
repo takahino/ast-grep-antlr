@@ -21,12 +21,18 @@ public interface ILanguage
     bool IsNamedToken(IToken token, IVocabulary vocabulary);
     IReadOnlyList<string> RuleNames { get; }
     IVocabulary Vocabulary { get; }
+
+    /// <summary>
+    /// Highest token type the vocabulary defines, so callers can enumerate tokens without
+    /// guessing an upper bound. IVocabulary does not expose this, but every concrete
+    /// vocabulary ANTLR generates is a <see cref="Antlr4.Runtime.Vocabulary"/>.
+    /// </summary>
+    int MaxTokenType => Vocabulary is Vocabulary v ? v.getMaxTokenType() : 0;
 }
 
 public sealed class LanguageParseOptions
 {
     public bool PreferSll { get; init; } = true;
-    public bool RecoverErrors { get; init; } = true;
     public string? EntryRule { get; init; }
     public CancellationToken CancellationToken { get; init; }
 }

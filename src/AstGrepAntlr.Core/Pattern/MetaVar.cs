@@ -53,7 +53,6 @@ public static partial class MetaVar
         }
 
         // Replace from end so indexes stay valid.
-        var chars = pattern.ToCharArray();
         var result = pattern;
         for (var i = occurrences.Count - 1; i >= 0; i--)
         {

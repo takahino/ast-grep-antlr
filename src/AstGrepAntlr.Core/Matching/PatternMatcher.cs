@@ -13,7 +13,7 @@ public sealed class PatternMatcher
         var rootKind = pattern.Tree[pattern.Root].TypeName;
         IEnumerable<int> candidates = pattern.Tree[pattern.Root].MetaVarName is not null
             ? Enumerable.Range(0, target.NodeCount)
-            : target.NodesOfKind(rootKind).Concat(CandidatesByChain(target, rootKind)).Distinct();
+            : target.NodesMatchingKind(rootKind);
 
         var seen = new HashSet<(int, int)>();
         foreach (var candidate in candidates)
@@ -31,17 +31,6 @@ public sealed class PatternMatcher
             }
 
             yield return (candidate, env);
-        }
-    }
-
-    private static IEnumerable<int> CandidatesByChain(SyntaxTree target, string kind)
-    {
-        for (var i = 0; i < target.NodeCount; i++)
-        {
-            if (target.KindMatches(i, kind))
-            {
-                yield return i;
-            }
         }
     }
 
@@ -93,10 +82,7 @@ public sealed class PatternMatcher
                 return false;
             }
 
-            var cmp = StringComparison.Ordinal;
-            return string.Equals(pattern.Text(pIndex), target.Text(tIndex), cmp)
-                || string.Equals(p.TypeName, t.TypeName, StringComparison.Ordinal)
-                    && string.Equals(pattern.Text(pIndex), target.Text(tIndex), cmp);
+            return string.Equals(pattern.Text(pIndex), target.Text(tIndex), StringComparison.Ordinal);
         }
 
         // Rule node: kind must match along chain for smart/ast.
@@ -139,13 +125,9 @@ public sealed class PatternMatcher
 
     private static IEnumerable<int> SelectChildren(SyntaxTree tree, int index, Strictness strictness)
     {
-        return strictness switch
-        {
-            Strictness.Cst => tree.Children(index),
-            Strictness.Ast => tree.NamedChildren(index),
-            Strictness.Relaxed => tree.NamedChildren(index),
-            _ => tree.Children(index), // smart: keep unnamed in pattern, skip extras in target
-        };
+        // Smart (default) and Cst keep unnamed tokens; Smart skips the extras on the target side
+        // later, in MatchSequence. Ast/Relaxed drop them up front.
+        return strictness is Strictness.Ast or Strictness.Relaxed ? tree.NamedChildren(index) : tree.Children(index);
     }
 
     private static bool MatchSequence(
@@ -162,7 +144,7 @@ public sealed class PatternMatcher
         while (pi < pChildren.Count && ti <= tChildren.Count)
         {
             var pNode = pattern[pChildren[pi]];
-            if (pNode.IsMultiMetaVar || (pNode.MetaVarName is not null && pNode.IsMultiMetaVar))
+            if (pNode.IsMultiMetaVar)
             {
                 // Lazy multi: consume until next pattern matches.
                 var name = pNode.MetaVarName ?? string.Empty;

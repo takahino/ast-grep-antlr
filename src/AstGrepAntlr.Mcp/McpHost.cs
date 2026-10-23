@@ -50,6 +50,18 @@ internal static class McpContext
     public const int DefaultMaxResults = 50;
     public const int MaxBytes = 512_000;
 
+    /// <summary>Defaults to the allowed roots when no paths are given, and validates every one.</summary>
+    public static string[] ResolvePaths(string[]? paths)
+    {
+        paths ??= Roots.ToArray();
+        foreach (var p in paths)
+        {
+            EnsureUnderRoot(p);
+        }
+
+        return paths;
+    }
+
     public static void EnsureUnderRoot(string path)
     {
         var full = Path.GetFullPath(path);
@@ -92,7 +104,7 @@ public sealed class Ag4Tools
     {
         var lang = McpContext.Registry.Get(language);
         var tokens = new List<object>();
-        for (var i = 1; i <= 800; i++)
+        for (var i = 1; i <= lang.MaxTokenType; i++)
         {
             var sym = lang.Vocabulary.GetSymbolicName(i);
             var lit = lang.Vocabulary.GetLiteralName(i);
@@ -153,36 +165,8 @@ public sealed class Ag4Tools
             root = parsed.Tree.Root;
         }
 
-        var sb = new System.Text.StringBuilder();
-        void Walk(int i, int d)
-        {
-            var n = tree[i];
-            sb.Append(' ', d * 2).Append(n.TypeName).Append(" [").Append(n.Start).Append(',').Append(n.End).Append(']');
-            if (n.MetaVarName is not null)
-            {
-                sb.Append(" $").Append(n.IsMultiMetaVar ? "$$" : "").Append(n.MetaVarName);
-            }
-
-            if (n.IsTerminal)
-            {
-                sb.Append(" '").Append(tree.Text(i).Replace("\n", "\\n")).Append('\'');
-            }
-
-            sb.AppendLine();
-            foreach (var c in tree.Children(i))
-            {
-                Walk(c, d + 1);
-            }
-        }
-
-        Walk(root, 0);
-        var text = sb.ToString();
-        if (text.Length > McpContext.MaxBytes)
-        {
-            text = text[..McpContext.MaxBytes] + "\n...[truncated]";
-        }
-
-        return text;
+        var text = TreeDumper.ToText(tree, root);
+        return text.Length > McpContext.MaxBytes ? text[..McpContext.MaxBytes] + "\n...[truncated]" : text;
     }
 
     [McpServerTool(Name = "find_code", ReadOnly = true), Description("Search files with an AST pattern.")]
@@ -194,11 +178,7 @@ public sealed class Ag4Tools
         [Description("Max results")] int max_results = 50
     )
     {
-        paths ??= McpContext.Roots.ToArray();
-        foreach (var p in paths)
-        {
-            McpContext.EnsureUnderRoot(p);
-        }
+        paths = McpContext.ResolvePaths(paths);
 
         var s = Enum.TryParse<Strictness>(strictness, true, out var st) ? st : Strictness.Smart;
         var searcher = new Searcher();
@@ -226,11 +206,7 @@ public sealed class Ag4Tools
         int max_results = 50
     )
     {
-        paths ??= McpContext.Roots.ToArray();
-        foreach (var p in paths)
-        {
-            McpContext.EnsureUnderRoot(p);
-        }
+        paths = McpContext.ResolvePaths(paths);
 
         var doc = RuleLoader.LoadRule(rule_yaml);
         var matches = new Searcher()
@@ -278,11 +254,7 @@ public sealed class Ag4Tools
     [McpServerTool(Name = "scan", ReadOnly = true), Description("Scan paths with sgconfig or rule dirs.")]
     public static string Scan(string? config = null, string[]? paths = null, int max_results = 50)
     {
-        paths ??= McpContext.Roots.ToArray();
-        foreach (var p in paths)
-        {
-            McpContext.EnsureUnderRoot(p);
-        }
+        paths = McpContext.ResolvePaths(paths);
 
         var docs = new List<SgRuleDocument>();
         if (!string.IsNullOrEmpty(config))
@@ -332,11 +304,7 @@ public sealed class Ag4Tools
         string[]? paths = null
     )
     {
-        paths ??= McpContext.Roots.ToArray();
-        foreach (var p in paths)
-        {
-            McpContext.EnsureUnderRoot(p);
-        }
+        paths = McpContext.ResolvePaths(paths);
 
         List<MatchResult> matches;
         string? fix = rewrite;

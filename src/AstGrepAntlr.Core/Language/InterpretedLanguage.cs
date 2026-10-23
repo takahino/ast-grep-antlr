@@ -174,102 +174,98 @@ internal static class InterpFileReader
 {
     public static InterpreterData ParseFile(string path) => Parse(File.ReadAllText(path));
 
+    // An .interp file is a sequence of `<header>:` sections, each followed by one entry per line
+    // and terminated by a blank line, ending with the serialized ATN.
     public static InterpreterData Parse(string text)
     {
-        using var reader = new StringReader(text);
-        string? line;
-        string[] ReadBlock()
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        var cursor = 0;
+
+        var literalNames = ReadSection(lines, ref cursor, "token literal names:");
+        var symbolicNames = ReadSection(lines, ref cursor, "token symbolic names:");
+        var ruleNames = ReadSection(lines, ref cursor, "rule names:");
+
+        // Only lexer files carry channels and modes; parser files go straight to the ATN.
+        var channels = TryReadSection(lines, ref cursor, "channel names:") ?? ["DEFAULT_TOKEN_CHANNEL", "HIDDEN"];
+        var modes = TryReadSection(lines, ref cursor, "mode names:") ?? ["DEFAULT_MODE"];
+
+        var atnStart = Array.FindIndex(lines, cursor, l => l.StartsWith("atn:", StringComparison.Ordinal));
+        if (atnStart < 0)
         {
-            line = reader.ReadLine() ?? throw new InvalidDataException("Unexpected EOF in .interp");
-            if (!int.TryParse(line, out var n))
-            {
-                throw new InvalidDataException($"Expected count, got '{line}'");
-            }
-
-            var items = new string[n];
-            for (var i = 0; i < n; i++)
-            {
-                items[i] = reader.ReadLine() ?? string.Empty;
-            }
-
-            return items;
+            throw new InvalidDataException("Missing 'atn:' section in .interp file.");
         }
 
-        var literalNames = ReadBlock();
-        var symbolicNames = ReadBlock();
-        var vocabulary = new Vocabulary(literalNames, symbolicNames);
-        var ruleNames = ReadBlock();
-        string[] channels;
-        string[] modes;
-        // Lexers have channels+modes; parsers may only have rule names then ATN.
-        // Peek: if next line is a small integer followed by names then another, it's channels.
-        var peekPos = Mark(reader);
-        try
-        {
-            channels = ReadBlock();
-            modes = ReadBlock();
-        }
-        catch
-        {
-            Reset(reader, peekPos);
-            channels = ["DEFAULT_TOKEN_CHANNEL", "HIDDEN"];
-            modes = ["DEFAULT_MODE"];
-        }
-
-        line = reader.ReadLine();
-        if (line is null || !line.StartsWith("atn:", StringComparison.OrdinalIgnoreCase))
-        {
-            // Some files put ATN serialized as integer list without header.
-            // Fall through using remaining content.
-        }
-
-        var rest = reader.ReadToEnd();
-        if (line is not null && !line.StartsWith("atn:", StringComparison.OrdinalIgnoreCase))
-        {
-            rest = line + "\n" + rest;
-        }
-        else if (line is not null && line.StartsWith("atn:", StringComparison.OrdinalIgnoreCase))
-        {
-            rest = line["atn:".Length..] + rest;
-        }
-
-        var serialized = ParseIntList(rest);
-        var atn = new ATNDeserializer().Deserialize(serialized);
+        var atn = new ATNDeserializer().Deserialize(ParseIntList(lines, atnStart));
         return new InterpreterData
         {
             Atn = atn,
             RuleNames = ruleNames,
             Channels = channels,
             Modes = modes,
-            Vocabulary = vocabulary,
+            Vocabulary = new Vocabulary(ToNames(literalNames), ToNames(symbolicNames)),
         };
     }
 
-    private static int[] ParseIntList(string text)
+    private static string[] ReadSection(string[] lines, ref int cursor, string header) =>
+        TryReadSection(lines, ref cursor, header)
+        ?? throw new InvalidDataException($"Missing '{header}' section in .interp file.");
+
+    /// <summary>
+    /// Consumes the entries of <paramref name="header"/> if that is the next section, leaving the
+    /// cursor untouched otherwise so an optional section can be probed without losing position.
+    /// </summary>
+    private static string[]? TryReadSection(string[] lines, ref int cursor, string header)
+    {
+        var i = cursor;
+        while (i < lines.Length && lines[i].Length == 0)
+        {
+            i++;
+        }
+
+        if (i >= lines.Length || !string.Equals(lines[i], header, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        i++;
+        var items = new List<string>();
+        while (i < lines.Length && lines[i].Length > 0)
+        {
+            items.Add(lines[i]);
+            i++;
+        }
+
+        cursor = i;
+        return items.ToArray();
+    }
+
+    /// <summary>ANTLR writes absent names as the literal text "null"; Vocabulary expects a real null.</summary>
+    private static string[] ToNames(string[] raw)
+    {
+        var names = new string[raw.Length];
+        for (var i = 0; i < raw.Length; i++)
+        {
+            names[i] = string.Equals(raw[i], "null", StringComparison.Ordinal) ? null! : raw[i];
+        }
+
+        return names;
+    }
+
+    private static int[] ParseIntList(string[] lines, int start)
     {
         var numbers = new List<int>();
-        foreach (var part in text.Split([',', ' ', '\r', '\n', '\t', '[', ']'], StringSplitOptions.RemoveEmptyEntries))
+        for (var i = start; i < lines.Length; i++)
         {
-            if (int.TryParse(part, out var n))
+            foreach (var part in lines[i].Split([',', ' ', '\t', '[', ']'], StringSplitOptions.RemoveEmptyEntries))
             {
-                numbers.Add(n);
+                if (int.TryParse(part, out var n))
+                {
+                    numbers.Add(n);
+                }
             }
         }
 
         return numbers.ToArray();
-    }
-
-    private static object Mark(StringReader reader)
-    {
-        // StringReader doesn't support mark; we can't easily peek.
-        // Instead detect by trying channels read carefully in Parse — use a line buffer approach.
-        return reader;
-    }
-
-    private static void Reset(StringReader reader, object _)
-    {
-        // no-op fallback path uses defaults — for robustness re-parse if needed.
-        _ = reader;
     }
 }
 

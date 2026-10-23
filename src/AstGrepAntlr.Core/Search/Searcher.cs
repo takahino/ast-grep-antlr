@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
 using AstGrepAntlr.Language;
 using AstGrepAntlr.Matching;
 using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Pattern;
 using AstGrepAntlr.Rules;
+using AstGrepAntlr.Tree;
 
 namespace AstGrepAntlr.Search;
 
@@ -35,82 +37,58 @@ public sealed class Searcher
         var language = options.Registry.Get(langId);
         var compiled = _compiler.Compile(language, new PatternSpec(pattern, entry, Strictness: strictness));
         var files = _walker.Enumerate(options.Paths, language.Extensions);
-        return SearchFiles(files, language, compiled, options, ruleId: null, message: null, severity: null);
+        return SearchFiles(
+            files,
+            language,
+            compiled.RequiredLiterals,
+            options,
+            tree => _matcher.MatchAll(tree, compiled),
+            ruleId: null,
+            message: null,
+            severity: null
+        );
     }
 
     public IEnumerable<MatchResult> RunRule(SgRuleDocument doc, SearchOptions options)
     {
         if (doc.Language is null || doc.Rule is null)
         {
-            yield break;
+            return [];
         }
 
         var language = options.Registry.Get(doc.Language);
-        var files = _walker.Enumerate(options.Paths, language.Extensions, ignores: doc.Ignores);
-        var count = 0;
-        foreach (var file in files)
-        {
-            options.CancellationToken.ThrowIfCancellationRequested();
-            if (language.MaxFileBytes > 0)
-            {
-                var fi = new FileInfo(file);
-                if (fi.Length > language.MaxFileBytes)
-                {
-                    continue;
-                }
-            }
-
-            var text = File.ReadAllText(file);
-            // Prefilter when pattern present
-            if (
-                doc.Rule.Pattern is not null
-                && !Prefilter.MayContain(text, ExtractLiterals(doc.Rule.Pattern), language.IgnoreCase)
-            )
-            {
-                continue;
-            }
-
-            ParseResult parsed;
-            try
-            {
-                parsed = _parser.Parse(
-                    language,
-                    text,
-                    new LanguageParseOptions { CancellationToken = options.CancellationToken }
-                );
-            }
-            catch (Exception)
-            {
-                continue;
-            }
-
-            foreach (var (node, env) in _rules.Match(language, parsed.Tree, doc))
-            {
-                yield return ToMatch(file, language.Id, parsed.Tree, node, env, doc.Id, doc.Message, doc.Severity);
-                if (++count >= options.MaxResults)
-                {
-                    yield break;
-                }
-            }
-        }
+        var files = _walker.Enumerate(options.Paths, language.Extensions, doc.Ignores);
+        return SearchFiles(
+            files,
+            language,
+            _rules.RequiredLiterals(language, doc.Rule),
+            options,
+            tree => _rules.Match(language, tree, doc),
+            doc.Id,
+            doc.Message,
+            doc.Severity
+        );
     }
 
+    /// <summary>
+    /// Walks <paramref name="files"/> in parallel, parsing only those that survive the literal
+    /// prefilter, and projects whatever <paramref name="match"/> finds into ordered results.
+    /// </summary>
     private IEnumerable<MatchResult> SearchFiles(
         IEnumerable<string> files,
         ILanguage language,
-        CompiledPattern compiled,
+        IReadOnlyList<string> requiredLiterals,
         SearchOptions options,
+        Func<SyntaxTree, IEnumerable<(int NodeIndex, Dictionary<string, string> Meta)>> match,
         string? ruleId,
         string? message,
         string? severity
     )
     {
-        var count = 0;
-        var fileList = files.ToList();
-        var bag = new System.Collections.Concurrent.ConcurrentBag<(string File, MatchResult Match)>();
+        var bag = new ConcurrentBag<MatchResult>();
 
         Parallel.ForEach(
-            fileList,
+            files,
             new ParallelOptions
             {
                 CancellationToken = options.CancellationToken,
@@ -118,58 +96,67 @@ public sealed class Searcher
             },
             file =>
             {
-                if (language.MaxFileBytes > 0 && new FileInfo(file).Length > language.MaxFileBytes)
+                var tree = TryParseFile(file, language, requiredLiterals, options);
+                if (tree is null)
                 {
                     return;
                 }
 
-                // ReadAllText strips BOM; do not use UTF8.GetString(ReadAllBytes) which keeps U+FEFF.
-                var text = File.ReadAllText(file);
-                if (!Prefilter.MayContain(text, compiled.RequiredLiterals, language.IgnoreCase))
+                // One line map per file; every match in it resolves by binary search.
+                var lines = new LineMap(tree.Source);
+                foreach (var (node, env) in match(tree))
                 {
-                    return;
-                }
-
-                ParseResult parsed;
-                try
-                {
-                    parsed = _parser.Parse(
-                        language,
-                        text,
-                        new LanguageParseOptions { CancellationToken = options.CancellationToken }
-                    );
-                }
-                catch (Exception ex)
-                {
-                    if (options.ShowErrors)
-                    {
-                        Console.Error.WriteLine($"ag4: parse failed {file}: {ex.Message}");
-                    }
-
-                    return;
-                }
-
-                foreach (var (node, env) in _matcher.MatchAll(parsed.Tree, compiled))
-                {
-                    bag.Add((file, ToMatch(file, language.Id, parsed.Tree, node, env, ruleId, message, severity)));
+                    bag.Add(ToMatch(file, language.Id, tree, lines, node, env, ruleId, message, severity));
                 }
             }
         );
 
-        foreach (var item in bag.OrderBy(x => x.File).ThenBy(x => x.Match.Start))
+        // Ordinal so results are identical across platforms and culture settings.
+        return bag.OrderBy(m => m.File, StringComparer.Ordinal).ThenBy(m => m.Start).Take(options.MaxResults);
+    }
+
+    /// <summary>Returns the parsed tree, or null when the file is skipped (too large, prefiltered out, unparseable).</summary>
+    private SyntaxTree? TryParseFile(
+        string file,
+        ILanguage language,
+        IReadOnlyList<string> requiredLiterals,
+        SearchOptions options
+    )
+    {
+        if (language.MaxFileBytes > 0 && new FileInfo(file).Length > language.MaxFileBytes)
         {
-            yield return item.Match;
-            if (++count >= options.MaxResults)
+            return null;
+        }
+
+        // ReadAllText strips BOM; do not use UTF8.GetString(ReadAllBytes) which keeps U+FEFF.
+        var text = File.ReadAllText(file);
+        if (!Prefilter.MayContain(text, requiredLiterals, language.IgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            return _parser
+                .Parse(language, text, new LanguageParseOptions { CancellationToken = options.CancellationToken })
+                .Tree;
+        }
+        catch (Exception ex)
+        {
+            if (options.ShowErrors)
             {
-                yield break;
+                Console.Error.WriteLine($"ag4: parse failed {file}: {ex.Message}");
             }
+
+            return null;
         }
     }
 
     private static MatchResult ToMatch(
         string file,
         string lang,
-        Tree.SyntaxTree tree,
+        SyntaxTree tree,
+        LineMap lines,
         int node,
         Dictionary<string, string> env,
         string? ruleId,
@@ -178,8 +165,8 @@ public sealed class Searcher
     )
     {
         var n = tree[node];
-        var (sl, sc) = OffsetToLineCol(tree.Source, n.Start);
-        var (el, ec) = OffsetToLineCol(tree.Source, n.End);
+        var (sl, sc) = lines.Locate(n.Start);
+        var (el, ec) = lines.Locate(n.End);
         return new MatchResult
         {
             File = file,
@@ -197,43 +184,43 @@ public sealed class Searcher
             Severity = severity,
         };
     }
+}
 
-    private static (int Line, int Col) OffsetToLineCol(string source, int offset)
+/// <summary>
+/// Line/column lookup for one source text. Building the index costs a single scan, after which
+/// each offset resolves by binary search instead of re-scanning from the start of the file.
+/// </summary>
+internal sealed class LineMap
+{
+    private readonly int[] _lineStarts;
+    private readonly int _length;
+
+    public LineMap(string source)
     {
-        var line = 1;
-        var col = 1;
-        offset = Math.Clamp(offset, 0, source.Length);
-        for (var i = 0; i < offset; i++)
+        _length = source.Length;
+        var starts = new List<int> { 0 };
+        for (var i = 0; i < source.Length; i++)
         {
             if (source[i] == '\n')
             {
-                line++;
-                col = 1;
-            }
-            else
-            {
-                col++;
+                starts.Add(i + 1);
             }
         }
 
-        return (line, col);
+        _lineStarts = starts.ToArray();
     }
 
-    private static List<string> ExtractLiterals(string pattern)
+    public (int Line, int Col) Locate(int offset)
     {
-        var occ = MetaVar.FindAll(pattern);
-        var text = pattern;
-        for (var i = occ.Count - 1; i >= 0; i--)
+        offset = Math.Clamp(offset, 0, _length);
+        var index = Array.BinarySearch(_lineStarts, offset);
+        // A negative result is the bitwise complement of the next larger entry; the line
+        // containing the offset is the one before it.
+        if (index < 0)
         {
-            text = string.Concat(text.AsSpan(0, occ[i].Start), " ", text.AsSpan(occ[i].Start + occ[i].Length));
+            index = ~index - 1;
         }
 
-        return text.Split(
-                [' ', '(', ')', '{', '}', '[', ']', '.', ',', ';', '+', '-', '*', '/', '=', '<', '>', '!'],
-                StringSplitOptions.RemoveEmptyEntries
-            )
-            .Where(t => t.Length >= 2 && t.All(char.IsLetterOrDigit) || t.Contains('_'))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        return (index + 1, offset - _lineStarts[index] + 1);
     }
 }

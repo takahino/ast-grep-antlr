@@ -141,7 +141,6 @@ scanCmd.SetAction(parseResult =>
             foreach (var group in byFile)
             {
                 var original = File.ReadAllText(group.Key);
-                var edits = group.Select(m => (m, Rewriter.ApplyTemplate(doc.Fix!, m.MetaVariables, m.Text)));
                 var change = Rewriter.PreviewFile(
                     group.Key,
                     original,
@@ -180,7 +179,7 @@ debugParse.SetAction(pr =>
         pr.GetValue(debugCode)
         ?? File.ReadAllText(pr.GetValue(debugFile) ?? throw new ArgumentException("Provide --code or file"));
     var result = new TwoStageParser().Parse(lang, code);
-    DumpTree(result.Tree, result.Tree.Root, 0);
+    TreeDumper.Write(result.Tree, result.Tree.Root, Console.Out);
     foreach (var d in result.Diagnostics)
     {
         Console.Error.WriteLine($"{(d.IsLexer ? "lexer" : "parser")} {d.Line}:{d.Column} {d.Message}");
@@ -196,7 +195,7 @@ debugPattern.SetAction(pr =>
     var pattern = pr.GetValue(patOpt)!;
     var compiled = new PatternCompiler().Compile(lang, new PatternSpec(pattern));
     Console.WriteLine($"entry: {compiled.EntryRule}");
-    DumpTree(compiled.Tree, compiled.Root, 0);
+    TreeDumper.Write(compiled.Tree, compiled.Root, Console.Out);
 });
 
 debugCmd.Subcommands.Add(debugParse);
@@ -233,24 +232,6 @@ root.Subcommands.Add(mcpCmd);
 root.Subcommands.Add(versionCmd);
 
 return await root.Parse(args).InvokeAsync();
-
-static void DumpTree(SyntaxTree tree, int index, int depth)
-{
-    if (index < 0)
-    {
-        return;
-    }
-
-    var n = tree[index];
-    var pad = new string(' ', depth * 2);
-    var meta = n.MetaVarName is null ? "" : $" metavar=${{{(n.IsMultiMetaVar ? "$$" : "")}{n.MetaVarName}}}";
-    var text = n.IsTerminal ? $" '{tree.Text(index).Replace("\n", "\\n")}'" : "";
-    Console.WriteLine($"{pad}{n.TypeName} [{n.Start},{n.End}]{(n.IsNamed ? "" : " unnamed")}{meta}{text}");
-    foreach (var c in tree.Children(index))
-    {
-        DumpTree(tree, c, depth + 1);
-    }
-}
 
 internal static class CustomLanguageBootstrap
 {

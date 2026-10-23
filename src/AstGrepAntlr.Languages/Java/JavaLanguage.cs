@@ -63,14 +63,6 @@ public sealed class JavaLanguage : ILanguage
         // Literal-only tokens like '(' are unnamed; symbolic Identifier etc. are named.
         if (
             !string.IsNullOrEmpty(literal)
-            && (string.IsNullOrEmpty(symbolic) || symbolic.StartsWith('T') && literal.StartsWith('\''))
-        )
-        {
-            // Prefer: if display is quoted literal and symbolic looks like a keyword constant, still named for keywords.
-        }
-
-        if (
-            !string.IsNullOrEmpty(literal)
             && literal.StartsWith('\'')
             && string.Equals(symbolic, literal.Trim('\''), StringComparison.OrdinalIgnoreCase)
         )

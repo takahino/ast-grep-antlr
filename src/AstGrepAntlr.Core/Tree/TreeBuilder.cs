@@ -11,7 +11,7 @@ public sealed class TreeBuilder
     {
         var nodes = new List<SyntaxNode>();
         var kindIndex = new Dictionary<string, List<int>>(StringComparer.Ordinal);
-        var chainKinds = new List<string>();
+        var chainKinds = new List<string[]>();
 
         BuildNode(language, root, parent: -1, nodes, kindIndex, chainKinds);
 
@@ -27,12 +27,12 @@ public sealed class TreeBuilder
         int parent,
         List<SyntaxNode> nodes,
         Dictionary<string, List<int>> kindIndex,
-        List<string> chainKinds
+        List<string[]> chainKinds
     )
     {
         var index = nodes.Count;
         nodes.Add(default); // placeholder
-        chainKinds.Add(string.Empty);
+        chainKinds.Add([]);
 
         SyntaxNodeKind kind;
         int typeId;
@@ -40,7 +40,6 @@ public sealed class TreeBuilder
         int start;
         int end;
         bool isNamed;
-        string? fieldName = null;
 
         if (tree is IErrorNode errorNode)
         {
@@ -120,7 +119,6 @@ public sealed class TreeBuilder
             ChildCount = childCount,
             IsNamed = isNamed,
             ChainHead = index,
-            FieldName = fieldName,
         };
 
         AddKind(kindIndex, typeName, index);
@@ -143,7 +141,7 @@ public sealed class TreeBuilder
         list.Add(index);
     }
 
-    private static void CollapseChains(List<SyntaxNode> nodes, List<string> chainKinds)
+    private static void CollapseChains(List<SyntaxNode> nodes, List<string[]> chainKinds)
     {
         for (var i = 0; i < nodes.Count; i++)
         {
@@ -173,10 +171,9 @@ public sealed class TreeBuilder
             }
 
             nodes[i] = nodes[i] with { ChainHead = i };
-            chainKinds[i] = string.Join('>', parts);
-
-            // Index all chain kinds at the head for kind lookup.
-            // (Kind index already has each individually; KindMatches uses chainKinds.)
+            // Stored pre-split: KindMatches runs over every node of every tree, so splitting a
+            // joined string there would allocate on the hottest path in the matcher.
+            chainKinds[i] = parts.ToArray();
         }
     }
 }

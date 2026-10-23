@@ -5,7 +5,6 @@ public sealed class FileWalker
     public IEnumerable<string> Enumerate(
         IEnumerable<string> roots,
         IReadOnlyCollection<string>? extensions = null,
-        IEnumerable<string>? globs = null,
         IEnumerable<string>? ignores = null
     )
     {
@@ -38,12 +37,7 @@ public sealed class FileWalker
             var gitIgnores = LoadGitignores(root);
             foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
             {
-                if (
-                    IsUnder(file, ".git")
-                    || IsUnder(file, "bin")
-                    || IsUnder(file, "obj")
-                    || IsUnder(file, "node_modules")
-                )
+                if (IsUnderSkippedDirectory(file))
                 {
                     continue;
                 }
@@ -68,13 +62,10 @@ public sealed class FileWalker
             return false;
         }
 
-        var name = Path.GetFileName(path);
+        // A match on the file name is already a match on the full path, so only the path is checked.
         foreach (var ig in ignores)
         {
-            if (
-                name.Contains(ig, StringComparison.OrdinalIgnoreCase)
-                || path.Contains(ig, StringComparison.OrdinalIgnoreCase)
-            )
+            if (path.Contains(ig, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -83,52 +74,61 @@ public sealed class FileWalker
         return true;
     }
 
-    private static bool IsUnder(string path, string segment) =>
-        path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(p => string.Equals(p, segment, StringComparison.OrdinalIgnoreCase));
+    private static readonly string[] SkippedDirectories = [".git", "bin", "obj", "node_modules"];
 
-    private static List<(string Dir, string[] Patterns)> LoadGitignores(string root)
+    /// <summary>True when any path segment is a build/VCS directory we never search.</summary>
+    private static bool IsUnderSkippedDirectory(string path)
     {
-        var list = new List<(string, string[])>();
-        var gi = Path.Combine(root, ".gitignore");
-        if (File.Exists(gi))
+        foreach (var segment in path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
         {
-            var patterns = File.ReadAllLines(gi)
-                .Select(l => l.Trim())
-                .Where(l => l.Length > 0 && !l.StartsWith('#'))
-                .ToArray();
-            list.Add((root, patterns));
-        }
-
-        return list;
-    }
-
-    private static bool IsGitIgnored(string file, string root, List<(string Dir, string[] Patterns)> gitIgnores)
-    {
-        var rel = Path.GetRelativePath(root, file).Replace('\\', '/');
-        foreach (var (_, patterns) in gitIgnores)
-        {
-            foreach (var p in patterns)
+            foreach (var skipped in SkippedDirectories)
             {
-                var pat = p.TrimStart('/');
-                if (pat.EndsWith('/'))
-                {
-                    if (
-                        rel.StartsWith(pat, StringComparison.Ordinal)
-                        || rel.Contains("/" + pat, StringComparison.Ordinal)
-                    )
-                    {
-                        return true;
-                    }
-                }
-                else if (
-                    rel.EndsWith(pat, StringComparison.Ordinal)
-                    || rel.Contains("/" + pat, StringComparison.Ordinal)
-                    || string.Equals(Path.GetFileName(rel), pat, StringComparison.Ordinal)
-                )
+                if (string.Equals(segment, skipped, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    private static string[] LoadGitignores(string root)
+    {
+        var gi = Path.Combine(root, ".gitignore");
+        if (!File.Exists(gi))
+        {
+            return [];
+        }
+
+        return File.ReadAllLines(gi).Select(l => l.Trim()).Where(l => l.Length > 0 && !l.StartsWith('#')).ToArray();
+    }
+
+    private static bool IsGitIgnored(string file, string root, string[] patterns)
+    {
+        if (patterns.Length == 0)
+        {
+            return false;
+        }
+
+        var rel = Path.GetRelativePath(root, file).Replace('\\', '/');
+        foreach (var p in patterns)
+        {
+            var pat = p.TrimStart('/');
+            if (pat.EndsWith('/'))
+            {
+                if (rel.StartsWith(pat, StringComparison.Ordinal) || rel.Contains("/" + pat, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            else if (
+                rel.EndsWith(pat, StringComparison.Ordinal)
+                || rel.Contains("/" + pat, StringComparison.Ordinal)
+                || string.Equals(Path.GetFileName(rel), pat, StringComparison.Ordinal)
+            )
+            {
+                return true;
             }
         }
 
