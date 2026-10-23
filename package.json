@@ -1,0 +1,12 @@
+{
+  "name": "ast-grep-antlr",
+  "private": true,
+  "description": "Dev tooling for formatting YAML/JSON/Markdown (not published)",
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  }
+}
