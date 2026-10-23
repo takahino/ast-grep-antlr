@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using AstGrepAntlr.Matching;
 using AstGrepAntlr.Text;
 
@@ -12,19 +13,36 @@ public sealed record RewriteChange(
     DetectedEncoding Detected
 );
 
-public static class Rewriter
+public static partial class Rewriter
 {
+    [GeneratedRegex(@"\$\$\$([A-Z_][A-Z0-9_]*)|\$([A-Z_][A-Z0-9_]*)|\$\$\$", RegexOptions.CultureInvariant)]
+    private static partial Regex TemplateMetaRegex();
+
+    /// <summary>
+    /// Substitute metavars in a rewrite template. Resolves <c>$$$NAME</c>, then <c>$NAME</c>, then bare <c>$$$</c>.
+    /// </summary>
     public static string ApplyTemplate(string template, IReadOnlyDictionary<string, string> meta, string matchedText)
     {
-        var result = template;
-        // Longer names first so $$$ARGS before $A if overlapping (won't usually)
-        foreach (var kv in meta.OrderByDescending(k => k.Key.Length))
-        {
-            result = result.Replace("$" + kv.Key, kv.Value, StringComparison.Ordinal);
-            result = result.Replace("$$$" + kv.Key, kv.Value, StringComparison.Ordinal);
-        }
+        return TemplateMetaRegex()
+            .Replace(
+                template,
+                m =>
+                {
+                    if (m.Groups[1].Success)
+                    {
+                        var name = m.Groups[1].Value;
+                        return meta.TryGetValue(name, out var v) ? v : m.Value;
+                    }
 
-        return result.Replace("$$$", matchedText, StringComparison.Ordinal);
+                    if (m.Groups[2].Success)
+                    {
+                        var name = m.Groups[2].Value;
+                        return meta.TryGetValue(name, out var v) ? v : m.Value;
+                    }
+
+                    return matchedText;
+                }
+            );
     }
 
     public static IEnumerable<MatchResult> DeduplicateOverlaps(IEnumerable<MatchResult> matches)
@@ -142,30 +160,6 @@ public static class Rewriter
         return change;
     }
 
-    private static string MakeUnifiedDiff(string path, string oldText, string newText)
-    {
-        if (oldText == newText)
-        {
-            return string.Empty;
-        }
-
-        var oldLines = oldText.Replace("\r\n", "\n").Split('\n');
-        var newLines = newText.Replace("\r\n", "\n").Split('\n');
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"--- a/{path}");
-        sb.AppendLine($"+++ b/{path}");
-        sb.AppendLine($"@@ -1,{oldLines.Length} +1,{newLines.Length} @@");
-        // Simple full-file diff for MVP (not LCS). Good enough for preview.
-        foreach (var line in oldLines)
-        {
-            sb.Append('-').AppendLine(line);
-        }
-
-        foreach (var line in newLines)
-        {
-            sb.Append('+').AppendLine(line);
-        }
-
-        return sb.ToString();
-    }
+    private static string MakeUnifiedDiff(string path, string oldText, string newText) =>
+        UnifiedDiff.Make(path, oldText, newText);
 }
