@@ -1,0 +1,6 @@
+id: no-assign-self
+language: calc
+severity: warning
+message: Self-assignment is redundant
+rule:
+  pattern: $A = $A;
