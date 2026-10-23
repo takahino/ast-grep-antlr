@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Format checks for staged files only. Analyzers are covered by "build before commit".
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR || true)"
+if [[ -z "$STAGED" ]]; then
+  exit 0
+fi
+
+CS_FILES="$(printf '%s\n' "$STAGED" | grep -E '\.(cs|csproj|props|targets|xml)$' || true)"
+PRETTIER_FILES="$(printf '%s\n' "$STAGED" | grep -E '\.(yml|yaml|json|md|mdx)$' || true)"
+
+if [[ -n "$CS_FILES" ]]; then
+  if ! command -v dotnet >/dev/null 2>&1; then
+    echo "pre-commit: dotnet is required for CSharpier checks" >&2
+    exit 1
+  fi
+  dotnet tool restore >/dev/null
+  # shellcheck disable=SC2086
+  if ! echo "$CS_FILES" | tr '\n' '\0' | xargs -0 -r dotnet csharpier check; then
+    echo "pre-commit: CSharpier check failed. Run: dotnet csharpier format ." >&2
+    exit 1
+  fi
+fi
+
+if [[ -n "$PRETTIER_FILES" ]]; then
+  if ! command -v npx >/dev/null 2>&1; then
+    echo "pre-commit: npx is required for Prettier checks" >&2
+    exit 1
+  fi
+  # shellcheck disable=SC2086
+  if ! echo "$PRETTIER_FILES" | tr '\n' '\0' | xargs -0 -r npx prettier --check; then
+    echo "pre-commit: Prettier check failed. Run: npx prettier --write ." >&2
+    exit 1
+  fi
+fi
