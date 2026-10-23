@@ -1,11 +1,11 @@
-# cpp grammar
+# C++14 grammar (grammars-v4)
 
-Not compiled into the default build (size / base-class complexity).
+Vendored from [antlr/grammars-v4](https://github.com/antlr/grammars-v4) `cpp/` directory.
 
-Use `customLanguages` in `sgconfig.yml` with grammars from
-https://github.com/antlr/grammars-v4 and either:
+- **Commit:** `5a0ddb4aa12c1502d7bd5ec8fb8673e607b3b191`
+- **License:** MIT — see [LICENSE](./LICENSE) and file headers in `CPP14Lexer.g4` / `CPP14Parser.g4`
 
-1. Point `grammar` at `.g4` files (requires Java + `tools/antlr-4.13.2-complete.jar`), or
-2. Point `grammar` at prebuilt `.interp` files.
+Files:
 
-Built-in generated support may be added in a later release.
+- `CPP14Lexer.g4`, `CPP14Parser.g4` — ANTLR grammars
+- `CSharp/CPP14ParserBase.cs` — C# parser base class (namespace adjusted for this repo)

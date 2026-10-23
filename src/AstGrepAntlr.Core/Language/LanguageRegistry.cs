@@ -11,6 +11,19 @@ public sealed class LanguageRegistry
         _byId[language.Id] = language;
     }
 
+    /// <summary>Maps an alternate id (e.g. <c>c++</c>) to an already registered language.</summary>
+    public void RegisterAlias(string alias, string languageId)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(alias);
+        ArgumentException.ThrowIfNullOrEmpty(languageId);
+        if (!_byId.TryGetValue(languageId, out var language))
+        {
+            throw new KeyNotFoundException($"Cannot register alias '{alias}': unknown language '{languageId}'.");
+        }
+
+        _byId[alias] = language;
+    }
+
     public ILanguage Get(string id) =>
         _byId.TryGetValue(id, out var lang)
             ? lang

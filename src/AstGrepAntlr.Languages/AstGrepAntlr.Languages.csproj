@@ -40,5 +40,18 @@
       <Visitor>false</Visitor>
       <Package>AstGrepAntlr.Languages.Sqlite</Package>
     </Antlr4>
+    <Antlr4 Include="..\..\grammars\cpp\CPP14Lexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.Cpp</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\cpp\CPP14Parser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.Cpp</Package>
+    </Antlr4>
+    <Compile Include="..\..\grammars\cpp\CSharp\CPP14ParserBase.cs" Link="Cpp\CPP14ParserBase.cs" />
   </ItemGroup>
 </Project>

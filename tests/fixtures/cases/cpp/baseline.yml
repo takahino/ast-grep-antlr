@@ -1,0 +1,9 @@
+language: cpp
+cases:
+  - id: cout-literal
+    pattern: "std::cout << $A"
+    source: |
+      void m() { std::cout << 42; }
+    expect:
+      - meta:
+          A: "42"
