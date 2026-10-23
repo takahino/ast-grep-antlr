@@ -1,0 +1,9 @@
+{
+  "name": "ag4",
+  "description": "Structural search with ANTLR4 (ast-grep compatible subset)",
+  "transport": {
+    "type": "stdio",
+    "command": "ag4",
+    "args": ["mcp"]
+  }
+}
