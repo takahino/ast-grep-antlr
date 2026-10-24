@@ -374,7 +374,7 @@ public class RegressionBaselineTests
         using var stdout = new StringWriter();
         using var stderr = new StringWriter();
         var code = await Ag4Cli.RunAsync(["scan", "-c", config, sampleDir], stdout, stderr);
-        Assert.Equal(0, code);
+        Assert.True(code == 0, $"exit={code} stderr={stderr} stdout={stdout}");
         // Rule may or may not match sample.calc; ensure no crash and optional match text.
         _ = stdout.ToString();
     }

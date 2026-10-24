@@ -2,9 +2,13 @@ ruleDirs:
   - rules
 customLanguages:
   calc:
+    # Prebuilt .interp so CI / machines without tools/antlr-*.jar still work.
+    # Regenerate from .g4 when editing the grammar:
+    #   java -jar tools/antlr-4.13.2-complete.jar -Dlanguage=CSharp -Xexact-output-dir -o samples/dsl \
+    #     samples/dsl/CalcLexer.g4 samples/dsl/CalcParser.g4
     grammar:
-      - CalcLexer.g4
-      - CalcParser.g4
+      - CalcLexer.interp
+      - CalcParser.interp
     extensions:
       - calc
     startRule: program
