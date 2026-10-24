@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ast-grep vs ag4 — Differences Summary</title>
+    <link rel="alternate" hreflang="en" href="ast-grep-vs-ag4.en.html" />
+    <link rel="alternate" hreflang="ja" href="ast-grep-vs-ag4.html" />
+    <style>
+      :root {
+        --ink: #1a1f1c;
+        --muted: #5a635c;
+        --paper: #f3efe6;
+        --panel: #fffdf8;
+        --line: #d4cfc3;
+        --accent: #0d6b5c;
+        --accent-soft: #d8ebe6;
+        --warn: #8a4b12;
+        --warn-soft: #f3e4d4;
+        --code-bg: #e8e4da;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(ellipse 80% 50% at 10% -10%, #dde8e4 0%, transparent 55%),
+          radial-gradient(ellipse 60% 40% at 100% 0%, #e8dfd0 0%, transparent 50%), var(--paper);
+        line-height: 1.65;
+      }
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 4rem;
+      }
+      .lang {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+        margin-bottom: 1.25rem;
+        font-size: 0.9rem;
+      }
+      .lang a {
+        text-decoration: none;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        padding: 0.25rem 0.55rem;
+        background: var(--panel);
+      }
+      .lang a[aria-current="page"] {
+        color: var(--ink);
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        font-weight: 600;
+      }
+      h1 {
+        font-family: "IBM Plex Serif", Georgia, serif;
+        font-weight: 600;
+        font-size: clamp(1.75rem, 4vw, 2.35rem);
+        letter-spacing: -0.02em;
+        line-height: 1.25;
+        margin: 0 0 0.5rem;
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 1.05rem;
+        margin: 0 0 2rem;
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin: 2.25rem 0 0.75rem;
+        padding-bottom: 0.35rem;
+        border-bottom: 1px solid var(--line);
+      }
+      h3 {
+        font-size: 1.05rem;
+        margin: 1.5rem 0 0.5rem;
+      }
+      p,
+      li {
+        margin: 0.5rem 0;
+      }
+      a {
+        color: var(--accent);
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 1rem 1.15rem;
+        margin: 1rem 0;
+      }
+      .verdict {
+        background: var(--accent-soft);
+        border-color: #a8cfc5;
+      }
+      .note {
+        background: var(--warn-soft);
+        border-color: #e0c9a8;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+        margin: 0.75rem 0 1.25rem;
+        background: var(--panel);
+      }
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 0.55rem 0.7rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #ebe6db;
+        font-weight: 600;
+      }
+      td.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      code,
+      pre {
+        font-family: "IBM Plex Mono", Consolas, monospace;
+        font-size: 0.88em;
+      }
+      code {
+        background: var(--code-bg);
+        padding: 0.1em 0.35em;
+      }
+      pre {
+        background: #1e2421;
+        color: #e8efe9;
+        padding: 0.9rem 1rem;
+        overflow-x: auto;
+        margin: 0.75rem 0;
+        line-height: 1.45;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+        color: inherit;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 0.15rem 0.45rem;
+        margin-right: 0.35rem;
+        vertical-align: middle;
+      }
+      .tag-ag4 {
+        background: var(--warn-soft);
+        color: var(--warn);
+      }
+      .tag-sg {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      ul.compact li {
+        margin: 0.3rem 0;
+      }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <main>
+      <nav class="lang" aria-label="Language">
+        <a href="ast-grep-vs-ag4.html">日本語</a>
+        <a href="ast-grep-vs-ag4.en.html" aria-current="page">English</a>
+      </nav>
+
+      <h1>ast-grep vs ag4 differences</h1>
+      <p class="lede">
+        Summary of comparing upstream <code>@ast-grep/cli@0.51.0</code> (tree-sitter) with ag4
+        (ANTLR) on real corpora using the same patterns. Focuses on deltas treated as
+        <strong>CST / grammar shape differences</strong>, not engine bugs.
+      </p>
+
+      <div class="panel verdict">
+        <strong>Policy:</strong> ag4 bugs (encoding, exit codes, byteOffset, pattern compile
+        failures, etc.) were fixed.
+        <strong>Hit-set drift caused by tree-sitter vs ANTLR trees is accepted</strong> and
+        catalogued in
+        <a href="difftest/known-differences.yml"><code>difftest/known-differences.yml</code></a>
+        with reasons. Matching upstream’s hit set 100% is not a goal.
+      </div>
+
+      <h2>1. Comparison setup</h2>
+      <ul class="compact">
+        <li>Harness: <code>tools/AstGrepAntlr.DiffTest</code></li>
+        <li>
+          Corpora: commons-lang / java-design-patterns / leveldb / cereal / fmt (pinned tag + SHA)
+        </li>
+        <li>
+          Patterns: calls, <code>$$$</code>, statements, composite rules (no <code>kind</code>),
+          rewrites — ~55 per language
+        </li>
+        <li>
+          Full report: <a href="difftest/REPORT.md"><code>difftest/REPORT.md</code></a>
+        </li>
+      </ul>
+
+      <h2>2. Numbers</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th class="num">Java</th>
+            <th class="num">C++</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Same</td>
+            <td class="num">21 393</td>
+            <td class="num">520</td>
+          </tr>
+          <tr>
+            <td>Only ast-grep</td>
+            <td class="num">3 950</td>
+            <td class="num">2 724</td>
+          </tr>
+          <tr>
+            <td>Only ag4</td>
+            <td class="num">7 261</td>
+            <td class="num">49</td>
+          </tr>
+          <tr>
+            <td>Range diff</td>
+            <td class="num">0</td>
+            <td class="num">1</td>
+          </tr>
+          <tr>
+            <td>Metavar diff</td>
+            <td class="num">4 671</td>
+            <td class="num">83</td>
+          </tr>
+          <tr>
+            <td>Match rate</td>
+            <td class="num">~57%</td>
+            <td class="num">~15%</td>
+          </tr>
+          <tr>
+            <td>Speed (ag4 ÷ ast-grep)</td>
+            <td class="num">~18× slower</td>
+            <td class="num">~41× slower</td>
+          </tr>
+          <tr>
+            <td>Unexplained (after known-differences)</td>
+            <td class="num">0</td>
+            <td class="num">0</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Pre-fix Java baseline had 3 541 range-diffs; after real-file <code>byteOffset</code> that is
+        <strong>0</strong> for Java. Low C++ match rate is mostly
+        <strong>CPP14 grammar limits</strong> (C++17+, macros) — parse failures / misses.
+      </p>
+
+      <h2>3. How to read “accuracy”</h2>
+      <p>
+        ast-grep’s primary goal is finding/rewriting code that matches a structural pattern as
+        intended. The de facto ground truth for that semantics is the
+        <strong>tree-sitter pattern model</strong>.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Use case</th>
+            <th>Better fit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Same feel as upstream search/rules (Java, C++, …)</td>
+            <td><strong>Upstream ast-grep</strong> (accuracy and speed)</td>
+          </tr>
+          <tr>
+            <td>ANTLR grammars, custom DSLs, languages upstream lacks</td>
+            <td><strong>ag4</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="panel note">
+        Extending <code>.g4</code> can <strong>increase parse coverage</strong> (especially C++). It
+        does not erase CST shape differences: the same source can still yield different hit sets and
+        metavar spans. Macros also are not solved by grammar alone.
+      </div>
+
+      <h2>4. Typical differences (examples)</h2>
+
+      <h3>
+        <span class="tag tag-ag4">ag4 broader</span>
+        Over-match on <code>$F($$$ARGS)</code>
+      </h3>
+      <p>
+        Intent (upstream-ish): ordinary method calls. ag4 more readily matches call-<em>like</em>
+        shapes.
+      </p>
+      <pre><code>foo(1, 2);      // both usually hit
+obj.bar(x);
+
+new Foo(1, 2);  // ctor-like tree → ag4 often hits
+this(1);        // explicit this
+super(x);       // explicit super</code></pre>
+      <p>
+        On difftest <code>call-any</code> (commons-lang): same ≈ 1 957 vs
+        <strong>only-ag4 ≈ 6 293</strong>.
+      </p>
+
+      <h3>
+        <span class="tag tag-sg">upstream broader</span>
+        Misses on <code>public $TYPE $NAME($$$PARAMS) { $$$BODY }</code>
+      </h3>
+      <p>Intent: public methods with bodies. ag4 tends to miss non-simple shapes.</p>
+      <pre><code>public int run(int x) { return x; }   // both usually hit
+
+public void run() { }                 // void often poor fit for $TYPE
+public &lt;T&gt; T id(T x) { return x; }  // type params
+public int f() throws IOException { return 0; }
+@Override
+public String toString() { return ""; }</code></pre>
+      <p>
+        On difftest <code>public-method</code>: same ≈ 290 vs
+        <strong>only-ast-grep ≈ 1 450</strong> (ag4 misses).
+      </p>
+
+      <h3>Other common drifts</h3>
+      <ul class="compact">
+        <li>
+          <strong>Java · only upstream:</strong> import/package splitting, annotations, multi-catch
+          / try-with-resources, diamond / anonymous <code>new</code>, some if-blocks
+        </li>
+        <li>
+          <strong>Java · only ag4:</strong> <code>this</code>/<code>super</code> calls (upstream
+          patterns often ERROR), lambda / method-ref, some for / class-body shapes
+        </li>
+        <li>
+          <strong>Metavars:</strong> same match, different capture text/range from CST wrapping
+          (large volume)
+        </li>
+        <li>
+          <strong>C++ · only upstream:</strong> modern syntax / macros that ANTLR CPP14 cannot parse
+          well (main match-rate drag)
+        </li>
+        <li>
+          <strong>C++ · only ag4 (few):</strong> qualified ctors (e.g.
+          <code>std::string(...)</code>), <code>std::move</code>, namespace/class bodies, etc.
+        </li>
+      </ul>
+
+      <h2>5. Aligned behavior (not “differences”)</h2>
+      <ul class="compact">
+        <li>Exit codes (run 0/1/2, scan <code>--error-on</code>)</li>
+        <li>Encoding / BOM preservation, <code>--encoding</code></li>
+        <li>JSON 0-based line/column, real-file <code>byteOffset</code></li>
+        <li><code>stopBy</code> default neighbor, <code>precedes</code>/<code>follows</code></li>
+        <li>gitignore, globs, hidden-file defaults</li>
+        <li>Statement-pattern compile failures (if / for / try, …) largely fixed</li>
+      </ul>
+
+      <h2>6. Related files</h2>
+      <ul class="compact">
+        <li><a href="difftest/REPORT.md">difftest/REPORT.md</a> — latest comparative summary</li>
+        <li>
+          <a href="difftest/known-differences.yml">difftest/known-differences.yml</a> —
+          accepted-diff catalog
+        </li>
+        <li>
+          <a href="difftest/patterns/java.yml">difftest/patterns/java.yml</a> /
+          <a href="difftest/patterns/cpp.yml">cpp.yml</a> — patterns used
+        </li>
+        <li><a href="difftest/corpus.yml">difftest/corpus.yml</a> — pinned corpora</li>
+        <li><a href="issue.md">issue.md</a> — backlog status (Japanese)</li>
+        <li><a href="README.md">README.md</a> / <a href="README.en.md">README.en.md</a> — usage</li>
+      </ul>
+
+      <footer>
+        Based on difftest results from the <code>fix/issue-backlog</code> work. Re-run with
+        <code
+          >dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus
+          difftest/corpus.yml</code
+        >
+        ·
+        <a href="ast-grep-vs-ag4.html">日本語版</a>
+      </footer>
+    </main>
+  </body>
+</html>
