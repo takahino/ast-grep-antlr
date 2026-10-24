@@ -30,7 +30,7 @@ internal static class Program
         };
         var languageOption = new Option<string?>("--language")
         {
-            Description = "Only run patterns for this language (java|cpp)",
+            Description = "Only run patterns for this language (java|cpp|csharp|python)",
         };
         var noFailOption = new Option<bool>("--no-fail")
         {

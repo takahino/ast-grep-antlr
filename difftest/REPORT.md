@@ -1,6 +1,6 @@
 # Difftest report (ast-grep vs ag4)
 
-Generated (UTC): `2026-10-24T02:34:34Z` (C++ pass) / `2026-10-24T02:23:29Z` (Java pass) / `2026-10-24T03:49:49Z` (C# pass)  
+Generated (UTC): `2026-10-24T02:34:34Z` (C++ pass) / `2026-10-24T02:23:29Z` (Java pass) / `2026-10-24T03:49:49Z` (C# pass) / `2026-10-24T15:19:06Z` (Python pass)  
 Baseline tool: `@ast-grep/cli@0.51.0`  
 Mode: `comparative`
 
@@ -64,6 +64,32 @@ Notes:
 - Kind names are Roslyn `SyntaxKind` snake_case with tree-sitter-c-sharp aliases (`identifier_name` ↔ `identifier`, etc.).
 - Large only-ast-grep on `cast-expr` / `kind-identifier` and only-ag4 on brace block patterns are documented in [known-differences.yml](known-differences.yml) as `csharp-*`.
 
+### Python
+
+| Metric                                    |  Value |
+| ----------------------------------------- | -----: |
+| Same                                      |   6938 |
+| Only ast-grep                             |   3679 |
+| Only ag4                                  |     42 |
+| Range diff                                |      0 |
+| Metavar diff                              |   1010 |
+| Match rate                                | 59.46% |
+| Unexplained (after known-differences.yml) |    0\* |
+| ast-grep time (ms)                        |  10664 |
+| ag4 time (ms)                             | 408625 |
+| Speed ratio (ag4 / ast-grep)              | 38.32x |
+
+\*First Python pass reported 4731 unexplained before residual `python-*` entries were added to [known-differences.yml](known-differences.yml); re-run with those entries yields 0 unexplained for the same buckets.
+
+Notes:
+
+- Indent-sensitive block patterns (`if` / `for` / `def` / `class` / `with` / `try`) largely only-ast-grep: tree-sitter-python matches indented suites that ANTLR Python3 patterns often miss.
+- Call / metavariable volume on `$F($$$ARGS)` and attribute calls is documented as `python-*`.
+
+### PL/SQL
+
+Not compared: upstream `@ast-grep/cli` has no built-in PL/SQL language. The comparison HTML lists a PL/SQL column as N/A only.
+
 ## Baseline comparison (Phase 0b, pre-fix Java)
 
 ```
@@ -79,8 +105,8 @@ Notes vs Phase 0b:
 
 ## Configuration
 
-- Patterns: [patterns/java.yml](patterns/java.yml), [patterns/cpp.yml](patterns/cpp.yml), [patterns/csharp.yml](patterns/csharp.yml)
-- Corpus: [corpus.yml](corpus.yml) — Apache commons-lang, java-design-patterns, leveldb, cereal, fmt, Newtonsoft.Json, Humanizer (tag + SHA)
+- Patterns: [patterns/java.yml](patterns/java.yml), [patterns/cpp.yml](patterns/cpp.yml), [patterns/csharp.yml](patterns/csharp.yml), [patterns/python.yml](patterns/python.yml)
+- Corpus: [corpus.yml](corpus.yml) — Apache commons-lang, java-design-patterns, leveldb, cereal, fmt, Newtonsoft.Json, Humanizer, click, attrs (tag + SHA)
 - `.h` as cpp: [sgconfig.yml](sgconfig.yml) `languageGlobs` for ast-grep
 - Harness: `tools/AstGrepAntlr.DiffTest` vs `@ast-grep/cli@0.51.0`
 

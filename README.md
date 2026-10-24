@@ -14,7 +14,7 @@ This project is **not** affiliated with the official ast-grep project.
 - Encoding preservation (UTF-8/BOM, UTF-16/32, Shift_JIS, EUC-JP) via `--encoding` / `sgconfig.yml`
 - Custom DSLs via `.g4` / `.interp` (`sgconfig.yml` → `customLanguages`, lazy-loaded)
 - MCP server: `ag4 mcp` (stdio) for AI agents
-- Built-in languages: **Java**, **C++** (CPP14), **C#** (Roslyn), **SQLite** (more via custom grammars)
+- Built-in languages: **Java**, **C++** (CPP14), **C#** (Roslyn), **Python** 3, **PL/SQL**, **SQLite** (more via custom grammars)
 
 ## Install
 
@@ -71,9 +71,15 @@ Stderr messages are prefixed with `ag4:`. Use `--debug` for stack traces.
 | `java`   |                    | `.java`                                                    |
 | `cpp`    | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, `.cxx`, `.c++`, `.hpp`, `.hh`, `.hxx`, `.h` |
 | `csharp` | `cs`, `c#`         | `.cs`                                                      |
-| `sqlite` |                    | `.sql`                                                     |
+| `python` | `py`               | `.py`                                                      |
+| `plsql`  | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql`                             |
+| `sqlite` |                    | `.sql`, `.sqlite`                                          |
 
 C++ uses the grammars-v4 **CPP14** grammar (MIT). C++17+ syntax and heavy macros may fail to parse; see [difftest/REPORT.md](difftest/REPORT.md).
+
+Python 3 uses grammars-v4 **python3** (MIT) with INDENT/DEDENT handling.
+
+PL/SQL uses grammars-v4 **sql/plsql** (Apache-2.0). `.sql` is also listed for SQLite; pick the dialect with `-l`.
 
 C# uses **Roslyn** (`Microsoft.CodeAnalysis.CSharp`, MIT). Node kinds are Roslyn `SyntaxKind` names in snake_case (`invocation_expression`), with tree-sitter-c-sharp aliases where names differ (`identifier_name` ↔ `identifier`, binary ops ↔ `binary_expression`, …).
 

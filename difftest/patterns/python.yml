@@ -1,0 +1,203 @@
+# ast-grep / ag4 differential patterns (Python). No kind-based rules.
+language: python
+rules:
+  # --- calls / $$$ ---
+  - id: call-foo
+    rule:
+      pattern: foo($$$ARGS)
+  - id: call-any
+    rule:
+      pattern: $F($$$ARGS)
+  - id: attribute-call
+    rule:
+      pattern: $X.$Y($$$ARGS)
+  - id: print-call
+    rule:
+      pattern: print($A)
+  - id: print-multi
+    rule:
+      pattern: print($$$ARGS)
+  - id: len-call
+    rule:
+      pattern: len($A)
+  - id: isinstance-call
+    rule:
+      pattern: isinstance($A, $T)
+  - id: getattr-call
+    rule:
+      pattern: getattr($O, $N)
+  - id: setattr-call
+    rule:
+      pattern: setattr($O, $N, $V)
+  - id: open-call
+    rule:
+      pattern: open($PATH, $$$ARGS)
+  - id: join-call
+    rule:
+      pattern: $_.join($A)
+  - id: format-call
+    rule:
+      pattern: $_.format($$$ARGS)
+  - id: raise-from
+    rule:
+      pattern: raise $E from $C
+  - id: wildcard-arg
+    rule:
+      pattern: bar($_)
+  - id: assert-true
+    rule:
+      pattern: assert $C
+  - id: assert-equal
+    rule:
+      pattern: assert $E == $A
+
+  # --- expressions ---
+  - id: list-comp
+    rule:
+      pattern: "[$E for $X in $ITER]"
+  - id: dict-get
+    rule:
+      pattern: $D.get($K)
+  - id: dict-get-default
+    rule:
+      pattern: $D.get($K, $DEFAULT)
+  - id: ternary
+    rule:
+      pattern: $T if $C else $E
+  - id: lambda-expr
+    rule:
+      pattern: "lambda $P: $BODY"
+  - id: none-literal
+    rule:
+      pattern: "None"
+  - id: is-none
+    rule:
+      pattern: $X is None
+  - id: is-not-none
+    rule:
+      pattern: $X is not None
+  - id: await-expr
+    rule:
+      pattern: await $X
+  - id: not-expr
+    rule:
+      pattern: not $X
+
+  # --- statements / blocks (indent-sensitive) ---
+  - id: if-block
+    rule:
+      pattern: "if $C:\n    $$$BODY"
+  - id: if-else
+    rule:
+      pattern: "if $C:\n    $$$A\nelse:\n    $$$B"
+  - id: while-block
+    rule:
+      pattern: "while $C:\n    $$$BODY"
+  - id: for-block
+    rule:
+      pattern: "for $X in $ITER:\n    $$$BODY"
+  - id: with-block
+    rule:
+      pattern: "with $CTX:\n    $$$BODY"
+  - id: try-except
+    rule:
+      pattern: "try:\n    $$$TRY\nexcept $E:\n    $$$HANDLER"
+  - id: try-finally
+    rule:
+      pattern: "try:\n    $$$TRY\nfinally:\n    $$$FIN"
+  - id: return-expr
+    rule:
+      pattern: return $E
+  - id: return-void
+    rule:
+      pattern: return
+  - id: raise-expr
+    rule:
+      pattern: raise $E
+  - id: assignment
+    rule:
+      pattern: $VAR = $VAL
+  - id: augmented-assign
+    rule:
+      pattern: $VAR += $VAL
+  - id: break-stmt
+    rule:
+      pattern: break
+  - id: continue-stmt
+    rule:
+      pattern: continue
+  - id: pass-stmt
+    rule:
+      pattern: pass
+
+  # --- declarations / imports ---
+  - id: def-func
+    rule:
+      pattern: "def $NAME($$$PARAMS):\n    $$$BODY"
+  - id: async-def
+    rule:
+      pattern: "async def $NAME($$$PARAMS):\n    $$$BODY"
+  - id: class-body
+    rule:
+      pattern: "class $N:\n    $$$BODY"
+  - id: class-bases
+    rule:
+      pattern: "class $N($$$BASES):\n    $$$BODY"
+  - id: import-mod
+    rule:
+      pattern: import $M
+  - id: import-from
+    rule:
+      pattern: from $M import $N
+  - id: import-from-as
+    rule:
+      pattern: from $M import $N as $A
+  - id: import-as
+    rule:
+      pattern: import $M as $A
+
+  # --- composite rules (no kind) ---
+  - id: print-inside-def
+    rule:
+      all:
+        - pattern: print($A)
+        - inside:
+            pattern: "def $NAME($$$PARAMS):\n    $$$BODY"
+  - id: raise-not-valueerror
+    rule:
+      all:
+        - pattern: raise $E
+        - not:
+            pattern: raise ValueError($$$ARGS)
+  - id: len-or-isinstance
+    rule:
+      any:
+        - pattern: len($A)
+        - pattern: isinstance($A, $T)
+  - id: call-has-none
+    rule:
+      all:
+        - pattern: $F($$$ARGS)
+        - has:
+            pattern: "None"
+  - id: return-precedes-raise
+    rule:
+      all:
+        - pattern: return $E
+        - precedes:
+            pattern: raise $X
+            stopBy: neighbor
+
+  # --- rewrites ---
+  - id: rewrite-print
+    rule:
+      pattern: print($A)
+    rewrite: logging.info($A)
+  - id: rewrite-isinstance
+    rule:
+      pattern: isinstance($A, $T)
+    rewrite: isinstance($A, ($T,))
+  - id: rewrite-is-none
+    rule:
+      pattern: $X is None
+    rewrite: $X is not None

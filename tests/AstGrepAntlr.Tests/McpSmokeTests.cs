@@ -14,6 +14,8 @@ public class McpSmokeTests
         var json = Ag4Tools.ListLanguages();
         Assert.Contains("java", json, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("sqlite", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("python", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("plsql", json, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

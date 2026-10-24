@@ -1,11 +1,13 @@
-# plsql grammar
+# PL/SQL grammar (grammars-v4)
 
-Not compiled into the default build (size / base-class complexity).
+Vendored from [antlr/grammars-v4](https://github.com/antlr/grammars-v4) `sql/plsql/` directory.
 
-Use `customLanguages` in `sgconfig.yml` with grammars from
-https://github.com/antlr/grammars-v4 and either:
+- **Commit:** `77e908c3e76b0f4a352b0c5fe392606bfed1a4f1`
+- **License:** Apache-2.0 — see [LICENSE](./LICENSE) and file headers in `PlSqlLexer.g4` / `PlSqlParser.g4`
 
-1. Point `grammar` at `.g4` files (requires Java + `tools/antlr-4.13.2-complete.jar`), or
-2. Point `grammar` at prebuilt `.interp` files.
+Files:
 
-Built-in generated support may be added in a later release.
+- `PlSqlLexer.g4`, `PlSqlParser.g4` — ANTLR grammars (large)
+- `CSharp/PlSqlLexerBase.cs`, `CSharp/PlSqlParserBase.cs` — C# bases (namespace adjusted)
+
+Built-in language id: `plsql` (alias `pl/sql`). Extensions include `.pls`, `.pkb`, `.pks`, `.sql` (`.sql` also used by SQLite; choose with `-l`).

@@ -54,5 +54,33 @@
       <Package>AstGrepAntlr.Languages.Cpp</Package>
     </Antlr4>
     <Compile Include="..\..\grammars\cpp\CSharp\CPP14ParserBase.cs" Link="Cpp\CPP14ParserBase.cs" />
+    <Antlr4 Include="..\..\grammars\python\Python3Lexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.Python</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\python\Python3Parser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.Python</Package>
+    </Antlr4>
+    <Compile Include="..\..\grammars\python\CSharp\Python3LexerBase.cs" Link="Python\Python3LexerBase.cs" />
+    <Compile Include="..\..\grammars\python\CSharp\Python3ParserBase.cs" Link="Python\Python3ParserBase.cs" />
+    <Antlr4 Include="..\..\grammars\plsql\PlSqlLexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.PlSql</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\plsql\PlSqlParser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.PlSql</Package>
+    </Antlr4>
+    <Compile Include="..\..\grammars\plsql\CSharp\PlSqlLexerBase.cs" Link="PlSql\PlSqlLexerBase.cs" />
+    <Compile Include="..\..\grammars\plsql\CSharp\PlSqlParserBase.cs" Link="PlSql\PlSqlParserBase.cs" />
   </ItemGroup>
 </Project>

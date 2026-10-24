@@ -6,7 +6,10 @@ Each subdirectory contains its own `LICENSE`.
 | Directory   | Language     | Status                                      |
 | ----------- | ------------ | ------------------------------------------- |
 | `java/`     | Java         | Built-in generated parser                   |
+| `cpp/`      | C++14        | Built-in generated parser                   |
+| `python/`   | Python 3     | Built-in generated parser                   |
+| `plsql/`    | PL/SQL       | Built-in generated parser                   |
 | `sqlite/`   | SQLite SQL   | Built-in generated parser                   |
-| (others)    | js/ts/cpp/…  | Use `customLanguages` with `.g4` → `.interp` |
+| (others)    | js/ts/…      | Use `customLanguages` with `.g4` → `.interp` |
 
 Do not run CSharpier/Prettier on this tree.

@@ -387,3 +387,56 @@ differences:
     category: grammar-boundary
     reason: Residual range-diff from Roslyn vs tree-sitter-c-sharp node extents.
     bucket: RangeDiff
+
+  # --- Python (ANTLR Python3 vs tree-sitter-python) ---
+  - id: python-indent-blocks
+    language: python
+    category: grammar-boundary
+    reason: >
+      Indent-sensitive suite patterns (if/else/while/for/with/try/def/class) match under
+      tree-sitter-python but often miss under ANTLR Python3 INDENT/DEDENT pattern shapes.
+    bucket: OnlyAstGrep
+
+  - id: python-call-shape
+    language: python
+    category: grammar-boundary
+    reason: >
+      Call / attribute-call CST shape differs (argument lists, starred args, keyword args),
+      producing only-ast-grep and metavar-diff for $F($$$ARGS) and $X.$Y($$$ARGS).
+    bucket: OnlyAstGrep
+
+  - id: python-call-metavar
+    language: python
+    category: grammar-boundary
+    reason: >
+      Metavar capture extents differ for calls, imports, and attribute access between
+      tree-sitter-python and ANTLR Python3.
+    bucket: MetaVarDiff
+
+  - id: python-residual-only-ast-grep
+    language: python
+    category: grammar-boundary
+    reason: >
+      Residual only-ast-grep (None literals, assignments, imports, list comps, returns)
+      from tree-sitter-python vs ANTLR Python3 CST boundaries.
+    bucket: OnlyAstGrep
+
+  - id: python-residual-only-ag4
+    language: python
+    category: grammar-boundary
+    reason: >
+      Residual only-ag4 from ANTLR Python3 shapes that tree-sitter does not surface the
+      same way (occasional call / import wrapping).
+    bucket: OnlyAg4
+
+  - id: python-residual-metavar
+    language: python
+    category: grammar-boundary
+    reason: Residual metavar-diff from ANTLR Python3 vs tree-sitter-python capture extents.
+    bucket: MetaVarDiff
+
+  - id: python-residual-range
+    language: python
+    category: grammar-boundary
+    reason: Residual range-diff from ANTLR Python3 vs tree-sitter-python node extents.
+    bucket: RangeDiff

@@ -13,6 +13,8 @@
 | `grammars/java/`   | BSD-3-Clause | See `grammars/java/LICENSE`   |
 | `grammars/sqlite/` | MIT          | See `grammars/sqlite/LICENSE` |
 | `grammars/cpp/`    | MIT          | See `grammars/cpp/LICENSE`    |
+| `grammars/python/` | MIT          | See `grammars/python/LICENSE` |
+| `grammars/plsql/`  | Apache-2.0   | See `grammars/plsql/LICENSE`  |
 
 Source: https://github.com/antlr/grammars-v4
 

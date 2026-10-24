@@ -60,3 +60,18 @@ repos:
     sha: 3ebc38de585fc641a04b0e78ed69468453b0f8a1
     paths:
       - src/Humanizer
+  # Python
+  - id: click
+    language: python
+    remote: https://github.com/pallets/click.git
+    ref: 8.1.8
+    sha: 934813e4d421071a1b3db3973c02fe2721359a6e
+    paths:
+      - src/click
+  - id: attrs
+    language: python
+    remote: https://github.com/python-attrs/attrs.git
+    ref: 23.2.0
+    sha: 9e443b18527dc96b194e92805fa751cbf8434ba9
+    paths:
+      - src

@@ -16,7 +16,11 @@ public static class BuiltinLanguages
         registry.Register(new CSharpLanguage());
         registry.RegisterAlias("cs", "csharp");
         registry.RegisterAlias("c#", "csharp");
-        // Additional languages (js/ts/plsql/postgresql/mysql) can be added as
+        registry.Register(new PythonLanguage());
+        registry.RegisterAlias("py", "python");
+        registry.Register(new PlSqlLanguage());
+        registry.RegisterAlias("pl/sql", "plsql");
+        // Additional languages (js/ts/postgresql/mysql) can be added as
         // generated parsers or via sgconfig.yml customLanguages (.g4 / .interp).
         return registry;
     }
