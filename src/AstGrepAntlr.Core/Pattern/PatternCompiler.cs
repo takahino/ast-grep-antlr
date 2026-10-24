@@ -25,7 +25,7 @@ public sealed record CompiledPattern(
 
 public sealed class PatternCompiler
 {
-    private const int MaxVariantAttempts = 256;
+    private const int MaxVariantAttempts = 4096;
 
     public CompiledPattern Compile(ILanguage language, PatternSpec spec)
     {
@@ -57,16 +57,28 @@ public sealed class PatternCompiler
             variants = ["{0}"];
         }
 
-        // Per-occurrence variant choices (odometer). Same template for all is tried first.
-        var choices = new int[Math.Max(occurrences.Count, 1)];
+        // Per-occurrence variant choices. Prefer a few seeds (block bodies / empty lists) before
+        // the full odometer so patterns with many metavars stay within MaxVariantAttempts.
+        var stmtVariant = IndexOfVariant(variants, "{0};");
+        var intVariant = IndexOfVariant(variants, "int {0}");
+        var seedPlans = BuildSeedPlans(occurrences.Count, occurrences, stmtVariant, intVariant);
+
         Exception? last = null;
         var attempts = 0;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        do
+        CompiledPattern? TryChoices(int[] choices)
         {
-            if (attempts++ >= MaxVariantAttempts)
+            if (attempts >= MaxVariantAttempts)
             {
-                break;
+                return null;
+            }
+
+            attempts++;
+            var key = string.Join(',', choices.Take(Math.Max(occurrences.Count, 0)));
+            if (!seen.Add(key))
+            {
+                return null;
             }
 
             var rewritten = MetaVar.ReplaceWithPlaceholders(
@@ -89,7 +101,12 @@ public sealed class PatternCompiler
                         continue;
                     }
 
-                    MarkMetaVars(result.Tree, placeholders, placeholderSpans);
+                    var marked = MarkMetaVars(result.Tree, placeholders, placeholderSpans);
+                    if (marked < placeholders.Count)
+                    {
+                        continue;
+                    }
+
                     var root = DescendPatternRoot(result.Tree, result.Tree.Root);
                     if (!string.IsNullOrEmpty(spec.Selector))
                     {
@@ -104,12 +121,115 @@ public sealed class PatternCompiler
                     last = ex;
                 }
             }
-        } while (AdvanceChoices(choices, variants.Count, occurrences.Count));
+
+            return null;
+        }
+
+        foreach (var seed in seedPlans)
+        {
+            var hit = TryChoices((int[])seed.Clone());
+            if (hit is not null)
+            {
+                return hit;
+            }
+        }
+
+        var choices = new int[Math.Max(occurrences.Count, 1)];
+        do
+        {
+            var hit = TryChoices(choices);
+            if (hit is not null)
+            {
+                return hit;
+            }
+        } while (AdvanceChoices(choices, variants.Count, occurrences.Count) && attempts < MaxVariantAttempts);
 
         var tried = string.Join(", ", rulesToTry);
         throw new InvalidOperationException(
             $"Failed to parse pattern as any of [{tried}]. Try `ag4 debug pattern` or set pattern.entry. {(last is null ? "" : last.Message)}"
         );
+    }
+
+    private static int IndexOfVariant(IReadOnlyList<string> variants, string template)
+    {
+        for (var i = 0; i < variants.Count; i++)
+        {
+            if (string.Equals(variants[i], template, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private static List<int[]> BuildSeedPlans(
+        int slotCount,
+        IReadOnlyList<MetaVar.Occurrence> occurrences,
+        int stmtVariant,
+        int intVariant
+    )
+    {
+        var plans = new List<int[]>();
+        void Add(int[] plan) => plans.Add(plan);
+
+        Add(new int[Math.Max(slotCount, 1)]);
+
+        if (stmtVariant >= 0 && occurrences.Count > 0)
+        {
+            var plan = new int[occurrences.Count];
+            for (var i = 0; i < occurrences.Count; i++)
+            {
+                if (occurrences[i].IsMulti)
+                {
+                    plan[i] = stmtVariant;
+                }
+            }
+
+            Add(plan);
+        }
+
+        // Mixed: statement form for body-like multis; int {0} for args; "{0}" for inits/updates.
+        if (occurrences.Count > 0)
+        {
+            var plan = new int[occurrences.Count];
+            for (var i = 0; i < occurrences.Count; i++)
+            {
+                if (!occurrences[i].IsMulti)
+                {
+                    continue;
+                }
+
+                var name = occurrences[i].Name;
+                if (
+                    stmtVariant >= 0
+                    && (
+                        name.Contains("BODY", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("TRY", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("HANDLER", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("CATCH", StringComparison.OrdinalIgnoreCase)
+                        || name is "B" or "T"
+                    )
+                )
+                {
+                    plan[i] = stmtVariant;
+                }
+                else if (
+                    intVariant >= 0
+                    && (
+                        name.Contains("ARG", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("PARAM", StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    plan[i] = intVariant;
+                }
+            }
+
+            Add(plan);
+        }
+
+        return plans;
     }
 
     /// <summary>Advance odometer; prefer changing the rightmost metavar first (nested bodies).</summary>
@@ -200,15 +320,22 @@ public sealed class PatternCompiler
         return root;
     }
 
-    private static void MarkMetaVars(
+    private static int MarkMetaVars(
         SyntaxTree tree,
         IReadOnlyDictionary<string, MetaVar.Occurrence> placeholders,
         IReadOnlyDictionary<string, (int Start, int End)> placeholderSpans
     )
     {
+        var marked = 0;
         foreach (var (placeholder, occ) in placeholders)
         {
             if (!placeholderSpans.TryGetValue(placeholder, out var span))
+            {
+                continue;
+            }
+
+            // Empty insertions cannot be marked; reject this variant combination.
+            if (span.End <= span.Start && occ.IsMulti)
             {
                 continue;
             }
@@ -246,7 +373,10 @@ public sealed class PatternCompiler
             }
 
             tree.SetMetaVar(mark, occ.Name, occ.IsMulti, occ.TypedRule);
+            marked++;
         }
+
+        return marked;
     }
 
     private static int FindNodeByExactSpan(SyntaxTree tree, int start, int end)

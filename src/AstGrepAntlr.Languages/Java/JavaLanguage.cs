@@ -28,7 +28,7 @@ public sealed class JavaLanguage : ILanguage
 
     // Variants tried per metavar (odometer). Extra forms cover class-body members.
     public IReadOnlyList<string> MetaVarVariants { get; } =
-    ["{0}", "{0};", "{0} {0}", "{0} {0};", "int {0};", "void {0}(){}", ";"];
+    ["{0}", "{0};", "", "int {0}", "{0} {0}", "{0} {0};", "int {0};", "void {0}(){}", ";"];
     public bool IgnoreCase => false;
     public TimeSpan ParseTimeout => TimeSpan.FromSeconds(30);
     public long MaxFileBytes => 8 * 1024 * 1024;

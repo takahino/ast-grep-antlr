@@ -311,13 +311,12 @@ public sealed class PatternMatcher
             return false;
         }
 
+        // Use exact TypeName only. KindMatches would treat chained expression→primary heads as
+        // "primary", so binary expressions (two expression children) falsely trip this guard.
         var tCount = 0;
         foreach (var c in target.NamedChildren(tIndex))
         {
-            if (
-                string.Equals(target[c].TypeName, childKind, StringComparison.Ordinal)
-                || target.KindMatches(c, childKind)
-            )
+            if (string.Equals(target[c].TypeName, childKind, StringComparison.Ordinal))
             {
                 tCount++;
                 if (tCount >= 2)

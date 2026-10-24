@@ -44,3 +44,27 @@ cases:
       - text: "x"
     reject:
       - "y()"
+  - id: try-catch-block
+    pattern: "try { $$$TRY } catch ($E $N) { $$$HANDLER }"
+    source: |
+      class T { void m() { try { a(); } catch (Exception e) { b(); } } }
+    expect:
+      - text: "try { a(); } catch (Exception e) { b(); }"
+  - id: public-method-decl
+    pattern: "public $RET $NAME($$$ARGS) { $$$BODY }"
+    source: |
+      class T { public int run(int x) { return x; } }
+    expect:
+      - text: "public int run(int x) { return x; }"
+  - id: while-loop-block
+    pattern: "while ($C) { $$$BODY }"
+    source: |
+      class T { void m() { while (ok) { work(); } } }
+    expect:
+      - text: "while (ok) { work(); }"
+  - id: for-loop-block
+    pattern: "for ($$$INIT; $C; $$$UPDATE) { $$$BODY }"
+    source: |
+      class T { void m() { for (int i = 0; i < 3; i++) { work(); } } }
+    expect:
+      - text: "for (int i = 0; i < 3; i++) { work(); }"

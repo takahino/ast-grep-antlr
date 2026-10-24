@@ -73,18 +73,16 @@ public static partial class MetaVar
                 sb.Append(pattern, cursor, occ.Start - cursor);
             }
 
-            var placeholder = string.Format(System.Globalization.CultureInfo.InvariantCulture, template, i);
+            // Apply "{0}" manually — variant templates may contain literal braces
+            // (e.g. "void {0}(){}") that string.Format would reject.
+            var placeholder = ApplySlot(template, i.ToString(System.Globalization.CultureInfo.InvariantCulture));
             var variantIndex = i < choices.Count ? choices[i] : 0;
             if (variantIndex < 0 || variantIndex >= variantTemplates.Count)
             {
                 variantIndex = 0;
             }
 
-            var inserted = string.Format(
-                System.Globalization.CultureInfo.InvariantCulture,
-                variantTemplates[variantIndex],
-                placeholder
-            );
+            var inserted = ApplySlot(variantTemplates[variantIndex], placeholder);
             var insertStart = sb.Length;
             sb.Append(inserted);
             map[placeholder] = occ;
@@ -100,6 +98,19 @@ public static partial class MetaVar
         byPlaceholder = map;
         placeholderSpans = spans;
         return sb.ToString();
+    }
+
+    /// <summary>Replace the first <c>{0}</c> slot; leave other braces untouched.</summary>
+    private static string ApplySlot(string template, string value)
+    {
+        const string slot = "{0}";
+        var idx = template.IndexOf(slot, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return template;
+        }
+
+        return string.Concat(template.AsSpan(0, idx), value, template.AsSpan(idx + slot.Length));
     }
 
     /// <summary>Legacy helper: apply a single variant template to every metavar.</summary>
