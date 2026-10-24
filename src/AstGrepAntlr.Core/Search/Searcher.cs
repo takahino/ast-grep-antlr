@@ -17,6 +17,13 @@ public sealed class SearchOptions
     public int MaxResults { get; init; } = int.MaxValue;
     public bool ShowErrors { get; init; }
     public string? Encoding { get; init; }
+    public ICollection<string>? MissingRoots { get; init; }
+    public IReadOnlyList<string>? Globs { get; init; }
+    public bool NoIgnore { get; init; }
+    public bool IncludeHidden { get; init; }
+    public string? BaseDirectory { get; init; }
+    public int ContextLines { get; init; }
+    public Dictionary<string, RuleNode>? Utils { get; init; }
     public CancellationToken CancellationToken { get; init; }
 }
 
@@ -38,7 +45,18 @@ public sealed class Searcher
         var langId = options.LanguageId ?? throw new ArgumentException("Language is required for pattern search (-l).");
         var language = options.Registry.Get(langId);
         var compiled = _compiler.Compile(language, new PatternSpec(pattern, entry, Strictness: strictness));
-        var files = _walker.Enumerate(options.Paths, language.Extensions);
+        var files = _walker.Enumerate(
+            options.Paths,
+            new FileWalkOptions
+            {
+                Extensions = language.Extensions,
+                Globs = options.Globs,
+                NoIgnore = options.NoIgnore,
+                IncludeHidden = options.IncludeHidden,
+                BaseDirectory = options.BaseDirectory,
+                MissingRoots = options.MissingRoots,
+            }
+        );
         return SearchFiles(
             files,
             language,
@@ -59,13 +77,27 @@ public sealed class Searcher
         }
 
         var language = options.Registry.Get(doc.Language);
-        var files = _walker.Enumerate(options.Paths, language.Extensions, doc.Ignores);
+        var files = _walker.Enumerate(
+            options.Paths,
+            new FileWalkOptions
+            {
+                Extensions = language.Extensions,
+                Ignores = doc.Ignores,
+                Files = doc.Files,
+                Globs = options.Globs,
+                NoIgnore = options.NoIgnore,
+                IncludeHidden = options.IncludeHidden,
+                BaseDirectory = options.BaseDirectory,
+                MissingRoots = options.MissingRoots,
+            }
+        );
+        var utils = options.Utils;
         return SearchFiles(
             files,
             language,
             _rules.RequiredLiterals(language, doc.Rule),
             options,
-            tree => _rules.Match(language, tree, doc),
+            tree => _rules.Match(language, tree, doc, utils),
             doc.Id,
             doc.Message,
             doc.Severity
@@ -121,7 +153,8 @@ public sealed class Searcher
                             ruleId,
                             message,
                             severity,
-                            parsed.Source
+                            parsed.Source,
+                            options.ContextLines
                         )
                     );
                 }
@@ -193,21 +226,29 @@ public sealed class Searcher
         string? ruleId,
         string? message,
         string? severity,
-        SourceFile source
+        SourceFile source,
+        int contextLines
     )
     {
         var n = tree[node];
         var (sl, sc) = lines.Locate(n.Start);
         var (el, ec) = lines.Locate(n.End);
         var (byteStart, byteEnd) = offsets.Utf16RangeToBytes(n.Start, n.End);
-        var lineStart = Math.Max(0, n.Start - (sc - 1));
-        var lineEnd = n.End;
-        while (lineEnd < tree.Source.Length && tree.Source[lineEnd] is not ('\n' or '\r'))
+        var ctxStartLine = Math.Max(1, sl - contextLines);
+        var ctxEndLine = el + contextLines;
+        var lineStart = lines.OffsetOfLine(ctxStartLine);
+        var lineEnd = lines.OffsetOfLine(ctxEndLine + 1);
+        if (lineEnd < 0)
         {
-            lineEnd++;
+            lineEnd = tree.Source.Length;
         }
 
         var linesText = tree.Source[lineStart..Math.Min(lineEnd, tree.Source.Length)];
+        if (linesText.EndsWith('\n') || linesText.EndsWith('\r'))
+        {
+            // keep trailing newline of last context line when present
+        }
+
         return new MatchResult
         {
             File = file,
@@ -227,7 +268,7 @@ public sealed class Searcher
             Severity = severity,
             Encoding = source.EncodingName,
             FileHash = source.Hash,
-            Lines = linesText,
+            Lines = linesText.TrimEnd('\r', '\n'),
         };
     }
 
@@ -270,5 +311,22 @@ internal sealed class LineMap
         }
 
         return (index + 1, offset - _lineStarts[index] + 1);
+    }
+
+    /// <summary>UTF-16 offset of the start of a 1-based line, or -1 if past the end.</summary>
+    public int OffsetOfLine(int line1Based)
+    {
+        if (line1Based < 1)
+        {
+            return 0;
+        }
+
+        var index = line1Based - 1;
+        if (index >= _lineStarts.Length)
+        {
+            return -1;
+        }
+
+        return _lineStarts[index];
     }
 }
