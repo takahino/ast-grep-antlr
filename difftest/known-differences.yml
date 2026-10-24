@@ -91,3 +91,103 @@ differences:
     category: pattern-compile
     reason: Same as java-super-this-pattern for this($$$ARGS).
     bucket: OnlyAg4
+
+  - id: java-call-any-breadth
+    language: java
+    pattern_id: call-any
+    category: grammar-boundary
+    reason: >
+      Pattern $F($$$ARGS) matches many more call-like ANTLR expression shapes than
+      tree-sitter-java (including nested/primary wrappers), producing only-ag4 and
+      metavar-diff volume that is not an ag4 logic bug.
+    bucket: OnlyAg4
+
+  - id: java-call-any-metavar
+    language: java
+    pattern_id: call-any
+    category: grammar-boundary
+    reason: Metavar ranges for $F($$$ARGS) differ with CST wrapping under ANTLR Java.
+    bucket: MetaVarDiff
+
+  - id: java-for-loop-shape
+    language: java
+    pattern_id: for-loop
+    category: grammar-boundary
+    reason: >
+      Classic for-loop forInit (localVariableDeclaration vs expressionList) and empty
+      update clauses produce only-ag4 under ANTLR while tree-sitter is stricter.
+    bucket: OnlyAg4
+
+  - id: java-if-block-only-sg
+    language: java
+    pattern_id: if-block
+    category: grammar-boundary
+    reason: >
+      Some braced if statements match under tree-sitter but not ANTLR when intervening
+      comments/labels or statement wrappers differ.
+    bucket: OnlyAstGrep
+
+  - id: java-public-method-shape
+    language: java
+    pattern_id: public-method
+    category: grammar-boundary
+    reason: >
+      public $TYPE $NAME($$$PARAMS) { $$$BODY } misses void / generic / throws / annotated
+      methods that tree-sitter still matches; not a rewrite/engine bug.
+    bucket: OnlyAstGrep
+
+  - id: java-package-decl
+    language: java
+    pattern_id: package-decl
+    category: grammar-boundary
+    reason: package $PKG vs package $PKG.sub splits differ between grammars.
+    bucket: OnlyAstGrep
+
+  - id: java-class-body-only-ag4
+    language: java
+    pattern_id: class-body
+    category: grammar-boundary
+    reason: class $N { $$$BODY } root descent / local class shapes differ; ag4 may over-match.
+    bucket: OnlyAg4
+
+  - id: java-new-instance-only-sg
+    language: java
+    pattern_id: new-instance
+    category: grammar-boundary
+    reason: Diamond / anonymous class new-expressions differ in node extent under ANTLR.
+    bucket: OnlyAstGrep
+
+  - id: java-try-catch-multi
+    language: java
+    pattern_id: try-catch
+    category: grammar-boundary
+    reason: Multi-catch (A|B) and try-with-resources forms differ; final modifiers are skipped in Smart.
+    bucket: OnlyAstGrep
+
+  - id: java-enhanced-for
+    language: java
+    pattern_id: enhanced-for
+    category: grammar-boundary
+    reason: Enhanced-for type/var shapes differ between tree-sitter-java and ANTLR.
+    bucket: OnlyAstGrep
+
+  - id: java-new-array
+    language: java
+    pattern_id: new-array
+    category: grammar-boundary
+    reason: Array creation extents differ for multi-dimensional new.
+    bucket: OnlyAstGrep
+
+  - id: java-lambda-arrow
+    language: java
+    pattern_id: lambda-arrow
+    category: grammar-boundary
+    reason: Lambda parameter / body shapes differ; ag4 may match more arrow expressions.
+    bucket: OnlyAg4
+
+  - id: java-method-ref
+    language: java
+    pattern_id: method-ref
+    category: grammar-boundary
+    reason: Method reference vs qualified expression boundary differs under ANTLR.
+    bucket: OnlyAg4

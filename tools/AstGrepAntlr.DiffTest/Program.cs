@@ -24,6 +24,10 @@ internal static class Program
             Description = "Reuse existing .difftest/corpus clones",
         };
         var skipNpmOption = new Option<bool>("--skip-npm") { Description = "Skip npm install for ast-grep CLI" };
+        var skipBuildOption = new Option<bool>("--no-build")
+        {
+            Description = "Reuse existing Release ag4.dll without rebuilding",
+        };
         var languageOption = new Option<string?>("--language")
         {
             Description = "Only run patterns for this language (java|cpp)",
@@ -55,6 +59,7 @@ internal static class Program
         rootCommand.Options.Add(configOption);
         rootCommand.Options.Add(skipCloneOption);
         rootCommand.Options.Add(skipNpmOption);
+        rootCommand.Options.Add(skipBuildOption);
         rootCommand.Options.Add(languageOption);
         rootCommand.Options.Add(noFailOption);
         rootCommand.Options.Add(skipRewriteOption);
@@ -80,6 +85,7 @@ internal static class Program
                         SgConfigPath = parseResult.GetValue(configOption),
                         SkipClone = parseResult.GetValue(skipCloneOption),
                         SkipNpm = parseResult.GetValue(skipNpmOption),
+                        SkipBuild = parseResult.GetValue(skipBuildOption),
                         FailOnUnexplained = !parseResult.GetValue(noFailOption),
                         SkipRewrite = parseResult.GetValue(skipRewriteOption),
                         ToolTimeoutSeconds = parseResult.GetValue(timeoutOption),
@@ -123,14 +129,12 @@ internal static class Program
 
     private static string? TryReadBaselineTotals(string repoRoot)
     {
-        var legacy = Path.Combine(repoRoot, ".difftest", "report", "baseline", "summary.txt");
-        if (!File.Exists(legacy))
+        var pinned = Path.Combine(repoRoot, "difftest", "baseline-phase0b.txt");
+        if (File.Exists(pinned))
         {
-            return "same=49172 only-ast-grep=14122 only-ag4=649 range-diff=3541 metavar-diff=17048 (Phase 0b Java snapshot)";
+            return File.ReadAllText(pinned).Trim();
         }
 
-        var lines = File.ReadAllLines(legacy);
-        var totals = lines.FirstOrDefault(l => l.StartsWith("Totals:", StringComparison.Ordinal));
-        return totals ?? string.Join('\n', lines.Take(8));
+        return "Totals: same=49172 only-ast-grep=14122 only-ag4=649 range-diff=3541 metavar-diff=17048 (Phase 0b Java snapshot)";
     }
 }

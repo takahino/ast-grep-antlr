@@ -256,6 +256,19 @@ public sealed class PatternCompiler
 
     private static ParseResult? ParsePatternFragment(ILanguage language, string source, string rule)
     {
+        // SLL first (fast); fall back to LL for ambiguous fragments such as
+        // `for (String x : xs)` where Identifier looks like a type or expression.
+        return ParsePatternFragmentWithMode(language, source, rule, PredictionMode.SLL)
+            ?? ParsePatternFragmentWithMode(language, source, rule, PredictionMode.LL);
+    }
+
+    private static ParseResult? ParsePatternFragmentWithMode(
+        ILanguage language,
+        string source,
+        string rule,
+        PredictionMode mode
+    )
+    {
         var stream = CharStreams.fromString(source);
         var lexer = language.CreateLexer(stream);
         lexer.RemoveErrorListeners();
@@ -263,7 +276,7 @@ public sealed class PatternCompiler
         var parser = language.CreateParser(tokens);
         parser.RemoveErrorListeners();
         parser.ErrorHandler = new BailErrorStrategy();
-        parser.Interpreter.PredictionMode = PredictionMode.SLL;
+        parser.Interpreter.PredictionMode = mode;
         try
         {
             var tree = language.InvokeRule(parser, rule);

@@ -16,6 +16,8 @@ internal sealed class DiffTestOptions
 
     public bool SkipNpm { get; init; }
 
+    public bool SkipBuild { get; init; }
+
     public bool FailOnUnexplained { get; init; } = true;
 
     public bool SkipRewrite { get; init; }
@@ -76,7 +78,7 @@ internal static class DiffTestRunner
         string ag4Dll;
         try
         {
-            ag4Dll = await ToolingSetup.EnsureAg4BuiltAsync(options.RepoRoot, cancellationToken);
+            ag4Dll = await ToolingSetup.EnsureAg4BuiltAsync(options.RepoRoot, options.SkipBuild, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -194,9 +196,7 @@ internal static class DiffTestRunner
 
         await ReportWriter.WriteAsync(reportOut, reportDir, cancellationToken);
 
-        // Also keep a copy under baseline/ for continuity when Java-only was used before.
-        var baselineDir = Path.Combine(difftestRoot, "report", "baseline");
-        await ReportWriter.WriteAsync(reportOut, baselineDir, cancellationToken);
+        // Do not overwrite .difftest/report/baseline — that directory holds the Phase 0b snapshot.
 
         var exit =
             options.FailOnUnexplained && unexplainedCount > 0 ? 1

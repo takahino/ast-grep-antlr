@@ -97,9 +97,23 @@ internal static class ToolingSetup
     public static string Ag4DllPath(string repoRoot) =>
         Path.Combine(repoRoot, "src", "AstGrepAntlr.Cli", "bin", "Release", "net10.0", "ag4.dll");
 
-    public static async Task<string> EnsureAg4BuiltAsync(string repoRoot, CancellationToken cancellationToken)
+    public static async Task<string> EnsureAg4BuiltAsync(
+        string repoRoot,
+        bool skipBuild,
+        CancellationToken cancellationToken
+    )
     {
         var dll = Ag4DllPath(repoRoot);
+        if (skipBuild)
+        {
+            if (!File.Exists(dll))
+            {
+                throw new FileNotFoundException($"ag4.dll not found (build with --no-build skipped): {dll}");
+            }
+
+            return dll;
+        }
+
         var build = await ProcessRunner.RunAsync(
             "dotnet",
             ["build", Ag4CliProjectPath(repoRoot), "-c", "Release", "--nologo", "-v", "q"],

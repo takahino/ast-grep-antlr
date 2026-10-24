@@ -220,6 +220,18 @@ public sealed class PatternMatcher
                 continue;
             }
 
+            // smart: skip target-only modifiers (final/public/...) before a metavar so
+            // `catch ($E $N)` matches `catch (final Exception e)` like ast-grep.
+            if (
+                strictness == Strictness.Smart
+                && pNode.MetaVarName is not null
+                && IsSkippableModifier(target, tChildren[ti])
+            )
+            {
+                ti++;
+                continue;
+            }
+
             if (!MatchNode(target, tChildren[ti], pattern, pChildren[pi], strictness, env))
             {
                 if (strictness == Strictness.Smart && !target[tChildren[ti]].IsNamed)
@@ -282,6 +294,48 @@ public sealed class PatternMatcher
         var end = target[tChildren[to - 1]].End;
         var text = start >= 0 && end >= start && end <= target.Source.Length ? target.Source[start..end] : string.Empty;
         return new MetaVarValue(text, start, end, IsMulti: true);
+    }
+
+    private static readonly HashSet<string> SkippableModifiers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "final",
+        "public",
+        "private",
+        "protected",
+        "static",
+        "abstract",
+        "synchronized",
+        "native",
+        "transient",
+        "volatile",
+        "default",
+        "strictfp",
+    };
+
+    private static bool IsSkippableModifier(SyntaxTree target, int index)
+    {
+        var n = target[index];
+        if (!n.IsNamed)
+        {
+            return false;
+        }
+
+        // ANTLR wraps `final` etc. in variableModifier / classOrInterfaceModifier rules.
+        if (
+            string.Equals(n.TypeName, "variableModifier", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(n.TypeName, "classOrInterfaceModifier", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(n.TypeName, "modifier", StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return true;
+        }
+
+        if (!n.IsTerminal)
+        {
+            return false;
+        }
+
+        return SkippableModifiers.Contains(target.Text(index));
     }
 
     /// <summary>

@@ -50,6 +50,12 @@ cases:
       class T { void m() { try { a(); } catch (Exception e) { b(); } } }
     expect:
       - text: "try { a(); } catch (Exception e) { b(); }"
+  - id: try-catch-final
+    pattern: "try { $$$TRY } catch ($E $N) { $$$HANDLER }"
+    source: |
+      class T { void m() { try { a(); } catch (final Exception e) { b(); } } }
+    expect:
+      - text: "try { a(); } catch (final Exception e) { b(); }"
   - id: public-method-decl
     pattern: "public $RET $NAME($$$ARGS) { $$$BODY }"
     source: |
