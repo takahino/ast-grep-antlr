@@ -317,3 +317,73 @@ differences:
     category: grammar-boundary
     reason: Occasional range-diff residuals for CPP14 vs tree-sitter-cpp node extents.
     bucket: RangeDiff
+
+  # --- C# (Roslyn vs tree-sitter-c-sharp) ---
+  - id: csharp-cast-paren
+    language: csharp
+    pattern_id: cast-expr
+    category: grammar-boundary
+    reason: >
+      tree-sitter often treats parenthesized expressions as casts; Roslyn requires a
+      cast expression node, so only-ast-grep volume is high for ($T)$E patterns.
+    bucket: OnlyAstGrep
+
+  - id: csharp-block-brace-shape
+    language: csharp
+    category: grammar-boundary
+    reason: >
+      Block / statement patterns with braces (if/while/for/foreach/using/lock/public method)
+      match under Roslyn but often miss or differ under tree-sitter-c-sharp pattern shapes.
+    bucket: OnlyAg4
+
+  - id: csharp-identifier-granularity
+    language: csharp
+    pattern_id: kind-identifier
+    category: grammar-boundary
+    reason: >
+      tree-sitter `identifier` covers more token sites than Roslyn `identifier_name`
+      (even with alias); expect large only-ast-grep plus occasional range-diff.
+    bucket: OnlyAstGrep
+
+  - id: csharp-identifier-range
+    language: csharp
+    pattern_id: kind-identifier
+    category: grammar-boundary
+    reason: Occasional range-diff on identifier spans between Roslyn and tree-sitter.
+    bucket: RangeDiff
+
+  - id: csharp-call-metavar
+    language: csharp
+    category: grammar-boundary
+    reason: >
+      Invocation / member-access CST shape differs (argument lists, generic type args,
+      extension-method receivers), producing metavar-diff and only-* for call patterns.
+    bucket: MetaVarDiff
+
+  - id: csharp-residual-only-ast-grep
+    language: csharp
+    category: grammar-boundary
+    reason: >
+      Residual only-ast-grep after Roslyn kind aliases; attributed to tree-sitter-c-sharp
+      vs Roslyn CST (casts, awaits, lambdas, typeof/nameof, declarations, composite inside).
+    bucket: OnlyAstGrep
+
+  - id: csharp-residual-only-ag4
+    language: csharp
+    category: grammar-boundary
+    reason: >
+      Residual only-ag4 from Roslyn shapes that tree-sitter does not surface the same way
+      (block statements, public methods, is-patterns, equals/ToString receivers).
+    bucket: OnlyAg4
+
+  - id: csharp-residual-metavar
+    language: csharp
+    category: grammar-boundary
+    reason: Residual metavar-diff from Roslyn vs tree-sitter-c-sharp capture extents.
+    bucket: MetaVarDiff
+
+  - id: csharp-residual-range
+    language: csharp
+    category: grammar-boundary
+    reason: Residual range-diff from Roslyn vs tree-sitter-c-sharp node extents.
+    bucket: RangeDiff

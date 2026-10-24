@@ -1,12 +1,12 @@
 # Difftest report (ast-grep vs ag4)
 
-Generated (UTC): `2026-10-24T02:34:34Z` (C++ pass) / `2026-10-24T02:23:29Z` (Java pass)  
+Generated (UTC): `2026-10-24T02:34:34Z` (C++ pass) / `2026-10-24T02:23:29Z` (Java pass) / `2026-10-24T03:49:49Z` (C# pass)  
 Baseline tool: `@ast-grep/cli@0.51.0`  
 Mode: `comparative`
 
 ```bash
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
-  --corpus difftest/corpus.yml --skip-clone --skip-npm --skip-rewrite --timeout-seconds 60
+  --corpus difftest/corpus.yml --skip-clone --skip-npm --skip-rewrite --timeout-seconds 90
 ```
 
 ## Summary
@@ -43,6 +43,27 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 
 \*C++ pass reported 31 unexplained before residual `cpp-residual-*` entries were added to [known-differences.yml](known-differences.yml); re-run with those entries yields 0 unexplained for the same buckets.
 
+### C# (Roslyn)
+
+| Metric                                    |  Value |
+| ----------------------------------------- | -----: |
+| Same                                      |  50540 |
+| Only ast-grep                             |  39042 |
+| Only ag4                                  |   3736 |
+| Range diff                                |     13 |
+| Metavar diff                              |   9423 |
+| Match rate                                | 49.19% |
+| Unexplained (after known-differences.yml) |      0 |
+| ast-grep time (ms)                        |  18018 |
+| ag4 time (ms)                             | 108163 |
+| Speed ratio (ag4 / ast-grep)              |  6.00x |
+
+Notes:
+
+- Backend is **Roslyn** (`Microsoft.CodeAnalysis.CSharp`), not grammars-v4 (EPL).
+- Kind names are Roslyn `SyntaxKind` snake_case with tree-sitter-c-sharp aliases (`identifier_name` ↔ `identifier`, etc.).
+- Large only-ast-grep on `cast-expr` / `kind-identifier` and only-ag4 on brace block patterns are documented in [known-differences.yml](known-differences.yml) as `csharp-*`.
+
 ## Baseline comparison (Phase 0b, pre-fix Java)
 
 ```
@@ -58,8 +79,8 @@ Notes vs Phase 0b:
 
 ## Configuration
 
-- Patterns: [patterns/java.yml](patterns/java.yml), [patterns/cpp.yml](patterns/cpp.yml) (~55 each; calls, `$$$`, statements, composite rules without `kind`, rewrites)
-- Corpus: [corpus.yml](corpus.yml) — Apache commons-lang, java-design-patterns, leveldb, cereal, fmt (tag + SHA)
+- Patterns: [patterns/java.yml](patterns/java.yml), [patterns/cpp.yml](patterns/cpp.yml), [patterns/csharp.yml](patterns/csharp.yml)
+- Corpus: [corpus.yml](corpus.yml) — Apache commons-lang, java-design-patterns, leveldb, cereal, fmt, Newtonsoft.Json, Humanizer (tag + SHA)
 - `.h` as cpp: [sgconfig.yml](sgconfig.yml) `languageGlobs` for ast-grep
 - Harness: `tools/AstGrepAntlr.DiffTest` vs `@ast-grep/cli@0.51.0`
 

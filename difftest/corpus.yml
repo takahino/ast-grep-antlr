@@ -44,3 +44,19 @@ repos:
     paths:
       - include/fmt/core.h
       - include/fmt/format.h
+  # C#
+  - id: newtonsoft-json
+    language: csharp
+    remote: https://github.com/JamesNK/Newtonsoft.Json.git
+    ref: 13.0.3
+    sha: 0a2e291c0d9c0c7675d445703e51750363a549ef
+    paths:
+      - Src/Newtonsoft.Json/Linq
+      - Src/Newtonsoft.Json/Utilities
+  - id: humanizer
+    language: csharp
+    remote: https://github.com/Humanizr/Humanizer.git
+    ref: v2.14.1
+    sha: 3ebc38de585fc641a04b0e78ed69468453b0f8a1
+    paths:
+      - src/Humanizer

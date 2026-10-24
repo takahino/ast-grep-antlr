@@ -1,0 +1,180 @@
+# ast-grep / ag4 differential patterns (C#). Includes a few kind rules (aliases enabled).
+language: csharp
+rules:
+  # --- calls / $$$ ---
+  - id: call-foo
+    rule:
+      pattern: foo($$$ARGS)
+  - id: call-any
+    rule:
+      pattern: $F($$$ARGS)
+  - id: member-call
+    rule:
+      pattern: $X.$Y($$$ARGS)
+  - id: console-writeline
+    rule:
+      pattern: Console.WriteLine($A)
+  - id: console-writeline-multi
+    rule:
+      pattern: Console.WriteLine($$$ARGS)
+  - id: string-format
+    rule:
+      pattern: string.Format($FMT, $$$ARGS)
+  - id: string-isnullorempty
+    rule:
+      pattern: string.IsNullOrEmpty($A)
+  - id: tostring
+    rule:
+      pattern: $_.ToString()
+  - id: equals-call
+    rule:
+      pattern: $_.Equals($OTHER)
+  - id: gethashcode
+    rule:
+      pattern: $_.GetHashCode()
+  - id: linq-where
+    rule:
+      pattern: $_.Where($P)
+  - id: linq-select
+    rule:
+      pattern: $_.Select($P)
+  - id: linq-any
+    rule:
+      pattern: $_.Any()
+  - id: linq-tolist
+    rule:
+      pattern: $_.ToList()
+  - id: task-run
+    rule:
+      pattern: Task.Run($A)
+  - id: assert-true
+    rule:
+      pattern: Assert.True($A)
+  - id: assert-equal
+    rule:
+      pattern: Assert.Equal($E, $A)
+
+  # --- new / cast / await / null ---
+  - id: new-instance
+    rule:
+      pattern: new $T($$$ARGS)
+  - id: cast-expr
+    rule:
+      pattern: ($T)$E
+  - id: await-expr
+    rule:
+      pattern: await $X
+  - id: coalesce
+    rule:
+      pattern: $X ?? $Y
+  - id: conditional-access
+    rule:
+      pattern: $X?.$Y
+  - id: null-conditional-invoke
+    rule:
+      pattern: $X?.$Y($$$ARGS)
+  - id: is-pattern
+    rule:
+      pattern: $E is $T
+  - id: as-cast
+    rule:
+      pattern: $E as $T
+  - id: nameof-expr
+    rule:
+      pattern: nameof($X)
+  - id: typeof-expr
+    rule:
+      pattern: typeof($T)
+
+  # --- statements / blocks ---
+  - id: if-block
+    rule:
+      pattern: "if ($C) { $$$ }"
+  - id: if-else
+    rule:
+      pattern: "if ($C) { $$$A } else { $$$B }"
+  - id: while-block
+    rule:
+      pattern: "while ($C) { $$$ }"
+  - id: foreach-block
+    rule:
+      pattern: "foreach (var $X in $Y) { $$$ }"
+  - id: for-block
+    rule:
+      pattern: "for ($$$INIT; $C; $$$UPD) { $$$ }"
+  - id: try-catch
+    rule:
+      pattern: "try { $$$TRY } catch ($T $E) { $$$HANDLER }"
+  - id: using-stmt
+    rule:
+      pattern: "using ($R) { $$$ }"
+  - id: lock-stmt
+    rule:
+      pattern: "lock ($O) { $$$ }"
+  - id: return-expr
+    rule:
+      pattern: "return $X;"
+  - id: throw-expr
+    rule:
+      pattern: "throw $X;"
+  - id: var-decl
+    rule:
+      pattern: "var $X = $Y;"
+  - id: using-directive
+    rule:
+      pattern: "using $N;"
+
+  # --- declarations ---
+  - id: public-method
+    rule:
+      pattern: "public $T $N($$$P) { $$$ }"
+  - id: class-decl
+    rule:
+      pattern: "class $N { $$$ }"
+  - id: simple-lambda
+    rule:
+      pattern: "$X => $Y"
+  - id: async-method
+    rule:
+      pattern: "async Task $N($$$P) { $$$ }"
+
+  # --- kind rules (Roslyn snake_case + tree-sitter aliases) ---
+  - id: kind-invocation
+    rule:
+      kind: invocation_expression
+  - id: kind-method
+    rule:
+      kind: method_declaration
+  - id: kind-class
+    rule:
+      kind: class_declaration
+  - id: kind-object-creation
+    rule:
+      kind: object_creation_expression
+  - id: kind-identifier
+    rule:
+      kind: identifier
+
+  # --- composite ---
+  - id: call-inside-method
+    rule:
+      pattern: $F($$$ARGS)
+      inside:
+        kind: method_declaration
+        stopBy: end
+  - id: new-inside-method
+    rule:
+      pattern: new $T($$$ARGS)
+      inside:
+        kind: method_declaration
+        stopBy: end
+
+  # --- rewrite smoke ---
+  - id: rewrite-console
+    rule:
+      pattern: Console.WriteLine($A)
+    fix: Logger.Info($A)
+  - id: rewrite-isnullorempty
+    rule:
+      pattern: string.IsNullOrEmpty($A)
+    fix: string.IsNullOrWhiteSpace($A)
