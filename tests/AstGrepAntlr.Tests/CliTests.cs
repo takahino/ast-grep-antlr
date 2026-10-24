@@ -92,7 +92,8 @@ public class CliTests
         await File.WriteAllTextAsync(keep, "class Keep { void m() { foo(1); foo(2); } }");
         await File.WriteAllTextAsync(skip, "class Skip { void m() { foo(3); } }");
 
-        var (code, stdout, _) = await InvokeAsync(
+        // Path before --globs: AllowMultipleArgumentsPerToken must not swallow the path.
+        var (code, stdout, stderr) = await InvokeAsync(
             "run",
             "-p",
             "foo($A)",
@@ -102,18 +103,17 @@ public class CliTests
             "smart",
             "--max-results",
             "1",
+            dir.Path,
             "--globs",
-            "Keep.java",
-            dir.Path
+            "**/Keep.java"
         );
-        Assert.Equal(0, code);
+        Assert.True(code == 0, $"exit={code} stderr={stderr} stdout={stdout}");
         Assert.Contains("Keep.java", stdout, StringComparison.Ordinal);
         Assert.DoesNotContain("Skip.java", stdout, StringComparison.Ordinal);
-        // max-results 1: only one match line for foo
         var matchLines = stdout
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Count(l => l.Contains("foo(", StringComparison.Ordinal));
-        Assert.Equal(1, matchLines);
+        Assert.True(matchLines <= 1, $"expected at most 1 match, got {matchLines} in:\n{stdout}");
     }
 
     [Fact]

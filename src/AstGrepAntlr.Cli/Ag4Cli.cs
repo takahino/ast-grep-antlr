@@ -102,7 +102,9 @@ public static class Ag4Cli
         };
         var globsOpt = new Option<string[]>("--globs")
         {
-            AllowMultipleArgumentsPerToken = true,
+            // One value per --globs occurrence so the paths argument is not swallowed.
+            AllowMultipleArgumentsPerToken = false,
+            Arity = ArgumentArity.ZeroOrMore,
             Description = "Include globs (repeatable; prefix ! to exclude)",
             DefaultValueFactory = _ => [],
         };
