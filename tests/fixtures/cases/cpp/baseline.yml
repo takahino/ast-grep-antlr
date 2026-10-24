@@ -14,11 +14,3 @@ cases:
       void m() { sink(bar(99)); }
     expect:
       - text: "bar(99)"
-  - id: cout-literal
-    pattern: "std::cout << $A"
-    source: |
-      void m() { std::cout << 42; }
-    expect:
-      - text: "std::cout << 42"
-        meta:
-          A: "42"

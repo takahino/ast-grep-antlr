@@ -30,38 +30,52 @@ public class GitIgnoreOracleTests
         yield return ["nested-path-miss", "sub/*.o\n", "other/a.o", false];
     }
 
-    [Theory]
-    [MemberData(nameof(OracleCases))]
-    public void Matcher_agrees_with_git_check_ignore(string id, string gitignore, string relativePath, bool asDirectory)
+    [Fact]
+    public void Matcher_agrees_with_git_check_ignore_matrix()
     {
-        _ = id;
         if (!TempGitRepo.IsGitAvailable())
         {
             return;
         }
 
-        using var repo = new TempGitRepo().Init();
-        repo.WriteGitignore(gitignore);
-
-        var full = Path.Combine(repo.Path, relativePath.Replace('/', Path.DirectorySeparatorChar));
-        if (asDirectory)
+        var failures = new List<string>();
+        foreach (var row in OracleCases())
         {
-            Directory.CreateDirectory(full);
+            var id = (string)row[0];
+            var gitignore = (string)row[1];
+            var relativePath = (string)row[2];
+            var asDirectory = (bool)row[3];
+
+            using var repo = new TempGitRepo().Init();
+            repo.WriteGitignore(gitignore);
+
+            var full = Path.Combine(repo.Path, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (asDirectory)
+            {
+                Directory.CreateDirectory(full);
+            }
+            else
+            {
+                var parent = Path.GetDirectoryName(full);
+                if (!string.IsNullOrEmpty(parent))
+                {
+                    Directory.CreateDirectory(parent);
+                }
+
+                File.WriteAllText(full, "x");
+            }
+
+            var expected = repo.CheckIgnore(relativePath.Replace('\\', '/'));
+            var matcher = new GitIgnoreMatcher();
+            matcher.AddFile(string.Empty, gitignore.Split('\n'));
+            var actual = matcher.IsIgnored(relativePath.Replace('\\', '/'), isDirectory: asDirectory);
+            if (expected != actual)
+            {
+                failures.Add($"{id}: git={expected} matcher={actual} path={relativePath}");
+            }
         }
-        else
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-            File.WriteAllText(full, "x");
-        }
 
-        // Materialize paths for git (untracked is fine for check-ignore).
-        var expected = repo.CheckIgnore(relativePath.Replace('\\', '/'));
-
-        var matcher = new GitIgnoreMatcher();
-        matcher.AddFile(string.Empty, gitignore.Split('\n'));
-        var actual = matcher.IsIgnored(relativePath.Replace('\\', '/'), isDirectory: asDirectory);
-
-        Assert.Equal(expected, actual);
+        Assert.True(failures.Count == 0, string.Join('\n', failures));
     }
 
     [Fact]
@@ -80,18 +94,14 @@ public class GitIgnoreOracleTests
         File.WriteAllText(Path.Combine(repo.Path, "pkg", "debug.log"), "x");
         File.WriteAllText(Path.Combine(repo.Path, "pkg", "other.log"), "x");
 
-        var walker = new FileWalker();
-        var found = walker
+        var found = new FileWalker()
             .Enumerate([repo.Path], new FileWalkOptions { Extensions = [".log"], IncludeHidden = true })
             .Select(f => Path.GetRelativePath(repo.Path, f).Replace('\\', '/'))
             .OrderBy(s => s, StringComparer.Ordinal)
             .ToList();
 
-        // Root *.log ignores all .log; pkg/!debug.log un-ignores only under pkg.
-        // git: root.log ignored; pkg/other.log ignored by root; pkg/debug.log may be un-ignored.
         Assert.DoesNotContain("root.log", found);
         Assert.DoesNotContain("pkg/other.log", found);
-        // Negation in nested gitignore: align with git check-ignore when possible.
         var debugIgnored = repo.CheckIgnore("pkg/debug.log");
         if (!debugIgnored)
         {
