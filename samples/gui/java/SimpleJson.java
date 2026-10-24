@@ -36,6 +36,22 @@ final class SimpleJson {
         + "}";
   }
 
+  static String searchRequestSources(
+      String pattern, String language, String label, String content, int maxResults) {
+    return "{"
+        + "\"pattern\":"
+        + quote(pattern)
+        + ",\"language\":"
+        + quote(language)
+        + ",\"sources\":[{\"path\":"
+        + quote(label)
+        + ",\"content\":"
+        + quote(content)
+        + "}],\"strictness\":\"smart\",\"maxResults\":"
+        + maxResults
+        + "}";
+  }
+
   static String errorMessage(String json) {
     Object root = parse(json);
     if (root instanceof Map<?, ?> map && map.get("error") instanceof String err) {

@@ -7,8 +7,18 @@ internal sealed class SearchRequest
     public string? Pattern { get; set; }
     public string? Language { get; set; }
     public string[]? Paths { get; set; }
+
+    /// <summary>In-memory sources from a frontend; when non-empty, <see cref="Paths"/> is ignored.</summary>
+    public SourceDto[]? Sources { get; set; }
     public string? Strictness { get; set; }
     public int? MaxResults { get; set; }
+}
+
+internal sealed class SourceDto
+{
+    /// <summary>Display path / label in match results (not read from disk).</summary>
+    public string? Path { get; set; }
+    public string? Content { get; set; }
 }
 
 internal sealed class ErrorResponse
@@ -68,6 +78,7 @@ internal sealed class MetaEntryDto
     WriteIndented = false
 )]
 [JsonSerializable(typeof(SearchRequest))]
+[JsonSerializable(typeof(SourceDto))]
 [JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(MatchDto[]))]
 [JsonSerializable(typeof(MatchDto))]

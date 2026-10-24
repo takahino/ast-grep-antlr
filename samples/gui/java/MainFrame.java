@@ -124,17 +124,36 @@ public final class MainFrame extends JFrame {
   private static int smoke() {
     try {
       System.out.println("version=" + Ag4Native.version());
-      String req =
+      String pathReq =
           SimpleJson.searchRequest("foo($$$ARGS)", "java", Ag4Native.defaultFixturesDir(), 10);
-      Ag4Native.Result r = Ag4Native.search(req);
-      System.out.println("rc=" + r.code());
-      System.out.println(r.json());
-      if (r.code() != 0) {
+      Ag4Native.Result pathResult = Ag4Native.search(pathReq);
+      System.out.println("paths rc=" + pathResult.code());
+      System.out.println(pathResult.json());
+      if (pathResult.code() != 0) {
         return 1;
       }
-      int n = SimpleJson.asObjectArray(r.json()).size();
-      System.out.println("matches=" + n);
-      return n > 0 ? 0 : 2;
+      int pathN = SimpleJson.asObjectArray(pathResult.json()).size();
+      System.out.println("paths matches=" + pathN);
+      if (pathN == 0) {
+        return 2;
+      }
+
+      String srcReq =
+          SimpleJson.searchRequestSources(
+              "foo($$$ARGS)",
+              "java",
+              "snippet.java",
+              "class Demo { void m() { foo(1, 2); } }\n",
+              10);
+      Ag4Native.Result srcResult = Ag4Native.search(srcReq);
+      System.out.println("sources rc=" + srcResult.code());
+      System.out.println(srcResult.json());
+      if (srcResult.code() != 0) {
+        return 1;
+      }
+      int srcN = SimpleJson.asObjectArray(srcResult.json()).size();
+      System.out.println("sources matches=" + srcN);
+      return srcN > 0 ? 0 : 2;
     } catch (Exception ex) {
       ex.printStackTrace();
       return 3;

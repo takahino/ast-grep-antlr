@@ -67,6 +67,8 @@ python main.py --smoke
 
 ## Request JSON shape
 
+Filesystem (walk `paths`):
+
 ```json
 {
   "pattern": "foo($$$ARGS)",
@@ -77,4 +79,25 @@ python main.py --smoke
 }
 ```
 
+In-memory buffers (frontend-collected strings; when `sources` is non-empty, `paths` is ignored):
+
+```json
+{
+  "pattern": "foo($$$ARGS)",
+  "language": "java",
+  "sources": [
+    {
+      "path": "snippet.java",
+      "content": "class Demo { void m() { foo(1, 2); } }\n"
+    }
+  ],
+  "strictness": "smart",
+  "maxResults": 100
+}
+```
+
+`sources[].path` is a label only (shown as match `file`); nothing is read from disk.
+
 Response is a JSON array of matches (same general shape as `ag4 run --json`).
+
+The C# sample GUI can switch **Path** / **Source** mode to try both.

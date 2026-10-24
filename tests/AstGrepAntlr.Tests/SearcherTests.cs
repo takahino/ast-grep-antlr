@@ -35,4 +35,20 @@ public class SearcherTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Fact]
+    public void RunPatternOnSources_finds_match_without_disk()
+    {
+        var registry = BuiltinLanguages.CreateRegistry();
+        var hits = new Searcher()
+            .RunPatternOnSources(
+                "foo($$$ARGS)",
+                [new SourceInput("snippet.java", "class Demo { void m() { foo(1, 2); } }\n")],
+                new SearchOptions { Registry = registry, LanguageId = "java" }
+            )
+            .ToList();
+        Assert.Single(hits);
+        Assert.Equal("snippet.java", hits[0].File);
+        Assert.Equal("1, 2", hits[0].MetaVariables["ARGS"].Text);
+    }
 }

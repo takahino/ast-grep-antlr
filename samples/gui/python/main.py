@@ -23,13 +23,35 @@ def smoke() -> int:
                 "maxResults": 10,
             }
         )
-        print(f"rc={rc}")
+        print(f"paths rc={rc}")
         print(body)
         if rc != 0:
             return 1
         matches = json.loads(body)
-        print(f"matches={len(matches)}")
-        return 0 if matches else 2
+        print(f"paths matches={len(matches)}")
+        if not matches:
+            return 2
+
+        src_rc, src_body = api.search(
+            {
+                "pattern": "foo($$$ARGS)",
+                "language": "java",
+                "sources": [
+                    {
+                        "path": "snippet.java",
+                        "content": "class Demo { void m() { foo(1, 2); } }\n",
+                    }
+                ],
+                "maxResults": 10,
+            }
+        )
+        print(f"sources rc={src_rc}")
+        print(src_body)
+        if src_rc != 0:
+            return 1
+        src_matches = json.loads(src_body)
+        print(f"sources matches={len(src_matches)}")
+        return 0 if src_matches else 2
     except Exception as ex:  # noqa: BLE001 — sample CLI
         print(ex, file=sys.stderr)
         return 3

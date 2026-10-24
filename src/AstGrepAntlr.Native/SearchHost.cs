@@ -37,7 +37,6 @@ internal static class SearchHost
             throw new ArgumentException("language is required.");
         }
 
-        var paths = req.Paths is { Length: > 0 } ? (IReadOnlyList<string>)req.Paths : ["."];
         var max = req.MaxResults is > 0 ? req.MaxResults.Value : int.MaxValue;
         var strictness = Strictness.Smart;
         if (
@@ -48,37 +47,76 @@ internal static class SearchHost
             throw new ArgumentException($"Unknown strictness '{req.Strictness}'.");
         }
 
-        var matches = new Searcher()
-            .RunPattern(
-                req.Pattern!,
-                new SearchOptions
+        List<MatchResult> matches;
+        var useSources = req.Sources is { Length: > 0 };
+        if (useSources)
+        {
+            var sources = new List<SourceInput>(req.Sources!.Length);
+            for (var i = 0; i < req.Sources.Length; i++)
+            {
+                var s = req.Sources[i];
+                if (s.Content is null)
                 {
-                    Registry = Registry.Value,
-                    LanguageId = req.Language,
-                    Paths = paths,
-                    MaxResults = max,
-                    NoIgnore = true,
-                    IncludeHidden = true,
-                },
-                strictness
-            )
-            .ToList();
+                    throw new ArgumentException($"sources[{i}].content is required.");
+                }
+
+                var label = string.IsNullOrWhiteSpace(s.Path) ? $"<buffer:{i}>" : s.Path!;
+                sources.Add(new SourceInput(label, s.Content));
+            }
+
+            matches = new Searcher()
+                .RunPatternOnSources(
+                    req.Pattern!,
+                    sources,
+                    new SearchOptions
+                    {
+                        Registry = Registry.Value,
+                        LanguageId = req.Language,
+                        MaxResults = max,
+                        NoIgnore = true,
+                        IncludeHidden = true,
+                    },
+                    strictness
+                )
+                .ToList();
+        }
+        else
+        {
+            matches = new Searcher()
+                .RunPattern(
+                    req.Pattern!,
+                    new SearchOptions
+                    {
+                        Registry = Registry.Value,
+                        LanguageId = req.Language,
+                        Paths = req.Paths is { Length: > 0 } ? req.Paths : ["."],
+                        MaxResults = max,
+                        NoIgnore = true,
+                        IncludeHidden = true,
+                    },
+                    strictness
+                )
+                .ToList();
+        }
 
         var cwd = Directory.GetCurrentDirectory();
-        var dtos = matches.Select(m => ToDto(m, cwd)).ToArray();
+        var dtos = matches.Select(m => ToDto(m, cwd, relativize: !useSources)).ToArray();
         return JsonSerializer.Serialize(dtos, NativeJsonContext.Default.MatchDtoArray);
     }
 
-    private static MatchDto ToDto(MatchResult m, string cwd)
+    private static MatchDto ToDto(MatchResult m, string cwd, bool relativize)
     {
         var relative = m.File;
-        try
+        if (relativize)
         {
-            relative = Path.GetRelativePath(cwd, m.File).Replace('\\', '/');
-        }
-        catch
-        {
-            // keep absolute
+            try
+            {
+                relative = Path.GetRelativePath(cwd, m.File).Replace('\\', '/');
+            }
+            catch
+            {
+                // keep absolute
+            }
         }
 
         Dictionary<string, MetaEntryDto>? single = null;

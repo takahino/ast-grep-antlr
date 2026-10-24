@@ -27,6 +27,9 @@ public sealed class SearchOptions
     public CancellationToken CancellationToken { get; init; }
 }
 
+/// <summary>Named in-memory source for pattern search without touching the filesystem.</summary>
+public readonly record struct SourceInput(string Path, string Content);
+
 public sealed class Searcher
 {
     private readonly TwoStageParser _parser = new();
@@ -59,6 +62,34 @@ public sealed class Searcher
         );
         return SearchFiles(
             files,
+            language,
+            compiled.RequiredLiterals,
+            options,
+            tree => _matcher.MatchAll(tree, compiled),
+            ruleId: null,
+            message: null,
+            severity: null
+        );
+    }
+
+    /// <summary>
+    /// Pattern-search over caller-supplied source strings (e.g. frontend-collected buffers).
+    /// <paramref name="sources"/> paths are labels only (appear in match <c>file</c>); nothing is read from disk.
+    /// </summary>
+    public IEnumerable<MatchResult> RunPatternOnSources(
+        string pattern,
+        IReadOnlyList<SourceInput> sources,
+        SearchOptions options,
+        Strictness strictness = Strictness.Smart,
+        string? entry = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+        var langId = options.LanguageId ?? throw new ArgumentException("Language is required for pattern search (-l).");
+        var language = options.Registry.Get(langId);
+        var compiled = _compiler.Compile(language, new PatternSpec(pattern, entry, Strictness: strictness));
+        return SearchSources(
+            sources,
             language,
             compiled.RequiredLiterals,
             options,
@@ -136,34 +167,89 @@ public sealed class Searcher
                     return;
                 }
 
-                // One line map per file; every match in it resolves by binary search.
-                var lines = new LineMap(parsed.Tree.Source);
-                var offsets = OffsetMap.ForSource(parsed.Source.Text, parsed.Source.Detected);
-                foreach (var (node, env) in match(parsed.Tree))
-                {
-                    bag.Add(
-                        ToMatch(
-                            file,
-                            language.Id,
-                            parsed.Tree,
-                            lines,
-                            offsets,
-                            node,
-                            env,
-                            ruleId,
-                            message,
-                            severity,
-                            parsed.Source,
-                            options.ContextLines
-                        )
-                    );
-                }
+                CollectMatches(bag, file, language.Id, parsed, match, ruleId, message, severity, options.ContextLines);
             }
         );
 
-        // Ordinal so results are identical across platforms and culture settings.
-        return bag.OrderBy(m => m.File, StringComparer.Ordinal).ThenBy(m => m.Start).Take(options.MaxResults);
+        return OrderTake(bag, options.MaxResults);
     }
+
+    private IEnumerable<MatchResult> SearchSources(
+        IReadOnlyList<SourceInput> sources,
+        ILanguage language,
+        IReadOnlyList<string> requiredLiterals,
+        SearchOptions options,
+        Func<SyntaxTree, IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)>> match,
+        string? ruleId,
+        string? message,
+        string? severity
+    )
+    {
+        var bag = new ConcurrentBag<MatchResult>();
+
+        Parallel.ForEach(
+            sources,
+            new ParallelOptions
+            {
+                CancellationToken = options.CancellationToken,
+                MaxDegreeOfParallelism = Environment.ProcessorCount,
+            },
+            input =>
+            {
+                var path = string.IsNullOrEmpty(input.Path) ? "<buffer>" : input.Path;
+                var source = SourceFile.FromText(path, input.Content ?? "");
+                var parsed = TryParseSource(source, language, requiredLiterals, options);
+                if (parsed is null)
+                {
+                    return;
+                }
+
+                CollectMatches(bag, path, language.Id, parsed, match, ruleId, message, severity, options.ContextLines);
+            }
+        );
+
+        return OrderTake(bag, options.MaxResults);
+    }
+
+    private static void CollectMatches(
+        ConcurrentBag<MatchResult> bag,
+        string file,
+        string languageId,
+        ParsedFile parsed,
+        Func<SyntaxTree, IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)>> match,
+        string? ruleId,
+        string? message,
+        string? severity,
+        int contextLines
+    )
+    {
+        // One line map per file; every match in it resolves by binary search.
+        var lines = new LineMap(parsed.Tree.Source);
+        var offsets = OffsetMap.ForSource(parsed.Source.Text, parsed.Source.Detected);
+        foreach (var (node, env) in match(parsed.Tree))
+        {
+            bag.Add(
+                ToMatch(
+                    file,
+                    languageId,
+                    parsed.Tree,
+                    lines,
+                    offsets,
+                    node,
+                    env,
+                    ruleId,
+                    message,
+                    severity,
+                    parsed.Source,
+                    contextLines
+                )
+            );
+        }
+    }
+
+    private static IEnumerable<MatchResult> OrderTake(ConcurrentBag<MatchResult> bag, int maxResults) =>
+        // Ordinal so results are identical across platforms and culture settings.
+        bag.OrderBy(m => m.File, StringComparer.Ordinal).ThenBy(m => m.Start).Take(maxResults);
 
     /// <summary>Returns the parsed tree, or null when the file is skipped (too large, prefiltered out, unparseable).</summary>
     private ParsedFile? TryParseFile(
@@ -188,7 +274,22 @@ public sealed class Searcher
             return null;
         }
 
-        if (!Prefilter.MayContain(source!.Text, requiredLiterals, language.IgnoreCase))
+        return TryParseSource(source!, language, requiredLiterals, options);
+    }
+
+    private ParsedFile? TryParseSource(
+        SourceFile source,
+        ILanguage language,
+        IReadOnlyList<string> requiredLiterals,
+        SearchOptions options
+    )
+    {
+        if (language.MaxFileBytes > 0 && source.Bytes.Length > language.MaxFileBytes)
+        {
+            return null;
+        }
+
+        if (!Prefilter.MayContain(source.Text, requiredLiterals, language.IgnoreCase))
         {
             return null;
         }
@@ -208,7 +309,7 @@ public sealed class Searcher
         {
             if (options.ShowErrors)
             {
-                Console.Error.WriteLine($"ag4: parse failed {file}: {ex.Message}");
+                Console.Error.WriteLine($"ag4: parse failed {source.Path}: {ex.Message}");
             }
 
             return null;

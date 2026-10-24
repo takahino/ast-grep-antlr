@@ -20,8 +20,12 @@ const char* ag4_version(void);
 
 /**
  * Pattern search.
- * request_json example:
+ * request_json — filesystem:
  *   {"pattern":"foo($$$ARGS)","language":"java","paths":["."],"strictness":"smart","maxResults":100}
+ * request_json — in-memory buffers (frontend-collected strings; paths ignored when sources set):
+ *   {"pattern":"foo($$$ARGS)","language":"java",
+ *    "sources":[{"path":"Demo.java","content":"class Demo { void m(){ foo(1,2); } }"}],
+ *    "strictness":"smart","maxResults":100}
  * On success (return 0): *out_json is a JSON array of matches (CLI-compatible shape).
  * On failure (non-zero): *out_json is {"error":"..."} when allocation succeeded.
  * Caller must ag4_free(*out_json) when non-NULL.

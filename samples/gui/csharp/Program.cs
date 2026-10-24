@@ -23,7 +23,7 @@ internal static class Program
         {
             Console.WriteLine($"version={Ag4Native.Version()}");
             var fixtures = Ag4Native.DefaultFixturesDir();
-            var req = JsonSerializer.Serialize(
+            var pathReq = JsonSerializer.Serialize(
                 new
                 {
                     pattern = "foo($$$ARGS)",
@@ -32,17 +32,44 @@ internal static class Program
                     maxResults = 10,
                 }
             );
-            var (code, json) = Ag4Native.Search(req);
-            Console.WriteLine($"rc={code}");
-            Console.WriteLine(json);
-            if (code != 0)
+            var (pathCode, pathJson) = Ag4Native.Search(pathReq);
+            Console.WriteLine($"paths rc={pathCode}");
+            Console.WriteLine(pathJson);
+            if (pathCode != 0)
             {
                 return 1;
             }
 
-            var rows = MatchParser.Parse(json);
-            Console.WriteLine($"matches={rows.Count}");
-            return rows.Count > 0 ? 0 : 2;
+            var pathRows = MatchParser.Parse(pathJson);
+            Console.WriteLine($"paths matches={pathRows.Count}");
+            if (pathRows.Count == 0)
+            {
+                return 2;
+            }
+
+            var sourceReq = JsonSerializer.Serialize(
+                new
+                {
+                    pattern = "foo($$$ARGS)",
+                    language = "java",
+                    sources = new[]
+                    {
+                        new { path = "snippet.java", content = "class Demo { void m() { foo(1, 2); } }\n" },
+                    },
+                    maxResults = 10,
+                }
+            );
+            var (srcCode, srcJson) = Ag4Native.Search(sourceReq);
+            Console.WriteLine($"sources rc={srcCode}");
+            Console.WriteLine(srcJson);
+            if (srcCode != 0)
+            {
+                return 1;
+            }
+
+            var srcRows = MatchParser.Parse(srcJson);
+            Console.WriteLine($"sources matches={srcRows.Count}");
+            return srcRows.Count > 0 ? 0 : 2;
         }
         catch (Exception ex)
         {

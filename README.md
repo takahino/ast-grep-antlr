@@ -119,7 +119,8 @@ Requires Java + `tools/antlr-4.13.2-complete.jar` (lookup: `--antlr-jar`, `ANTLR
 ## Embedding / sample GUIs
 
 Cross-language embedding uses a NativeAOT shared library (`ag4_native`) with a small C ABI
-(`ag4_search` JSON in/out). Sample GUIs that **load the DLL** (not the CLI):
+(`ag4_search` JSON in/out: filesystem `paths` or in-memory `sources` buffers). Sample GUIs that
+**load the DLL** (not the CLI):
 
 | Language | UI       | FFI      |
 | -------- | -------- | -------- |
