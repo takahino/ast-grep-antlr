@@ -4,6 +4,7 @@
     <Project Path="src/AstGrepAntlr.Core/AstGrepAntlr.Core.csproj" />
     <Project Path="src/AstGrepAntlr.Languages/AstGrepAntlr.Languages.csproj" />
     <Project Path="src/AstGrepAntlr.Mcp/AstGrepAntlr.Mcp.csproj" />
+    <Project Path="src/AstGrepAntlr.Native/AstGrepAntlr.Native.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AstGrepAntlr.Tests/AstGrepAntlr.Tests.csproj" />

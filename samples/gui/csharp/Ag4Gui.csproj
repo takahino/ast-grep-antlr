@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Ag4Gui</RootNamespace>
+    <AssemblyName>Ag4Gui</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <!-- Sample is outside Directory.Build.props package lock rules. -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!-- Sample: keep P/Invoke UTF-8 marshalling without fighting repo-wide analyzers. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CA2101;CA1869</NoWarn>
+  </PropertyGroup>
+</Project>

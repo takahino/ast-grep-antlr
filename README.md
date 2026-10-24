@@ -116,6 +116,23 @@ Requires Java + `tools/antlr-4.13.2-complete.jar` (lookup: `--antlr-jar`, `ANTLR
 - Multi-metavars in blocks/class bodies use language `metaVarVariants` (`{0}`, `{0};`, `int {0};`, …).
 - Typed metavars: `${A:expression}` is checked with `KindMatches` at match time.
 
+## Embedding / sample GUIs
+
+Cross-language embedding uses a NativeAOT shared library (`ag4_native`) with a small C ABI
+(`ag4_search` JSON in/out). Sample GUIs that **load the DLL** (not the CLI):
+
+| Language | UI       | FFI      |
+| -------- | -------- | -------- |
+| C#       | WinForms | P/Invoke |
+| Java     | Swing    | JNA      |
+| Python   | tkinter  | ctypes   |
+
+See [samples/gui/README.md](samples/gui/README.md) (publish `ag4_native`, then run each sample).
+Header: [samples/gui/include/ag4_native.h](samples/gui/include/ag4_native.h).
+
+For pure .NET in-process use you can also reference `AstGrepAntlr.Core` + `AstGrepAntlr.Languages`
+and call `Searcher` directly.
+
 ## Differential testing vs ast-grep
 
 Compare ag4 against pinned `@ast-grep/cli@0.51.0` on real Java/C++/C# corpora:
