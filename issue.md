@@ -8,30 +8,30 @@
 
 ## 対応状況（2026-10-24）
 
-| #                        | 状態         | 備考                                                               |
-| ------------------------ | ------------ | ------------------------------------------------------------------ |
-| B1 / M1                  | **修正済み** | `EncodingDetector` / `SourceFile`、生バイト SHA-256、`--encoding`  |
-| B2                       | **修正済み** | EOF 消費チェック、ルート降下、`PatternRules` 具体順                |
-| B3 / B4 / B10 / B11 / M9 | **修正済み** | ast-grep 互換終了コード、`ag4:` エラー、`--error-on`、実 version   |
-| B5                       | **修正済み** | 範囲ベース metavar 印付け + `MetaVarVariants`                      |
-| B6                       | **修正済み** | 単一 metavar のリスト過剰マッチ防止                                |
-| B7                       | **修正済み** | 実 `byteOffset` + `charOffset`、JSON を本家寄りに                  |
-| B8                       | **修正済み** | `CollapseChains` が吸収済みノードをスキップ                        |
-| B9 / B13                 | **修正済み** | 1 パス `$$$NAME` テンプレート、Myers 風 unified diff               |
-| B12                      | **修正済み** | ルールごとの hit に fix、欠落 `id` は警告＋仮 id                   |
-| M2                       | **修正済み** | 共通 `-c/--config`、カスタム言語の遅延登録                         |
-| M3                       | **修正済み** | `precedes` / `follows`、`inside`/`has` の `stopBy` 既定 = neighbor |
-| M4                       | **修正済み** | `${A:rule}` を `KindMatches` で検証                                |
-| M5 / M6                  | **修正済み** | `files`/`ignores` glob、`utilDirs`、`--strictness` 等              |
-| M7 / M8                  | **修正済み** | ANTLR jar 探索順、gitignore 実装、`--no-ignore`、隠しファイル除外  |
-| M10                      | **修正済み** | ケースファイル・行列・オラクル・CLI テスト（200+）                 |
-| 追加                     | **対応**     | 組み込み C++ (CPP14)、ast-grep 差分検証（`difftest/`）             |
+| #                        | 状態         | 備考                                                                |
+| ------------------------ | ------------ | ------------------------------------------------------------------- |
+| B1 / M1                  | **修正済み** | `EncodingDetector` / `SourceFile`、生バイト SHA-256、`--encoding`   |
+| B2                       | **修正済み** | EOF 消費チェック、ルート降下、`PatternRules` 具体順                 |
+| B3 / B4 / B10 / B11 / M9 | **修正済み** | ast-grep 互換終了コード、`ag4:` エラー、`--error-on`、実 version    |
+| B5                       | **修正済み** | 範囲ベース metavar 印付け + `MetaVarVariants`                       |
+| B6                       | **修正済み** | 単一 metavar のリスト過剰マッチ防止                                 |
+| B7                       | **修正済み** | 実 `byteOffset` + `charOffset`、JSON を本家寄りに                   |
+| B8                       | **修正済み** | `CollapseChains` が吸収済みノードをスキップ                         |
+| B9 / B13                 | **修正済み** | 1 パス `$$$NAME` テンプレート、Myers 風 unified diff                |
+| B12                      | **修正済み** | ルールごとの hit に fix、欠落 `id` は警告＋仮 id                    |
+| M2                       | **修正済み** | 共通 `-c/--config`、カスタム言語の遅延登録                          |
+| M3                       | **修正済み** | `precedes` / `follows`、`inside`/`has` の `stopBy` 既定 = neighbor  |
+| M4                       | **修正済み** | `${A:rule}` を `KindMatches` で検証                                 |
+| M5 / M6                  | **修正済み** | `files`/`ignores` glob、`utilDirs`、`--strictness` 等               |
+| M7 / M8                  | **修正済み** | ANTLR jar 探索順、gitignore 実装、`--no-ignore`、隠しファイル除外   |
+| M10                      | **修正済み** | ケースファイル・行列・オラクル・CLI テスト（200+）                  |
+| 追加                     | **対応**     | 組み込み C++ (CPP14)、C# (Roslyn)、ast-grep 差分検証（`difftest/`） |
 
 既知の制限:
 
-- C# 組み込み言語は見送り（grammars-v4 が EPL-1.0）
+- C# 組み込みは **Roslyn**（MIT）。grammars-v4 C# は EPL-1.0 のため未バンドル（`customLanguages` で利用可）
 - C++ の `<<` など巨大な expression 木へのパターンは MatchAll が重い場合あり
-- tree-sitter と ANTLR のノード境界差は `difftest/known-differences.yml` に記録
+- tree-sitter と ANTLR / Roslyn のノード境界差は `difftest/known-differences.yml` に記録
 
 ## 優先度一覧（調査時）
 

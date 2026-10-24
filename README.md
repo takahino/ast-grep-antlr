@@ -14,7 +14,7 @@ This project is **not** affiliated with the official ast-grep project.
 - Encoding preservation (UTF-8/BOM, UTF-16/32, Shift_JIS, EUC-JP) via `--encoding` / `sgconfig.yml`
 - Custom DSLs via `.g4` / `.interp` (`sgconfig.yml` → `customLanguages`, lazy-loaded)
 - MCP server: `ag4 mcp` (stdio) for AI agents
-- Built-in languages: **Java**, **C++** (CPP14), **SQLite** (more via custom grammars)
+- Built-in languages: **Java**, **C++** (CPP14), **C#** (Roslyn), **SQLite** (more via custom grammars)
 
 ## Install
 
@@ -70,9 +70,12 @@ Stderr messages are prefixed with `ag4:`. Use `--debug` for stack traces.
 | -------- | ------------------ | ---------------------------------------------------------- |
 | `java`   |                    | `.java`                                                    |
 | `cpp`    | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, `.cxx`, `.c++`, `.hpp`, `.hh`, `.hxx`, `.h` |
+| `csharp` | `cs`, `c#`         | `.cs`                                                      |
 | `sqlite` |                    | `.sql`                                                     |
 
 C++ uses the grammars-v4 **CPP14** grammar (MIT). C++17+ syntax and heavy macros may fail to parse; see [difftest/REPORT.md](difftest/REPORT.md).
+
+C# uses **Roslyn** (`Microsoft.CodeAnalysis.CSharp`, MIT). Node kinds are Roslyn `SyntaxKind` names in snake_case (`invocation_expression`), with tree-sitter-c-sharp aliases where names differ (`identifier_name` ↔ `identifier`, binary ops ↔ `binary_expression`, …).
 
 ### Cursor MCP (`.cursor/mcp.json`)
 
@@ -115,7 +118,7 @@ Requires Java + `tools/antlr-4.13.2-complete.jar` (lookup: `--antlr-jar`, `ANTLR
 
 ## Differential testing vs ast-grep
 
-Compare ag4 against pinned `@ast-grep/cli@0.51.0` on real Java/C++ corpora:
+Compare ag4 against pinned `@ast-grep/cli@0.51.0` on real Java/C++/C# corpora:
 
 ```bash
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus difftest/corpus.yml

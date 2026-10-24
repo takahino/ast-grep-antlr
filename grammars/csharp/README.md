@@ -1,11 +1,12 @@
 # csharp grammar
 
-Not compiled into the default build (size / base-class complexity).
+Built-in C# support uses **Roslyn** (`Microsoft.CodeAnalysis.CSharp`, MIT), not
+the grammars-v4 ANTLR grammar (EPL-1.0). Language id: `csharp` (aliases `cs`, `c#`).
 
-Use `customLanguages` in `sgconfig.yml` with grammars from
-https://github.com/antlr/grammars-v4 and either:
+You can still load an ANTLR C# grammar via `customLanguages` in `sgconfig.yml`
+from https://github.com/antlr/grammars-v4 (`.g4` or prebuilt `.interp`), under a
+different language id if desired.
 
-1. Point `grammar` at `.g4` files (requires Java + `tools/antlr-4.13.2-complete.jar`), or
-2. Point `grammar` at prebuilt `.interp` files.
-
-Built-in generated support may be added in a later release.
+See the main [README](../../README.md) for kind naming (Roslyn snake_case +
+tree-sitter-c-sharp aliases) and [difftest/REPORT.md](../../difftest/REPORT.md)
+for comparison numbers vs ast-grep.

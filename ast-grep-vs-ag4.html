@@ -224,6 +224,7 @@
             <th>指標</th>
             <th class="num">Java</th>
             <th class="num">C++</th>
+            <th class="num">C#</th>
           </tr>
         </thead>
         <tbody>
@@ -231,39 +232,47 @@
             <td>両方一致 (same)</td>
             <td class="num">21 393</td>
             <td class="num">520</td>
+            <td class="num">50 540</td>
           </tr>
           <tr>
             <td>本家のみ (only ast-grep)</td>
             <td class="num">3 950</td>
             <td class="num">2 724</td>
+            <td class="num">39 042</td>
           </tr>
           <tr>
             <td>ag4 のみ (only ag4)</td>
             <td class="num">7 261</td>
             <td class="num">49</td>
+            <td class="num">3 736</td>
           </tr>
           <tr>
             <td>範囲ずれ (range-diff)</td>
             <td class="num">0</td>
             <td class="num">1</td>
+            <td class="num">13</td>
           </tr>
           <tr>
             <td>メタ変数ずれ (metavar-diff)</td>
             <td class="num">4 671</td>
             <td class="num">83</td>
+            <td class="num">9 423</td>
           </tr>
           <tr>
             <td>一致率</td>
             <td class="num">約 57%</td>
             <td class="num">約 15%</td>
+            <td class="num">約 49%</td>
           </tr>
           <tr>
             <td>速度比 (ag4 ÷ 本家)</td>
             <td class="num">約 18× 遅い</td>
             <td class="num">約 41× 遅い</td>
+            <td class="num">約 6× 遅い</td>
           </tr>
           <tr>
             <td>説明不能差分（known 適用後）</td>
+            <td class="num">0</td>
             <td class="num">0</td>
             <td class="num">0</td>
           </tr>
@@ -272,7 +281,9 @@
       <p>
         修正前の Java ベースラインでは range-diff が 3 541 件あったが、実バイト
         <code>byteOffset</code> 対応後は Java で <strong>0</strong>。C++ の低い一致率は主に
-        <strong>CPP14 文法の限界</strong>（C++17+・マクロ）によるパース不能・取りこぼし。
+        <strong>CPP14 文法の限界</strong>（C++17+・マクロ）によるパース不能・取りこぼし。C# は
+        <strong>Roslyn</strong> バックエンド（tree-sitter-c-sharp との CST 差は
+        <code>csharp-*</code> として記録）。
       </p>
 
       <h2>3. 精度をどう見るか</h2>
@@ -366,6 +377,14 @@ public String toString() { return ""; }</code></pre>
           <strong>C++・ag4 のみ（少数）:</strong> qualified ctor（例:
           <code>std::string(...)</code>）、 <code>std::move</code>、namespace/class body など
         </li>
+        <li>
+          <strong>C#・本家のみ:</strong> 括弧付き式をキャストとみなすケース、
+          <code>identifier</code> の粒度差、await / lambda / typeof・nameof など
+        </li>
+        <li>
+          <strong>C#・ag4 のみ:</strong> 中括弧付き if/for/while/foreach、
+          <code>public $T $N(...)</code> など Roslyn では当たりやすいブロック／宣言パターン
+        </li>
       </ul>
 
       <h2>5. 揃えた／近づけた点（差異ではない）</h2>
@@ -387,7 +406,8 @@ public String toString() { return ""; }</code></pre>
         </li>
         <li>
           <a href="difftest/patterns/java.yml">difftest/patterns/java.yml</a> /
-          <a href="difftest/patterns/cpp.yml">cpp.yml</a> — 比較に使ったパターン
+          <a href="difftest/patterns/cpp.yml">cpp.yml</a> /
+          <a href="difftest/patterns/csharp.yml">csharp.yml</a> — 比較に使ったパターン
         </li>
         <li><a href="difftest/corpus.yml">difftest/corpus.yml</a> — 固定コーパス</li>
         <li><a href="issue.md">issue.md</a> — 不具合・機能対応状況</li>

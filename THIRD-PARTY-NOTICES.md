@@ -22,6 +22,7 @@ Source: https://github.com/antlr/grammars-v4
 - System.CommandLine — MIT
 - ModelContextProtocol — MIT
 - Microsoft.Extensions.\* — MIT
+- Microsoft.CodeAnalysis.CSharp (Roslyn) — MIT
 - xunit / test SDK — Apache-2.0 / MIT
 
 ## Dev tooling
