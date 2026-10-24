@@ -27,20 +27,20 @@ repos:
     sha: 99b3c03b3284f5886f9ef9a4ef703d57373e61be
     paths:
       - include
-      - db
-      - util
   - id: cereal
     language: cpp
     remote: https://github.com/USCiLab/cereal.git
     ref: v1.3.2
     sha: ebef1e929807629befafbb2918ea1a08c7194554
     paths:
-      - include/cereal
+      - include/cereal/cereal.hpp
+      - include/cereal/access.hpp
+      - include/cereal/macros.hpp
   - id: fmt
     language: cpp
     remote: https://github.com/fmtlib/fmt.git
     ref: 11.0.2
     sha: 0c9fce2ffefecfdce794e1859584e25877b7b592
     paths:
-      - include
-      - src
+      - include/fmt/core.h
+      - include/fmt/format.h

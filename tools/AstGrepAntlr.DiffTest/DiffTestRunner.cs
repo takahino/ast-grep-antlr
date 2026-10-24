@@ -134,23 +134,44 @@ internal static class DiffTestRunner
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     Console.WriteLine($"[{language}] {repo.Id}/{rule.Id} ...");
-                    var report = await RunOnePatternAsync(
-                        new OnePatternContext
+                    PatternReport report;
+                    try
+                    {
+                        report = await RunOnePatternAsync(
+                            new OnePatternContext
+                            {
+                                AstGrepExe = astGrepExe,
+                                Ag4Dll = ag4Dll,
+                                Language = language,
+                                Repo = repo,
+                                Rule = rule,
+                                SgConfig = language.Equals("cpp", StringComparison.OrdinalIgnoreCase) ? sgConfig : null,
+                                WorkDir = workDir,
+                                Known = known,
+                                SampleLimit = options.SampleLimit,
+                                RewriteFileLimit = options.RewriteFileLimit,
+                                SkipRewrite = options.SkipRewrite,
+                            },
+                            cancellationToken
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        notes.Add($"{language}/{repo.Id}/{rule.Id}: {ex.GetType().Name}: {ex.Message}");
+                        Console.WriteLine($"  ERROR: {ex.Message}");
+                        report = new PatternReport
                         {
-                            AstGrepExe = astGrepExe,
-                            Ag4Dll = ag4Dll,
+                            Id = rule.Id,
+                            Pattern = rule.SimplePattern ?? "(composite rule)",
+                            RepoId = repo.Id,
                             Language = language,
-                            Repo = repo,
-                            Rule = rule,
-                            SgConfig = language.Equals("cpp", StringComparison.OrdinalIgnoreCase) ? sgConfig : null,
-                            WorkDir = workDir,
-                            Known = known,
-                            SampleLimit = options.SampleLimit,
-                            RewriteFileLimit = options.RewriteFileLimit,
-                            SkipRewrite = options.SkipRewrite,
-                        },
-                        cancellationToken
-                    );
+                            AstGrepError = null,
+                            Ag4Error = TrimError(ex.ToString()),
+                            Counts = new DiffSummary(),
+                            Unexplained = new DiffSummary(),
+                            Samples = [],
+                        };
+                    }
 
                     patternReports.Add(report);
                     total.Add(report.Counts);
@@ -165,6 +186,7 @@ internal static class DiffTestRunner
                     Console.WriteLine(
                         $"  same={report.Counts.Same} only-sg={report.Counts.OnlyAstGrep} only-ag4={report.Counts.OnlyAg4} range={report.Counts.RangeDiff} meta={report.Counts.MetaVarDiff} unexplained={report.Unexplained.OnlyAstGrep + report.Unexplained.OnlyAg4 + report.Unexplained.RangeDiff + report.Unexplained.MetaVarDiff} t_sg={report.AstGrepMs}ms t_ag4={report.Ag4Ms}ms"
                     );
+                    Console.Out.Flush();
                 }
             }
         }
