@@ -28,6 +28,22 @@ public sealed class SourceFile
         };
     }
 
+    /// <summary>In-memory source (UTF-8) for embedding / frontend-collected buffers.</summary>
+    public static SourceFile FromText(string path, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var detected = EncodingDetector.FromName("utf-8");
+        var bytes = EncodingDetector.Encode(text, detected);
+        return new SourceFile
+        {
+            Path = string.IsNullOrEmpty(path) ? "<buffer>" : path,
+            Bytes = bytes,
+            Detected = detected,
+            Text = text,
+            Hash = EncodingDetector.Sha256Hex(bytes),
+        };
+    }
+
     public static bool TryRead(string path, out SourceFile? file, out string? error, string? explicitEncoding = null)
     {
         try

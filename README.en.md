@@ -5,3 +5,6 @@
 Not affiliated with the official ast-grep project.
 
 Built-in languages include Java, C++ (CPP14), C# (Roslyn), and SQLite. See [README.md](README.md) for full usage (English tables live there too).
+
+Sample GUIs that load the NativeAOT `ag4_native` DLL from C# / Java / Python:
+[samples/gui/README.md](samples/gui/README.md).

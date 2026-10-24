@@ -54,6 +54,13 @@ Desktop.ini
 ## Local scratch
 tmp/
 
+## Sample GUI native outputs / deps (rebuild locally)
+samples/gui/lib/
+samples/gui/java/lib/
+samples/gui/java/*.class
+samples/gui/csharp/bin/
+samples/gui/csharp/obj/
+
 ## Differential test harness (cloned corpus, npm tools, reports)
 .difftest/
 
