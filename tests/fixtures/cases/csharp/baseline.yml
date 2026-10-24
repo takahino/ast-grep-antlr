@@ -1,0 +1,36 @@
+language: csharp
+cases:
+  - id: multi-args
+    pattern: "foo($$$ARGS)"
+    source: |
+      class T { void M() { Sink(foo(1, 2, 3)); } }
+    expect:
+      - text: "foo(1, 2, 3)"
+        meta:
+          ARGS: "1, 2, 3"
+  - id: empty-args
+    pattern: "foo($$$ARGS)"
+    source: |
+      class T { void M() { foo(); } }
+    expect:
+      - text: "foo()"
+        meta:
+          ARGS: ""
+  - id: member-call
+    pattern: "$X.$Y($$$ARGS)"
+    source: |
+      class T { void M() { obj.Run(1, 2); } }
+    expect:
+      - text: "obj.Run(1, 2)"
+  - id: any-call
+    pattern: "$F($$$ARGS)"
+    source: |
+      class T { void M() { bar(9); } }
+    expect:
+      - text: "bar(9)"
+  - id: underscore
+    pattern: "bar($_)"
+    source: |
+      class T { void M() { bar(99); } }
+    expect:
+      - text: "bar(99)"

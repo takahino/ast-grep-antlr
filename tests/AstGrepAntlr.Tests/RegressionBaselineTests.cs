@@ -116,6 +116,57 @@ public class RegressionBaselineTests
 
     public static IEnumerable<object[]> CppCases() => CaseFileRunner.Discover("cpp");
 
+    [Theory]
+    [MemberData(nameof(CSharpCases))]
+    public void CSharp_case_files(string id, CaseFileEntry entry)
+    {
+        Assert.Equal(id, entry.Id);
+        var lang = new CSharpLanguage();
+        var tree = new TwoStageParser().Parse(lang, entry.Source).Tree;
+        var strictness = Enum.TryParse<Strictness>(entry.Strictness, true, out var s) ? s : Strictness.Smart;
+        var compiled = new PatternCompiler().Compile(
+            lang,
+            new PatternSpec(entry.Pattern, entry.Entry, Strictness: strictness)
+        );
+        var hits = new PatternMatcher().MatchAll(tree, compiled).ToList();
+
+        if (entry.Expect is { Count: > 0 })
+        {
+            Assert.True(
+                hits.Count >= entry.Expect.Count,
+                $"case {id}: expected >= {entry.Expect.Count} hits, got {hits.Count}"
+            );
+            foreach (var exp in entry.Expect)
+            {
+                var match = hits.FirstOrDefault(h =>
+                    exp.Text is null || string.Equals(tree.Text(h.NodeIndex), exp.Text, StringComparison.Ordinal)
+                );
+                Assert.True(match.Meta is not null || hits.Count > 0, $"case {id}: no hit for text={exp.Text}");
+                var hit = hits.First(h =>
+                    exp.Text is null || string.Equals(tree.Text(h.NodeIndex), exp.Text, StringComparison.Ordinal)
+                );
+                if (exp.Meta is not null)
+                {
+                    foreach (var (k, v) in exp.Meta)
+                    {
+                        Assert.True(hit.Meta.ContainsKey(k), $"case {id}: missing meta {k}");
+                        Assert.Equal(v, hit.Meta[k].Text);
+                    }
+                }
+            }
+        }
+
+        if (entry.RejectTexts is { Count: > 0 })
+        {
+            foreach (var reject in entry.RejectTexts)
+            {
+                Assert.DoesNotContain(hits, h => tree.Text(h.NodeIndex) == reject);
+            }
+        }
+    }
+
+    public static IEnumerable<object[]> CSharpCases() => CaseFileRunner.Discover("csharp");
+
     [Fact]
     public void Multi_args_matches_filled_and_empty()
     {

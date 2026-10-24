@@ -1,0 +1,69 @@
+language: csharp
+cases:
+  - id: object-creation
+    pattern: "new $T($$$ARGS)"
+    source: |
+      class T { void M() { var x = new List<int>(10); } }
+    expect:
+      - text: "new List<int>(10)"
+  - id: await-expr
+    pattern: "await $X"
+    source: |
+      class T { async Task M() { await DoAsync(); } }
+    expect:
+      - text: "await DoAsync()"
+  - id: var-decl
+    pattern: "var $X = $Y;"
+    source: |
+      class T { void M() { var n = 42; } }
+    expect:
+      - text: "var n = 42;"
+  - id: if-block
+    pattern: "if ($C) { $$$ }"
+    source: |
+      class T { void M() { if (ok) { Work(); } } }
+    expect:
+      - text: "if (ok) { Work(); }"
+  - id: foreach-block
+    pattern: "foreach (var $X in $Y) $$$"
+    source: |
+      class T { void M() { foreach (var x in xs) Work(x); } }
+    expect:
+      - text: "foreach (var x in xs) Work(x);"
+  - id: try-catch-block
+    pattern: "try { $$$TRY } catch ($T $E) { $$$HANDLER }"
+    source: |
+      class T { void M() { try { A(); } catch (Exception e) { B(); } } }
+    expect:
+      - text: "try { A(); } catch (Exception e) { B(); }"
+  - id: public-method
+    pattern: "public $T $N($$$P) { $$$ }"
+    source: |
+      class T { public int Run(int x) { return x; } }
+    expect:
+      - text: "public int Run(int x) { return x; }"
+  - id: coalesce
+    pattern: "$X ?? $Y"
+    source: |
+      class T { void M() { var z = a ?? b; } }
+    expect:
+      - text: "a ?? b"
+  - id: conditional-access
+    pattern: "$X?.$Y"
+    source: |
+      class T { void M() { var z = a?.B; } }
+    expect:
+      - text: "a?.B"
+  - id: simple-lambda
+    pattern: "$X => $Y"
+    source: |
+      class T { void M() { Func<int, int> f = x => x + 1; } }
+    expect:
+      - text: "x => x + 1"
+  - id: using-directive
+    pattern: "using $N;"
+    source: |
+      using System;
+      class T {}
+    expect:
+      - text: "using System;"
