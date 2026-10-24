@@ -60,6 +60,18 @@ public sealed class PatternMatcher
                 return true;
             }
 
+            // B6: if the pattern metavar wraps a single child of kind K, reject targets whose
+            // same-kind node has two or more K children (e.g. expressionList matched by $A).
+            if (IsSingleChildListMismatch(pattern, pIndex, target, tIndex))
+            {
+                return false;
+            }
+
+            if (p.MetaVarTypedRule is not null && !target.KindMatches(tIndex, p.MetaVarTypedRule))
+            {
+                return false;
+            }
+
             var value = new MetaVarValue(text, t.Start, t.End, IsMulti: false);
             if (env.TryGetValue(p.MetaVarName, out var existing))
             {
@@ -270,5 +282,51 @@ public sealed class PatternMatcher
         var end = target[tChildren[to - 1]].End;
         var text = start >= 0 && end >= start && end <= target.Source.Length ? target.Source[start..end] : string.Empty;
         return new MetaVarValue(text, start, end, IsMulti: true);
+    }
+
+    /// <summary>
+    /// B6 list guard: pattern metavar node has exactly one named child of kind K, but the target
+    /// node of the same kind has two or more named children of kind K.
+    /// </summary>
+    private static bool IsSingleChildListMismatch(SyntaxTree pattern, int pIndex, SyntaxTree target, int tIndex)
+    {
+        var pNamed = pattern.NamedChildren(pIndex).ToList();
+        if (pNamed.Count != 1)
+        {
+            return false;
+        }
+
+        var childKind = pattern[pNamed[0]].TypeName;
+        if (string.IsNullOrEmpty(childKind))
+        {
+            return false;
+        }
+
+        // Only apply when the target node itself matches the pattern metavar node's kind (or chain).
+        if (
+            !string.Equals(pattern[pIndex].TypeName, target[tIndex].TypeName, StringComparison.Ordinal)
+            && !target.KindMatches(tIndex, pattern[pIndex].TypeName)
+        )
+        {
+            return false;
+        }
+
+        var tCount = 0;
+        foreach (var c in target.NamedChildren(tIndex))
+        {
+            if (
+                string.Equals(target[c].TypeName, childKind, StringComparison.Ordinal)
+                || target.KindMatches(c, childKind)
+            )
+            {
+                tCount++;
+                if (tCount >= 2)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

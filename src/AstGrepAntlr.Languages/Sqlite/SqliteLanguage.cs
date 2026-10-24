@@ -10,8 +10,9 @@ public sealed class SqliteLanguage : ILanguage
     public IReadOnlyList<string> Extensions { get; } = [".sql", ".sqlite"];
     public string StartRule => "parse";
     public IReadOnlyList<string> PatternRules { get; } =
-    ["parse", "sql_stmt", "select_stmt", "expr", "table_or_subquery"];
+    ["select_stmt", "sql_stmt", "expr", "table_or_subquery", "parse"];
     public string MetaVarPlaceholderTemplate => "__MV{0}__";
+    public IReadOnlyList<string> MetaVarVariants { get; } = ["{0}", "{0};"];
     public bool IgnoreCase => true;
     public TimeSpan ParseTimeout => TimeSpan.FromSeconds(30);
     public long MaxFileBytes => 8 * 1024 * 1024;

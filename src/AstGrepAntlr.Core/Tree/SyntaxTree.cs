@@ -24,10 +24,10 @@ public sealed class SyntaxTree
     }
 
     /// <summary>Mark a node as a meta-variable (used by pattern compilation).</summary>
-    public void SetMetaVar(int index, string name, bool isMulti)
+    public void SetMetaVar(int index, string name, bool isMulti, string? typedRule = null)
     {
         var n = _nodes[index];
-        _nodes[index] = n with { MetaVarName = name, IsMultiMetaVar = isMulti };
+        _nodes[index] = n with { MetaVarName = name, IsMultiMetaVar = isMulti, MetaVarTypedRule = typedRule };
     }
 
     public string Source { get; }

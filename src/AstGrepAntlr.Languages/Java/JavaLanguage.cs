@@ -11,17 +11,24 @@ public sealed class JavaLanguage : ILanguage
     public string StartRule => "compilationunit";
     public IReadOnlyList<string> PatternRules { get; } =
     [
-        "compilationunit",
-        "typeDeclaration",
-        "classBodyDeclaration",
-        "blockStatement",
-        "statement",
         "expression",
         "primary",
+        "statement",
+        "blockStatement",
+        "classBodyDeclaration",
+        "memberDeclaration",
+        "methodDeclaration",
+        "classDeclaration",
+        "typeDeclaration",
         "typeType",
         "qualifiedName",
+        "compilationunit",
     ];
     public string MetaVarPlaceholderTemplate => "__MV{0}__";
+
+    // Variants tried per metavar (odometer). Extra forms cover class-body members.
+    public IReadOnlyList<string> MetaVarVariants { get; } =
+    ["{0}", "{0};", "{0} {0}", "{0} {0};", "int {0};", "void {0}(){}", ";"];
     public bool IgnoreCase => false;
     public TimeSpan ParseTimeout => TimeSpan.FromSeconds(30);
     public long MaxFileBytes => 8 * 1024 * 1024;
@@ -41,6 +48,9 @@ public sealed class JavaLanguage : ILanguage
             "compilationunit" or "compilationUnit" => p.compilationunit(),
             "typedeclaration" or "typeDeclaration" => p.typeDeclaration(),
             "classbodydeclaration" or "classBodyDeclaration" => p.classBodyDeclaration(),
+            "memberdeclaration" or "memberDeclaration" => p.memberDeclaration(),
+            "methoddeclaration" or "methodDeclaration" => p.methodDeclaration(),
+            "classdeclaration" or "classDeclaration" => p.classDeclaration(),
             "blockstatement" or "blockStatement" => p.blockStatement(),
             "statement" => p.statement(),
             "expression" => p.expression(),

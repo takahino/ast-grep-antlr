@@ -29,6 +29,7 @@ public sealed class InterpretedLanguage : ILanguage
         string startRule,
         IReadOnlyList<string> patternRules,
         string metaVarPlaceholder,
+        IReadOnlyList<string>? metaVarVariants,
         bool ignoreCase,
         InterpreterData lexerData,
         InterpreterData parserData
@@ -39,6 +40,7 @@ public sealed class InterpretedLanguage : ILanguage
         StartRule = startRule;
         PatternRules = patternRules;
         MetaVarPlaceholderTemplate = metaVarPlaceholder;
+        MetaVarVariants = metaVarVariants is { Count: > 0 } ? metaVarVariants : ["{0}"];
         IgnoreCase = ignoreCase;
         _grammarFileName = id;
         _ruleNames = parserData.RuleNames;
@@ -60,6 +62,7 @@ public sealed class InterpretedLanguage : ILanguage
     public string StartRule { get; }
     public IReadOnlyList<string> PatternRules { get; }
     public string MetaVarPlaceholderTemplate { get; }
+    public IReadOnlyList<string> MetaVarVariants { get; }
     public bool IgnoreCase { get; }
     public TimeSpan ParseTimeout => TimeSpan.FromSeconds(30);
     public long MaxFileBytes => 4 * 1024 * 1024;
@@ -74,7 +77,8 @@ public sealed class InterpretedLanguage : ILanguage
         string metaVarPlaceholder,
         bool ignoreCase,
         string lexerInterpPath,
-        string parserInterpPath
+        string parserInterpPath,
+        IReadOnlyList<string>? metaVarVariants = null
     )
     {
         var lexerData = InterpFileReader.ParseFile(lexerInterpPath);
@@ -85,6 +89,7 @@ public sealed class InterpretedLanguage : ILanguage
             startRule,
             patternRules,
             metaVarPlaceholder,
+            metaVarVariants,
             ignoreCase,
             lexerData,
             parserData
@@ -293,11 +298,29 @@ public static class GrammarInterpCache
             return (lexerInterp, parserInterp);
         }
 
-        antlrJar ??= FindAntlrJar();
+        var searched = new List<string>();
+        if (string.IsNullOrWhiteSpace(antlrJar))
+        {
+            antlrJar = AntlrJarLocator.Find(out searched);
+        }
+        else
+        {
+            searched.Add(antlrJar);
+        }
+
         if (antlrJar is null || !File.Exists(antlrJar))
         {
+            var listed =
+                searched.Count == 0
+                    ? "(no candidates)"
+                    : string.Join(Environment.NewLine, searched.Select(p => "  - " + p));
             throw new InvalidOperationException(
-                "ANTLR tool jar not found. Install Java and place antlr-4.13.2-complete.jar in tools/, or pass prebuilt .interp files."
+                "ANTLR tool jar not found. Install Java and place antlr-4.13.2-complete.jar under tools/, "
+                    + "set ANTLR_JAR, or pass --antlr-jar."
+                    + Environment.NewLine
+                    + "Searched:"
+                    + Environment.NewLine
+                    + listed
             );
         }
 
@@ -343,14 +366,75 @@ public static class GrammarInterpCache
 
         return Convert.ToHexString(sha.GetHashAndReset())[..16].ToLowerInvariant();
     }
+}
 
-    private static string? FindAntlrJar()
+/// <summary>
+/// Resolves the ANTLR complete jar. Lookup order:
+/// <c>--antlr-jar</c> / <see cref="ExplicitPath"/>, <c>ANTLR_JAR</c>,
+/// sgconfig dir + ancestors <c>tools/</c>, cwd + ancestors <c>tools/</c>, <see cref="AppContext.BaseDirectory"/>.
+/// </summary>
+public static class AntlrJarLocator
+{
+    public const string JarFileName = "antlr-4.13.2-complete.jar";
+
+    /// <summary>Set from CLI <c>--antlr-jar</c>.</summary>
+    public static string? ExplicitPath { get; set; }
+
+    /// <summary>sgconfig.yml directory used as a search root.</summary>
+    public static string? ConfigDirectory { get; set; }
+
+    public static string? Find(out List<string> searched)
     {
-        var candidates = new[]
+        searched = [];
+        foreach (var candidate in Candidates())
         {
-            Path.Combine("tools", "antlr-4.13.2-complete.jar"),
-            Path.Combine(AppContext.BaseDirectory, "tools", "antlr-4.13.2-complete.jar"),
-        };
-        return candidates.FirstOrDefault(File.Exists);
+            searched.Add(candidate);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> Candidates()
+    {
+        if (!string.IsNullOrWhiteSpace(ExplicitPath))
+        {
+            yield return Path.GetFullPath(ExplicitPath);
+        }
+
+        var env = Environment.GetEnvironmentVariable("ANTLR_JAR");
+        if (!string.IsNullOrWhiteSpace(env))
+        {
+            yield return Path.GetFullPath(env);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ConfigDirectory))
+        {
+            foreach (var p in AncestorToolsJars(ConfigDirectory))
+            {
+                yield return p;
+            }
+        }
+
+        foreach (var p in AncestorToolsJars(Directory.GetCurrentDirectory()))
+        {
+            yield return p;
+        }
+
+        yield return Path.Combine(AppContext.BaseDirectory, "tools", JarFileName);
+        yield return Path.Combine(AppContext.BaseDirectory, JarFileName);
+    }
+
+    private static IEnumerable<string> AncestorToolsJars(string startDir)
+    {
+        var dir = new DirectoryInfo(Path.GetFullPath(startDir));
+        while (dir is not null)
+        {
+            yield return Path.Combine(dir.FullName, "tools", JarFileName);
+            dir = dir.Parent;
+        }
     }
 }

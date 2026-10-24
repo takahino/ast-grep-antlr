@@ -17,6 +17,7 @@ public readonly struct SyntaxNode
     public required int ChainHead { get; init; }
     public string? MetaVarName { get; init; }
     public bool IsMultiMetaVar { get; init; }
+    public string? MetaVarTypedRule { get; init; }
 
     public bool IsTerminal => Kind is SyntaxNodeKind.Token or SyntaxNodeKind.Error or SyntaxNodeKind.Missing;
     public bool IsError => Kind is SyntaxNodeKind.Error or SyntaxNodeKind.Missing;

@@ -204,7 +204,7 @@ public sealed class TreeBuilder
     {
         for (var i = 0; i < nodes.Count; i++)
         {
-            if (nodes[i].Kind != SyntaxNodeKind.Rule)
+            if (nodes[i].Kind != SyntaxNodeKind.Rule || nodes[i].ChainHead != i)
             {
                 continue;
             }

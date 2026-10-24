@@ -21,6 +21,8 @@ public sealed class CppLanguage : ILanguage
         "translationUnit",
     ];
     public string MetaVarPlaceholderTemplate => "__MV{0}__";
+    public IReadOnlyList<string> MetaVarVariants { get; } =
+    ["{0}", "{0};", "{0} {0}", "{0} {0};", "int {0};", "void {0}(){}", ";"];
     public bool IgnoreCase => false;
     public TimeSpan ParseTimeout => TimeSpan.FromSeconds(30);
     public long MaxFileBytes => 8 * 1024 * 1024;

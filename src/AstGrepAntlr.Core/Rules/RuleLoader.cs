@@ -84,6 +84,7 @@ public static class RuleLoader
                     StartRule = GetString(m, "startRule"),
                     PatternRules = GetStringList(m, "patternRules"),
                     MetaVarPlaceholder = GetString(m, "metaVarPlaceholder"),
+                    MetaVarVariants = GetStringList(m, "metaVarVariants"),
                     IgnoreCase = string.Equals(GetString(m, "ignoreCase"), "true", StringComparison.OrdinalIgnoreCase),
                 };
             }
@@ -92,7 +93,7 @@ public static class RuleLoader
         return config;
     }
 
-    public static IEnumerable<SgRuleDocument> LoadRuleDir(string dir)
+    public static IEnumerable<(SgRuleDocument Document, string Path)> LoadRuleDir(string dir)
     {
         if (!Directory.Exists(dir))
         {
@@ -105,7 +106,7 @@ public static class RuleLoader
                 .Concat(Directory.EnumerateFiles(dir, "*.yaml", SearchOption.AllDirectories))
         )
         {
-            yield return LoadRule(File.ReadAllText(file));
+            yield return (LoadRule(File.ReadAllText(file)), file);
         }
     }
 

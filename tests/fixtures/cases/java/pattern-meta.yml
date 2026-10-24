@@ -1,0 +1,46 @@
+language: java
+cases:
+  - id: single-arg-no-list
+    pattern: "foo($A)"
+    source: |
+      class T { void m() { foo(1, 2, 3); } }
+    reject:
+      - "foo(1, 2, 3)"
+  - id: single-arg-one
+    pattern: "foo($A)"
+    source: |
+      class T { void m() { foo(1); } }
+    expect:
+      - text: "foo(1)"
+        meta:
+          A: "1"
+  - id: method-body-multi
+    pattern: "void $M() { $$$BODY }"
+    source: |
+      class T { void run() { int x = 1; foo(x); } }
+    expect:
+      - text: "void run() { int x = 1; foo(x); }"
+        meta:
+          M: "run"
+  - id: if-block-multi
+    pattern: "if ($C) { $$$B }"
+    source: |
+      class T { void m() { if (ok) { doWork(); } } }
+    expect:
+      - text: "if (ok) { doWork(); }"
+  - id: class-body-multi
+    pattern: "class $N { $$$BODY }"
+    source: |
+      class T { int x; void m() {} }
+    expect:
+      - text: "class T { int x; void m() {} }"
+        meta:
+          N: "T"
+  - id: typed-expression
+    pattern: "${A:primary}"
+    source: |
+      class T { void m() { x; y(); } }
+    expect:
+      - text: "x"
+    reject:
+      - "y()"

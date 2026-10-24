@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace AstGrepAntlr.Pattern;
@@ -38,31 +39,90 @@ public static partial class MetaVar
         return list;
     }
 
+    /// <summary>
+    /// Replace metavars with per-occurrence variant templates (e.g. <c>{0}</c>, <c>{0};</c>).
+    /// <paramref name="placeholderSpans"/> records the span of each full inserted variant in the
+    /// rewritten source (used for outermost-node metavar marking).
+    /// </summary>
     public static string ReplaceWithPlaceholders(
         string pattern,
         string template,
-        out IReadOnlyDictionary<string, Occurrence> byPlaceholder
+        IReadOnlyList<Occurrence> occurrences,
+        IReadOnlyList<string> variantTemplates,
+        IReadOnlyList<int> choices,
+        out IReadOnlyDictionary<string, Occurrence> byPlaceholder,
+        out IReadOnlyDictionary<string, (int Start, int End)> placeholderSpans
     )
     {
         var map = new Dictionary<string, Occurrence>(StringComparer.Ordinal);
-        var occurrences = FindAll(pattern);
+        var spans = new Dictionary<string, (int Start, int End)>(StringComparer.Ordinal);
         if (occurrences.Count == 0)
         {
             byPlaceholder = map;
+            placeholderSpans = spans;
             return pattern;
         }
 
-        // Replace from end so indexes stay valid.
-        var result = pattern;
-        for (var i = occurrences.Count - 1; i >= 0; i--)
+        var sb = new StringBuilder(pattern.Length + occurrences.Count * 8);
+        var cursor = 0;
+        for (var i = 0; i < occurrences.Count; i++)
         {
             var occ = occurrences[i];
+            if (occ.Start > cursor)
+            {
+                sb.Append(pattern, cursor, occ.Start - cursor);
+            }
+
             var placeholder = string.Format(System.Globalization.CultureInfo.InvariantCulture, template, i);
+            var variantIndex = i < choices.Count ? choices[i] : 0;
+            if (variantIndex < 0 || variantIndex >= variantTemplates.Count)
+            {
+                variantIndex = 0;
+            }
+
+            var inserted = string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                variantTemplates[variantIndex],
+                placeholder
+            );
+            var insertStart = sb.Length;
+            sb.Append(inserted);
             map[placeholder] = occ;
-            result = string.Concat(result.AsSpan(0, occ.Start), placeholder, result.AsSpan(occ.Start + occ.Length));
+            spans[placeholder] = (insertStart, insertStart + inserted.Length);
+            cursor = occ.Start + occ.Length;
+        }
+
+        if (cursor < pattern.Length)
+        {
+            sb.Append(pattern, cursor, pattern.Length - cursor);
         }
 
         byPlaceholder = map;
-        return result;
+        placeholderSpans = spans;
+        return sb.ToString();
+    }
+
+    /// <summary>Legacy helper: apply a single variant template to every metavar.</summary>
+    public static string ReplaceWithPlaceholders(
+        string pattern,
+        string template,
+        string variantTemplate,
+        out IReadOnlyDictionary<string, Occurrence> byPlaceholder,
+        out IReadOnlyDictionary<string, int> placeholderStarts
+    )
+    {
+        var occurrences = FindAll(pattern);
+        var choices = new int[occurrences.Count];
+        var rewritten = ReplaceWithPlaceholders(
+            pattern,
+            template,
+            occurrences,
+            [variantTemplate],
+            choices,
+            out byPlaceholder,
+            out var spans
+        );
+        placeholderStarts = spans.ToDictionary(kv => kv.Key, kv => kv.Value.Start, StringComparer.Ordinal);
+        return rewritten;
     }
 }

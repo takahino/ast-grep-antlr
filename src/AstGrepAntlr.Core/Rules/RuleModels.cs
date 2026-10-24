@@ -58,5 +58,6 @@ public sealed class CustomLanguageConfig
     public string? StartRule { get; set; }
     public List<string>? PatternRules { get; set; }
     public string? MetaVarPlaceholder { get; set; }
+    public List<string>? MetaVarVariants { get; set; }
     public bool IgnoreCase { get; set; }
 }

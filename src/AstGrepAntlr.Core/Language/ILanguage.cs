@@ -11,6 +11,9 @@ public interface ILanguage
     string StartRule { get; }
     IReadOnlyList<string> PatternRules { get; }
     string MetaVarPlaceholderTemplate { get; }
+
+    /// <summary>Placeholder shapes tried when a pattern fails to parse; <c>{0}</c> is the per-slot placeholder text.</summary>
+    IReadOnlyList<string> MetaVarVariants => ["{0}"];
     bool IgnoreCase { get; }
     TimeSpan ParseTimeout { get; }
     long MaxFileBytes { get; }
