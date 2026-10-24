@@ -80,14 +80,15 @@ jobs:
           -o artifacts/${{ matrix.rid }}
       - name: Smoke test
         shell: bash
+        env:
+          AG4_SMOKE_PATTERN: "foo($$$ARGS)"
         run: |
           BIN=artifacts/${{ matrix.rid }}/ag4
           if [[ "${{ matrix.rid }}" == win-x64 ]]; then BIN=artifacts/${{ matrix.rid }}/ag4.exe; fi
           "$BIN" version
           mkdir -p /tmp/ag4-smoke
           printf '%s\n' 'class T { void M() { foo(1); } }' > /tmp/ag4-smoke/Sample.cs
-          # shellcheck: pattern must stay literal for ag4 (not shell expansion)
-          "$BIN" run -l csharp -p "foo(\$\$\$ARGS)" /tmp/ag4-smoke | grep -q foo
+          "$BIN" run -l csharp -p "$AG4_SMOKE_PATTERN" /tmp/ag4-smoke | grep -q foo
       - name: Pack archive
         shell: bash
         run: |
