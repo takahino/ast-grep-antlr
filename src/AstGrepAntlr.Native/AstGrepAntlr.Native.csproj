@@ -9,6 +9,7 @@
     <IsPackable>false</IsPackable>
     <NativeLib>Shared</NativeLib>
     <PublishAot>true</PublishAot>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-arm64</RuntimeIdentifiers>
     <InvariantGlobalization>true</InvariantGlobalization>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>$(NoWarn);CS1591;CA1852</NoWarn>

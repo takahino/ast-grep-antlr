@@ -44,11 +44,12 @@ jobs:
           node-version: "22"
 
       - name: Restore
+        id: restore
         run: dotnet restore AstGrepAntlr.slnx --locked-mode
         continue-on-error: true
 
       - name: Restore (unlocked fallback)
-        if: failure()
+        if: steps.restore.outcome == 'failure'
         run: dotnet restore AstGrepAntlr.slnx
 
       - name: Build

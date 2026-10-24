@@ -31,10 +31,11 @@ jobs:
         with:
           global-json-file: global.json
       - name: Restore
+        id: restore
         run: dotnet restore AstGrepAntlr.slnx --locked-mode
         continue-on-error: true
       - name: Restore (unlocked fallback)
-        if: failure()
+        if: steps.restore.outcome == 'failure'
         run: dotnet restore AstGrepAntlr.slnx
       - name: Build
         run: dotnet build AstGrepAntlr.slnx -c Release --no-restore
