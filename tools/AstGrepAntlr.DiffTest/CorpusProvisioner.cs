@@ -27,24 +27,54 @@ internal static class CorpusProvisioner
                 );
             }
 
-            var sha = repo.Sha;
-            if (string.IsNullOrWhiteSpace(sha))
+            var rev = await ProcessRunner.RunAsync(git, ["rev-parse", "HEAD"], localPath, cancellationToken);
+            if (rev.ExitCode != 0)
             {
-                var rev = await ProcessRunner.RunAsync(git, ["rev-parse", "HEAD"], localPath, cancellationToken);
-                if (rev.ExitCode != 0)
-                {
-                    throw new InvalidOperationException(
-                        $"git rev-parse failed for {repo.Id}:{Environment.NewLine}{rev.StdErr}"
-                    );
-                }
-
-                sha = rev.StdOut.Trim();
+                throw new InvalidOperationException(
+                    $"git rev-parse failed for {repo.Id}:{Environment.NewLine}{rev.StdErr}"
+                );
             }
 
-            prepared.Add(new PreparedRepo(repo.Id, localPath, repo.Ref, sha));
+            var sha = rev.StdOut.Trim();
+            if (
+                !string.IsNullOrWhiteSpace(repo.Sha)
+                && !string.Equals(repo.Sha, sha, StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                // Shallow clones of tags can still resolve; warn via stderr but continue with actual SHA.
+                Console.Error.WriteLine($"difftest: warning: {repo.Id} HEAD {sha} differs from pinned sha {repo.Sha}");
+            }
+
+            var language = string.IsNullOrWhiteSpace(repo.Language) ? corpus.Language : repo.Language;
+            var searchPaths = ResolveSearchPaths(localPath, repo.Paths);
+            prepared.Add(new PreparedRepo(repo.Id, localPath, repo.Ref, sha, language, searchPaths));
         }
 
         return prepared;
+    }
+
+    private static List<string> ResolveSearchPaths(string localPath, List<string> relativePaths)
+    {
+        if (relativePaths.Count == 0)
+        {
+            return [localPath];
+        }
+
+        var resolved = new List<string>();
+        foreach (var rel in relativePaths)
+        {
+            var full = Path.GetFullPath(Path.Combine(localPath, rel));
+            if (Directory.Exists(full) || File.Exists(full))
+            {
+                resolved.Add(full);
+            }
+            else
+            {
+                Console.Error.WriteLine($"difftest: warning: search path missing: {full}");
+            }
+        }
+
+        return resolved.Count > 0 ? resolved : [localPath];
     }
 
     private static async Task EnsureCloneAsync(
@@ -101,4 +131,11 @@ internal static class CorpusProvisioner
     }
 }
 
-internal sealed record PreparedRepo(string Id, string Path, string Ref, string Sha);
+internal sealed record PreparedRepo(
+    string Id,
+    string Path,
+    string Ref,
+    string Sha,
+    string Language,
+    IReadOnlyList<string> SearchPaths
+);

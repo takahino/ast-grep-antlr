@@ -1,0 +1,84 @@
+name: Difftest
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: "Language filter (empty = all)"
+        required: false
+        default: ""
+      no_fail:
+        description: "Do not fail on unexplained diffs"
+        type: boolean
+        default: false
+  schedule:
+    # Weekly Monday 06:00 UTC
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: difftest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  difftest:
+    name: ast-grep vs ag4
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Restore
+        run: dotnet restore AstGrepAntlr.slnx --locked-mode
+        continue-on-error: true
+
+      - name: Restore (unlocked fallback)
+        if: failure()
+        run: dotnet restore AstGrepAntlr.slnx
+
+      - name: Build
+        run: dotnet build AstGrepAntlr.slnx -c Release --no-restore
+
+      - name: Run difftest
+        id: difftest
+        run: |
+          set -euo pipefail
+          EXTRA=()
+          if [ -n "${{ inputs.language }}" ]; then
+            EXTRA+=(--language "${{ inputs.language }}")
+          fi
+          if [ "${{ inputs.no_fail }}" = "true" ]; then
+            EXTRA+=(--no-fail)
+          fi
+          # schedule has no inputs; fail on unexplained by default
+          dotnet run --project tools/AstGrepAntlr.DiffTest -c Release --no-build -- \
+            --corpus difftest/corpus.yml \
+            --write-report \
+            "${EXTRA[@]+"${EXTRA[@]}"}"
+
+      - name: Upload difftest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: difftest-report
+          path: |
+            difftest/REPORT.md
+            .difftest/report/latest/summary.md
+            .difftest/report/latest/details.json
+            .difftest/report/latest/summary.txt
+          if-no-files-found: warn

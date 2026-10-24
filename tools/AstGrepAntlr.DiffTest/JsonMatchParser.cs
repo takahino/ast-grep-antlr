@@ -13,15 +13,26 @@ internal static class JsonMatchParser
             return matches;
         }
 
-        if (trimmed.StartsWith('['))
+        // Prefer NDJSON / concatenated values; also accept a single JSON array.
+        if (trimmed.StartsWith('[') && !trimmed.Contains("]\n[", StringComparison.Ordinal))
         {
-            using var doc = JsonDocument.Parse(trimmed);
-            foreach (var element in doc.RootElement.EnumerateArray())
+            try
             {
-                TryAddMatch(element, searchRoot, matches);
-            }
+                using var doc = JsonDocument.Parse(trimmed);
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var element in doc.RootElement.EnumerateArray())
+                    {
+                        TryAddMatch(element, searchRoot, matches);
+                    }
 
-            return matches;
+                    return matches;
+                }
+            }
+            catch (JsonException)
+            {
+                // Fall through to line / multi-document parsing.
+            }
         }
 
         foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -34,7 +45,17 @@ internal static class JsonMatchParser
             try
             {
                 using var doc = JsonDocument.Parse(line);
-                TryAddMatch(doc.RootElement, searchRoot, matches);
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var element in doc.RootElement.EnumerateArray())
+                    {
+                        TryAddMatch(element, searchRoot, matches);
+                    }
+                }
+                else
+                {
+                    TryAddMatch(doc.RootElement, searchRoot, matches);
+                }
             }
             catch (JsonException)
             {

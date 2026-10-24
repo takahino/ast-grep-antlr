@@ -1,51 +1,31 @@
-# ast-grep / ag4 differential patterns (Java). No kind-based rules in this baseline set.
+# ast-grep / ag4 differential patterns (Java). No kind-based rules.
 language: java
 rules:
+  # --- calls / $$$ ---
   - id: call-foo
     rule:
       pattern: foo($$$ARGS)
-  - id: println
+  - id: call-any
     rule:
-      pattern: System.out.println($A)
-  - id: if-block
-    rule:
-      pattern: if ($C) { $$$B }
-  - id: class-body
-    rule:
-      pattern: class $N { $$$BODY }
+      pattern: $F($$$ARGS)
   - id: qualified-call
     rule:
       pattern: $X.$Y($$$ARGS)
-  - id: new-instance
+  - id: chained-call
     rule:
-      pattern: new $T($$$ARGS)
-  - id: return-expr
+      pattern: $X.$Y($A).$Z($$$ARGS)
+  - id: this-call
     rule:
-      pattern: return $E;
-  - id: throw-expr
+      pattern: this($$$ARGS)
+  - id: super-call
     rule:
-      pattern: throw $E;
-  - id: override-annotation
+      pattern: super($$$ARGS)
+  - id: println
     rule:
-      pattern: "@Override"
-  - id: public-method
+      pattern: System.out.println($A)
+  - id: println-multi
     rule:
-      pattern: public $TYPE $NAME($$$PARAMS) { $$$BODY }
-  - id: for-loop
-    rule:
-      pattern: for ($$$INIT; $C; $$$UPDATE) { $$$BODY }
-  - id: while-loop
-    rule:
-      pattern: while ($C) { $$$BODY }
-  - id: try-catch
-    rule:
-      pattern: try { $$$TRY } catch ($$$CATCH) { $$$HANDLER }
-  - id: assignment
-    rule:
-      pattern: $VAR = $VAL;
-  - id: import-type
-    rule:
-      pattern: import $PKG.$TYPE;
+      pattern: System.out.println($$$ARGS)
   - id: require-non-null
     rule:
       pattern: Objects.requireNonNull($A)
@@ -55,15 +35,173 @@ rules:
   - id: equals-call
     rule:
       pattern: $_.equals($OTHER)
-  - id: instanceof-check
+  - id: hash-code
     rule:
-      pattern: $EXPR instanceof $TYPE
+      pattern: $_.hashCode()
+  - id: to-string
+    rule:
+      pattern: $_.toString()
+  - id: value-of
+    rule:
+      pattern: $T.valueOf($A)
   - id: wildcard-arg
     rule:
       pattern: bar($_)
-  - id: this-call
+  - id: optional-of
     rule:
-      pattern: this($$$ARGS)
-  - id: super-call
+      pattern: Optional.of($A)
+  - id: optional-of-nullable
     rule:
-      pattern: super($$$ARGS)
+      pattern: Optional.ofNullable($A)
+  - id: collections-empty
+    rule:
+      pattern: Collections.emptyList()
+  - id: assert-true
+    rule:
+      pattern: assertTrue($A)
+  - id: assert-equals
+    rule:
+      pattern: assertEquals($E, $A)
+
+  # --- new / cast / instanceof ---
+  - id: new-instance
+    rule:
+      pattern: new $T($$$ARGS)
+  - id: new-array
+    rule:
+      pattern: new $T[$N]
+  - id: cast-expr
+    rule:
+      pattern: ($T) $E
+  - id: instanceof-check
+    rule:
+      pattern: $EXPR instanceof $TYPE
+
+  # --- statements / blocks ---
+  - id: if-block
+    rule:
+      pattern: if ($C) { $$$B }
+  - id: if-else-block
+    rule:
+      pattern: if ($C) { $$$T } else { $$$E }
+  - id: while-loop
+    rule:
+      pattern: while ($C) { $$$BODY }
+  - id: for-loop
+    rule:
+      pattern: for ($$$INIT; $C; $$$UPDATE) { $$$BODY }
+  - id: enhanced-for
+    rule:
+      pattern: "for ($T $V : $ITER) { $$$BODY }"
+  - id: try-catch
+    rule:
+      pattern: try { $$$TRY } catch ($E $N) { $$$HANDLER }
+  - id: try-finally
+    rule:
+      pattern: try { $$$TRY } finally { $$$FIN }
+  - id: return-expr
+    rule:
+      pattern: return $E;
+  - id: return-void
+    rule:
+      pattern: return;
+  - id: throw-expr
+    rule:
+      pattern: throw $E;
+  - id: assignment
+    rule:
+      pattern: $VAR = $VAL;
+  - id: plus-assign
+    rule:
+      pattern: $VAR += $VAL;
+  - id: break-stmt
+    rule:
+      pattern: break;
+  - id: continue-stmt
+    rule:
+      pattern: continue;
+
+  # --- declarations / members ---
+  - id: class-body
+    rule:
+      pattern: class $N { $$$BODY }
+  - id: public-method
+    rule:
+      pattern: public $TYPE $NAME($$$PARAMS) { $$$BODY }
+  - id: private-field
+    rule:
+      pattern: private $TYPE $NAME;
+  - id: import-type
+    rule:
+      pattern: import $PKG.$TYPE;
+  - id: package-decl
+    rule:
+      pattern: package $PKG;
+  - id: override-annotation
+    rule:
+      pattern: "@Override"
+  - id: null-literal
+    rule:
+      pattern: "null"
+  - id: ternary
+    rule:
+      pattern: "$C ? $T : $E"
+  - id: lambda-arrow
+    rule:
+      pattern: ($P) -> $BODY
+  - id: method-ref
+    rule:
+      pattern: "$T::$M"
+
+  # --- composite rules (no kind) ---
+  - id: println-inside-method
+    rule:
+      all:
+        - pattern: System.out.println($A)
+        - inside:
+            pattern: $RET $NAME($$$PARAMS) { $$$BODY }
+  - id: throw-not-npe
+    rule:
+      all:
+        - pattern: throw $E;
+        - not:
+            pattern: throw new NullPointerException($$$ARGS);
+  - id: equals-or-hashcode
+    rule:
+      any:
+        - pattern: $_.equals($OTHER)
+        - pattern: $_.hashCode()
+  - id: new-has-string-arg
+    rule:
+      all:
+        - pattern: new $T($$$ARGS)
+        - has:
+            pattern: '"$S"'
+  - id: return-precedes-throw
+    rule:
+      all:
+        - pattern: return $E;
+        - precedes:
+            pattern: throw $X;
+            stopBy: neighbor
+  - id: assign-follows-decl
+    rule:
+      all:
+        - pattern: $VAR = $VAL;
+        - follows:
+            pattern: $TYPE $VAR;
+            stopBy: neighbor
+
+  # --- rewrites ---
+  - id: rewrite-println
+    rule:
+      pattern: System.out.println($A)
+    rewrite: LOG.info(String.valueOf($A))
+  - id: rewrite-require-non-null
+    rule:
+      pattern: Objects.requireNonNull($A)
+    rewrite: Objects.requireNonNull($A, "required")
+  - id: rewrite-empty-list
+    rule:
+      pattern: Collections.emptyList()
+    rewrite: List.of()

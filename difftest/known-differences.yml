@@ -1,0 +1,93 @@
+# Grammar-caused or intentionally accepted differences between tree-sitter ast-grep
+# and ANTLR-backed ag4. Unlisted diffs fail the difftest harness / CI.
+version: 1
+differences:
+  # --- C++ grammar limits (CPP14 vs tree-sitter-cpp) ---
+  - id: cpp-parse-modern
+    language: cpp
+    category: grammar-parse
+    reason: >
+      grammars-v4 CPP14 cannot parse many C++17+ constructs (structured bindings,
+      if constexpr, nested namespaces with ::, concepts, etc.). Files that fail to
+      parse yield only-ast-grep or missing matches; recorded per pattern as needed.
+    bucket: OnlyAstGrep
+
+  - id: cpp-macro-heavy
+    language: cpp
+    category: grammar-parse
+    reason: >
+      Preprocessor macros expand differently (or not at all) under ANTLR CPP14;
+      tree-sitter often recovers. Expect only-ast-grep / range-diff on macro-heavy headers.
+    bucket: OnlyAstGrep
+
+  - id: cpp-node-boundaries
+    language: cpp
+    category: grammar-boundary
+    reason: >
+      Expression / declarator node extents differ between tree-sitter-cpp and ANTLR CPP14
+      (especially casts, templates, and qualified ids), producing range-diff or metavar-diff.
+    bucket: RangeDiff
+
+  - id: cpp-metavar-boundary
+    language: cpp
+    category: grammar-boundary
+    reason: Metavar capture text/range differs when CST shape differs for the same match span.
+    bucket: MetaVarDiff
+
+  # --- Java grammar / CST shape ---
+  - id: java-node-boundaries
+    language: java
+    category: grammar-boundary
+    reason: >
+      ANTLR Java grammar vs tree-sitter-java can disagree on statement / call / type
+      node extents (e.g. including surrounding parentheses or type arguments).
+    bucket: RangeDiff
+
+  - id: java-metavar-boundary
+    language: java
+    category: grammar-boundary
+    reason: Metavar text differs when multi-child vs single-child CST wrapping differs.
+    bucket: MetaVarDiff
+
+  - id: java-import-decl
+    language: java
+    pattern_id: import-type
+    category: grammar-boundary
+    reason: >
+      Import declaration matching differs when package vs type name splitting / static
+      imports disagree between grammars.
+    bucket: OnlyAstGrep
+
+  - id: java-annotation-form
+    language: java
+    pattern_id: override-annotation
+    category: grammar-boundary
+    reason: Annotation nodes may not surface as matchable pattern roots under ANTLR the same way.
+    bucket: OnlyAstGrep
+
+  # --- Pattern / CST shape where ag4 matches and tree-sitter does not ---
+  - id: cpp-qualified-ctor-call
+    language: cpp
+    pattern_id: qualified-call
+    category: grammar-boundary
+    reason: >
+      Patterns like $X::$Y($$$ARGS) match functional casts / qualified constructors
+      (e.g. std::string(...)) under ANTLR CPP14; tree-sitter-cpp often shapes these
+      differently so ast-grep yields no matches.
+    bucket: OnlyAg4
+
+  - id: java-super-this-pattern
+    language: java
+    pattern_id: super-call
+    category: pattern-compile
+    reason: >
+      ast-grep tree-sitter often marks super($$$ARGS) / this($$$ARGS) as ERROR patterns
+      and returns no matches; ag4 parses them as calls.
+    bucket: OnlyAg4
+
+  - id: java-this-call-pattern
+    language: java
+    pattern_id: this-call
+    category: pattern-compile
+    reason: Same as java-super-this-pattern for this($$$ARGS).
+    bucket: OnlyAg4

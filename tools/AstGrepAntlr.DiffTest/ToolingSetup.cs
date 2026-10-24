@@ -94,6 +94,33 @@ internal static class ToolingSetup
     public static string Ag4CliProjectPath(string repoRoot) =>
         Path.Combine(repoRoot, "src", "AstGrepAntlr.Cli", "AstGrepAntlr.Cli.csproj");
 
+    public static string Ag4DllPath(string repoRoot) =>
+        Path.Combine(repoRoot, "src", "AstGrepAntlr.Cli", "bin", "Release", "net10.0", "ag4.dll");
+
+    public static async Task<string> EnsureAg4BuiltAsync(string repoRoot, CancellationToken cancellationToken)
+    {
+        var dll = Ag4DllPath(repoRoot);
+        var build = await ProcessRunner.RunAsync(
+            "dotnet",
+            ["build", Ag4CliProjectPath(repoRoot), "-c", "Release", "--nologo", "-v", "q"],
+            repoRoot,
+            cancellationToken
+        );
+        if (build.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"dotnet build ag4 failed:{Environment.NewLine}{build.StdErr}{build.StdOut}"
+            );
+        }
+
+        if (!File.Exists(dll))
+        {
+            throw new FileNotFoundException($"ag4.dll not found after build: {dll}");
+        }
+
+        return dll;
+    }
+
     private static string? FindOnPath(string name)
     {
         var pathEnv = Environment.GetEnvironmentVariable("PATH");

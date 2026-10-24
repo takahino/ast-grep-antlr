@@ -1,9 +1,46 @@
 version: 1
-language: java
 repos:
+  # Java
   - id: commons-lang
+    language: java
     remote: https://github.com/apache/commons-lang.git
     ref: rel/commons-lang-3.21.0
+    sha: 155db038d73fe0ea49612d42ae70f6e48ee3ebb9
+    paths:
+      - src/main/java
   - id: java-design-patterns
+    language: java
     remote: https://github.com/iluwatar/java-design-patterns.git
     ref: 1.9.0
+    sha: e4458c1b173e5f4acabe8a3a37d751c9470afef9
+    paths:
+      - adapter
+      - builder
+      - factory-method
+      - singleton
+      - strategy
+  # C++
+  - id: leveldb
+    language: cpp
+    remote: https://github.com/google/leveldb.git
+    ref: 1.23
+    sha: 99b3c03b3284f5886f9ef9a4ef703d57373e61be
+    paths:
+      - include
+      - db
+      - util
+  - id: cereal
+    language: cpp
+    remote: https://github.com/USCiLab/cereal.git
+    ref: v1.3.2
+    sha: ebef1e929807629befafbb2918ea1a08c7194554
+    paths:
+      - include/cereal
+  - id: fmt
+    language: cpp
+    remote: https://github.com/fmtlib/fmt.git
+    ref: 11.0.2
+    sha: 0c9fce2ffefecfdce794e1859584e25877b7b592
+    paths:
+      - include
+      - src

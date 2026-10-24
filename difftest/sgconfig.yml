@@ -1,0 +1,14 @@
+# Difftest project config: treat .h as C++ (ast-grep defaults .h to C).
+# ag4 already maps .h to cpp via CppLanguage.Extensions.
+ruleDirs: []
+languageGlobs:
+  cpp:
+    - "*.h"
+    - "*.H"
+    - "*.hh"
+    - "*.hpp"
+    - "*.hxx"
+    - "*.cpp"
+    - "*.cc"
+    - "*.cxx"
+    - "*.c++"

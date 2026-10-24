@@ -11,69 +11,126 @@ internal static class Program
             Description = "Repository root (defaults to parent of AstGrepAntlr.slnx)",
         };
         var corpusOption = new Option<string?>("--corpus") { Description = "Path to corpus.yml" };
-        var patternsOption = new Option<string?>("--patterns") { Description = "Path to pattern rules YAML" };
+        var patternsOption = new Option<string[]>("--patterns")
+        {
+            Description = "Pattern YAML file(s); default: all difftest/patterns/*.yml",
+            AllowMultipleArgumentsPerToken = true,
+            DefaultValueFactory = _ => [],
+        };
+        var knownOption = new Option<string?>("--known-differences") { Description = "Path to known-differences.yml" };
+        var configOption = new Option<string?>("--sgconfig") { Description = "sgconfig.yml for languageGlobs" };
         var skipCloneOption = new Option<bool>("--skip-clone")
         {
             Description = "Reuse existing .difftest/corpus clones",
         };
         var skipNpmOption = new Option<bool>("--skip-npm") { Description = "Skip npm install for ast-grep CLI" };
-        var noBuildOption = new Option<bool>("--no-build") { Description = "Pass --no-build to dotnet run for ag4" };
+        var languageOption = new Option<string?>("--language")
+        {
+            Description = "Only run patterns for this language (java|cpp)",
+        };
+        var noFailOption = new Option<bool>("--no-fail")
+        {
+            Description = "Always exit 0 even when unexplained diffs remain",
+        };
+        var skipRewriteOption = new Option<bool>("--skip-rewrite")
+        {
+            Description = "Skip rewrite apply byte-comparison (match compare still runs)",
+        };
+        var timeoutOption = new Option<int>("--timeout-seconds")
+        {
+            Description = "Per-tool-invocation timeout",
+            DefaultValueFactory = _ => 120,
+        };
+        var writeReportOption = new Option<bool>("--write-report")
+        {
+            Description = "Write difftest/REPORT.md from the run",
+            DefaultValueFactory = _ => true,
+        };
 
-        var rootCommand = new RootCommand("ast-grep vs ag4 differential test harness (baseline mode)");
+        var rootCommand = new RootCommand("ast-grep vs ag4 differential test harness");
         rootCommand.Options.Add(rootOption);
         rootCommand.Options.Add(corpusOption);
         rootCommand.Options.Add(patternsOption);
+        rootCommand.Options.Add(knownOption);
+        rootCommand.Options.Add(configOption);
         rootCommand.Options.Add(skipCloneOption);
         rootCommand.Options.Add(skipNpmOption);
-        rootCommand.Options.Add(noBuildOption);
+        rootCommand.Options.Add(languageOption);
+        rootCommand.Options.Add(noFailOption);
+        rootCommand.Options.Add(skipRewriteOption);
+        rootCommand.Options.Add(timeoutOption);
+        rootCommand.Options.Add(writeReportOption);
 
+        var exitCode = 0;
         rootCommand.SetAction(async parseResult =>
         {
             try
             {
                 var repoRoot = parseResult.GetValue(rootOption) ?? RepoPaths.FindRepositoryRoot();
                 var corpusPath = parseResult.GetValue(corpusOption) ?? Path.Combine(repoRoot, "difftest", "corpus.yml");
-                var patternsPath =
-                    parseResult.GetValue(patternsOption) ?? Path.Combine(repoRoot, "difftest", "patterns", "java.yml");
+                var patterns = parseResult.GetValue(patternsOption) ?? [];
 
-                var report = await DiffTestRunner.RunAsync(
+                var result = await DiffTestRunner.RunAsync(
                     new DiffTestOptions
                     {
                         RepoRoot = repoRoot,
                         CorpusPath = corpusPath,
-                        PatternsPath = patternsPath,
+                        PatternsPaths = patterns.ToList(),
+                        KnownDifferencesPath = parseResult.GetValue(knownOption),
+                        SgConfigPath = parseResult.GetValue(configOption),
                         SkipClone = parseResult.GetValue(skipCloneOption),
                         SkipNpm = parseResult.GetValue(skipNpmOption),
-                        NoBuild = parseResult.GetValue(noBuildOption),
+                        FailOnUnexplained = !parseResult.GetValue(noFailOption),
+                        SkipRewrite = parseResult.GetValue(skipRewriteOption),
+                        ToolTimeoutSeconds = parseResult.GetValue(timeoutOption),
+                        LanguageFilter = parseResult.GetValue(languageOption),
                     },
                     CancellationToken.None
                 );
 
-                var reportDir = Path.Combine(repoRoot, ".difftest", "report", "baseline");
+                var report = result.Report;
+                var reportDir = Path.Combine(repoRoot, ".difftest", "report", "latest");
                 Console.WriteLine(
-                    $"Baseline report written to {reportDir} (same={report.Summary.Same}, only-ast-grep={report.Summary.OnlyAstGrep}, only-ag4={report.Summary.OnlyAg4}, range-diff={report.Summary.RangeDiff}, metavar-diff={report.Summary.MetaVarDiff})."
+                    $"Report written to {reportDir} (same={report.Summary.Same}, only-ast-grep={report.Summary.OnlyAstGrep}, only-ag4={report.Summary.OnlyAg4}, range-diff={report.Summary.RangeDiff}, metavar-diff={report.Summary.MetaVarDiff}, unexplained={report.UnexplainedDiffCount}, ast-grep={report.AstGrepTotalMs}ms, ag4={report.Ag4TotalMs}ms)."
                 );
+
+                if (parseResult.GetValue(writeReportOption))
+                {
+                    var baselineSummary = TryReadBaselineTotals(repoRoot);
+                    var committed = ReportWriter.BuildCommittedReport(report, baselineSummary);
+                    var outPath = Path.Combine(repoRoot, "difftest", "REPORT.md");
+                    await File.WriteAllTextAsync(outPath, committed);
+                    Console.WriteLine($"Committed summary written to {outPath}");
+                }
+
+                exitCode = result.ExitCode;
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"difftest failed: {ex.Message}");
-                throw;
+                Console.Error.WriteLine($"difftest failed: {ex}");
+                exitCode = 2;
             }
         });
 
-        try
+        var parseExit = await rootCommand.Parse(args).InvokeAsync();
+        if (parseExit != 0)
         {
-            var exit = await rootCommand.Parse(args).InvokeAsync();
-            if (exit != 0)
-            {
-                return exit;
-            }
-        }
-        catch
-        {
-            return 1;
+            return parseExit;
         }
 
-        return 0;
+        return exitCode;
+    }
+
+    private static string? TryReadBaselineTotals(string repoRoot)
+    {
+        var legacy = Path.Combine(repoRoot, ".difftest", "report", "baseline", "summary.txt");
+        if (!File.Exists(legacy))
+        {
+            return "same=49172 only-ast-grep=14122 only-ag4=649 range-diff=3541 metavar-diff=17048 (Phase 0b Java snapshot)";
+        }
+
+        var lines = File.ReadAllLines(legacy);
+        var totals = lines.FirstOrDefault(l => l.StartsWith("Totals:", StringComparison.Ordinal));
+        return totals ?? string.Join('\n', lines.Take(8));
     }
 }

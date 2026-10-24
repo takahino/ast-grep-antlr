@@ -1,0 +1,214 @@
+# ast-grep / ag4 differential patterns (C++). No kind-based rules.
+# Run with difftest/sgconfig.yml so .h maps to cpp for ast-grep.
+language: cpp
+rules:
+  # --- calls / $$$ ---
+  - id: call-foo
+    rule:
+      pattern: foo($$$ARGS)
+  - id: call-any
+    rule:
+      pattern: $F($$$ARGS)
+  - id: qualified-call
+    rule:
+      pattern: "$X::$Y($$$ARGS)"
+  - id: member-call
+    rule:
+      pattern: $X.$Y($$$ARGS)
+  - id: ptr-call
+    rule:
+      pattern: $X->$Y($$$ARGS)
+  - id: std-move
+    rule:
+      pattern: "std::move($A)"
+  - id: std-forward
+    rule:
+      pattern: "std::forward<$T>($A)"
+  - id: std-make-unique
+    rule:
+      pattern: "std::make_unique<$T>($$$ARGS)"
+  - id: std-make-shared
+    rule:
+      pattern: "std::make_shared<$T>($$$ARGS)"
+  - id: printf-call
+    rule:
+      pattern: printf($FMT, $$$ARGS)
+  - id: sprintf-call
+    rule:
+      pattern: sprintf($BUF, $FMT, $$$ARGS)
+  - id: memcpy-call
+    rule:
+      pattern: memcpy($DST, $SRC, $N)
+  - id: memset-call
+    rule:
+      pattern: memset($DST, $VAL, $N)
+  - id: assert-macro
+    rule:
+      pattern: assert($C)
+  - id: wildcard-arg
+    rule:
+      pattern: bar($_)
+  - id: cout-stream
+    rule:
+      pattern: "std::cout << $A"
+  - id: cerr-stream
+    rule:
+      pattern: "std::cerr << $A"
+
+  # --- new / delete / cast ---
+  - id: new-expr
+    rule:
+      pattern: new $T($$$ARGS)
+  - id: new-array
+    rule:
+      pattern: new $T[$N]
+  - id: delete-expr
+    rule:
+      pattern: delete $P
+  - id: delete-array
+    rule:
+      pattern: delete[] $P
+  - id: static-cast
+    rule:
+      pattern: "static_cast<$T>($E)"
+  - id: reinterpret-cast
+    rule:
+      pattern: "reinterpret_cast<$T>($E)"
+  - id: dynamic-cast
+    rule:
+      pattern: "dynamic_cast<$T>($E)"
+  - id: c-style-cast
+    rule:
+      pattern: ($T)$E
+
+  # --- statements / blocks ---
+  - id: if-block
+    rule:
+      pattern: if ($C) { $$$B }
+  - id: if-else-block
+    rule:
+      pattern: if ($C) { $$$T } else { $$$E }
+  - id: while-loop
+    rule:
+      pattern: while ($C) { $$$BODY }
+  - id: for-loop
+    rule:
+      pattern: for ($$$INIT; $C; $$$UPDATE) { $$$BODY }
+  - id: range-for
+    rule:
+      pattern: "for ($T $V : $ITER) { $$$BODY }"
+  - id: try-catch
+    rule:
+      pattern: try { $$$TRY } catch ($E) { $$$HANDLER }
+  - id: return-expr
+    rule:
+      pattern: return $E;
+  - id: return-void
+    rule:
+      pattern: return;
+  - id: throw-expr
+    rule:
+      pattern: throw $E;
+  - id: assignment
+    rule:
+      pattern: $VAR = $VAL;
+  - id: plus-assign
+    rule:
+      pattern: $VAR += $VAL;
+  - id: break-stmt
+    rule:
+      pattern: break;
+  - id: continue-stmt
+    rule:
+      pattern: continue;
+  - id: nullptr-lit
+    rule:
+      pattern: nullptr
+
+  # --- declarations / templates ---
+  - id: class-body
+    rule:
+      pattern: "class $N { $$$BODY };"
+  - id: struct-body
+    rule:
+      pattern: "struct $N { $$$BODY };"
+  - id: namespace-body
+    rule:
+      pattern: "namespace $N { $$$BODY }"
+  - id: include-angle
+    rule:
+      pattern: "#include <$H>"
+  - id: include-quote
+    rule:
+      pattern: '#include "$H"'
+  - id: using-ns
+    rule:
+      pattern: "using namespace $N;"
+  - id: typedef-decl
+    rule:
+      pattern: "typedef $T $N;"
+  - id: auto-decl
+    rule:
+      pattern: "auto $N = $E;"
+  - id: ternary
+    rule:
+      pattern: "$C ? $T : $E"
+  - id: sizeof-expr
+    rule:
+      pattern: sizeof($E)
+  - id: sizeof-type
+    rule:
+      pattern: sizeof($T)
+
+  # --- composite rules (no kind) ---
+  - id: cout-inside-fn
+    rule:
+      all:
+        - pattern: "std::cout << $A"
+        - inside:
+            pattern: $RET $NAME($$$PARAMS) { $$$BODY }
+  - id: delete-not-array
+    rule:
+      all:
+        - pattern: delete $P
+        - not:
+            pattern: delete[] $P
+  - id: move-or-forward
+    rule:
+      any:
+        - pattern: "std::move($A)"
+        - pattern: "std::forward<$T>($A)"
+  - id: new-has-literal
+    rule:
+      all:
+        - pattern: new $T($$$ARGS)
+        - has:
+            pattern: $N
+  - id: return-precedes-throw
+    rule:
+      all:
+        - pattern: return $E;
+        - precedes:
+            pattern: throw $X;
+            stopBy: neighbor
+  - id: assign-follows-decl
+    rule:
+      all:
+        - pattern: $VAR = $VAL;
+        - follows:
+            pattern: $TYPE $VAR;
+            stopBy: neighbor
+
+  # --- rewrites ---
+  - id: rewrite-nullptr
+    rule:
+      pattern: "NULL"
+    rewrite: nullptr
+  - id: rewrite-move
+    rule:
+      pattern: "std::move($A)"
+    rewrite: "static_cast<$T&&>($A)"
+  - id: rewrite-printf
+    rule:
+      pattern: printf($FMT, $$$ARGS)
+    rewrite: "fmt::print($FMT, $$$ARGS)"

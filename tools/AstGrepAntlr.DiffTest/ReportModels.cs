@@ -15,6 +15,16 @@ internal sealed class DiffTestReport
     public required List<PatternReport> Patterns { get; set; }
 
     public required DiffSummary Summary { get; set; }
+
+    public required DiffSummary UnexplainedSummary { get; set; }
+
+    public long AstGrepTotalMs { get; set; }
+
+    public long Ag4TotalMs { get; set; }
+
+    public int UnexplainedDiffCount { get; set; }
+
+    public List<string> Notes { get; set; } = [];
 }
 
 internal sealed class PreparedRepoReport
@@ -26,6 +36,8 @@ internal sealed class PreparedRepoReport
     public required string Ref { get; set; }
 
     public required string Sha { get; set; }
+
+    public required string Language { get; set; }
 }
 
 internal sealed class PatternReport
@@ -36,18 +48,34 @@ internal sealed class PatternReport
 
     public required string RepoId { get; set; }
 
+    public required string Language { get; set; }
+
     public string? AstGrepError { get; set; }
 
     public string? Ag4Error { get; set; }
 
+    public int? AstGrepExitCode { get; set; }
+
+    public int? Ag4ExitCode { get; set; }
+
+    public long AstGrepMs { get; set; }
+
+    public long Ag4Ms { get; set; }
+
     public required DiffSummary Counts { get; set; }
 
+    public required DiffSummary Unexplained { get; set; }
+
     public required List<ClassifiedMatchReport> Samples { get; set; }
+
+    public string? RewriteResult { get; set; }
 }
 
 internal sealed class ClassifiedMatchReport
 {
     public required string Bucket { get; set; }
+
+    public bool Explained { get; set; }
 
     public NormalizedMatchReport? AstGrep { get; set; }
 
@@ -78,6 +106,10 @@ internal sealed class DiffSummary
     public int RangeDiff { get; set; }
 
     public int MetaVarDiff { get; set; }
+
+    public int TotalCompared => Same + OnlyAstGrep + OnlyAg4 + RangeDiff + MetaVarDiff;
+
+    public double MatchRate => TotalCompared == 0 ? 1.0 : (double)Same / TotalCompared;
 
     public void Add(ClassifiedMatch match)
     {
