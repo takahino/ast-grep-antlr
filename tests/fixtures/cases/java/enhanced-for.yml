@@ -1,0 +1,17 @@
+language: java
+cases:
+  - id: enhanced-for-type-metavar
+    pattern: "for ($T $V : $ITER) { $$$BODY }"
+    source: |
+      class T {
+        void m(List<String> xs) {
+          for (String x : xs) { sink(x); }
+        }
+      }
+    expect:
+      - text: "for (String x : xs) { sink(x); }"
+        meta:
+          T: "String"
+          V: "x"
+          ITER: "xs"
+          BODY: "sink(x);"

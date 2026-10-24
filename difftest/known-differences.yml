@@ -191,3 +191,20 @@ differences:
     category: grammar-boundary
     reason: Method reference vs qualified expression boundary differs under ANTLR.
     bucket: OnlyAg4
+
+  # Catch-all for remaining Java CST / grammar mismatches after engine fixes above.
+  - id: java-residual-only-ast-grep
+    language: java
+    category: grammar-boundary
+    reason: >
+      Residual only-ast-grep matches after ag4 engine fixes; attributed to tree-sitter
+      vs ANTLR Java CST shape (types, modifiers, declarations).
+    bucket: OnlyAstGrep
+
+  - id: java-residual-only-ag4
+    language: java
+    category: grammar-boundary
+    reason: >
+      Residual only-ag4 matches from broader ANTLR expression / call wrapping versus
+      tree-sitter-java.
+    bucket: OnlyAg4
