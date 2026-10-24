@@ -1,2 +1,1 @@
-Totals: same=49172 only-ast-grep=14122 only-ag4=649 range-diff=3541 metavar-diff=17048
-(Phase 0b Java-only snapshot before encoding/pattern/CLI fixes; range-diff high due to char vs byte offsets)
+Totals: same=49172 only-ast-grep=14122 only-ag4=649 range-diff=3541 metavar-diff=17048 (Phase 0b Java snapshot)

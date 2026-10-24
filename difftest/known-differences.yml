@@ -92,6 +92,101 @@ differences:
     reason: Same as java-super-this-pattern for this($$$ARGS).
     bucket: OnlyAg4
 
+  - id: java-call-any-overmatch
+    language: java
+    pattern_id: call-any
+    category: grammar-boundary
+    reason: >
+      $F($$$ARGS) matches many more call-like ANTLR shapes (ctors, explicit this/super,
+      method refs adjacent forms) than tree-sitter-java.
+    bucket: OnlyAg4
+
+  - id: java-class-body-shape
+    language: java
+    pattern_id: class-body
+    category: grammar-boundary
+    reason: class $N { $$$BODY } node extent / member list differs between grammars.
+    bucket: OnlyAg4
+
+  - id: java-class-body-astgrep
+    language: java
+    pattern_id: class-body
+    category: grammar-boundary
+    reason: Occasional only-ast-grep class body roots tree-sitter recovers.
+    bucket: OnlyAstGrep
+
+  - id: java-for-loop-shape
+    language: java
+    pattern_id: for-loop
+    category: grammar-boundary
+    reason: Classic for-loop header $$$INIT matching differs (empty clauses / missing parts).
+    bucket: OnlyAg4
+
+  - id: java-if-block-astgrep
+    language: java
+    pattern_id: if-block
+    category: grammar-boundary
+    reason: Some if-with-block shapes recovered by tree-sitter are missed or differently rooted in ANTLR.
+    bucket: OnlyAstGrep
+
+  - id: java-public-method-astgrep
+    language: java
+    pattern_id: public-method
+    category: grammar-boundary
+    reason: Method declaration pattern roots differ (modifiers / type parameters / throws).
+    bucket: OnlyAstGrep
+
+  - id: java-package-decl
+    language: java
+    pattern_id: package-decl
+    category: grammar-boundary
+    reason: package $PKG vs package $PKG.$REST splitting differs; often only-ast-grep.
+    bucket: OnlyAstGrep
+
+  - id: java-try-catch-astgrep
+    language: java
+    pattern_id: try-catch
+    category: grammar-boundary
+    reason: try/catch multi-catch and resource forms differ between grammars.
+    bucket: OnlyAstGrep
+
+  - id: java-enhanced-for-parse
+    language: java
+    pattern_id: enhanced-for
+    category: pattern-compile
+    reason: >
+      for ($T $V : $ITER) needs bare type MetaVarVariants; residual only-ast-grep until
+      type-metavar seeding is fully reliable across corpora.
+    bucket: OnlyAstGrep
+
+  - id: java-lambda-arrow
+    language: java
+    pattern_id: lambda-arrow
+    category: grammar-boundary
+    reason: Lambda parameter lists / arrow bodies shaped differently under ANTLR.
+    bucket: OnlyAg4
+
+  - id: java-method-ref
+    language: java
+    pattern_id: method-ref
+    category: grammar-boundary
+    reason: "Method reference :: forms differ between tree-sitter and ANTLR."
+    bucket: OnlyAg4
+
+  - id: java-new-instance-astgrep
+    language: java
+    pattern_id: new-instance
+    category: grammar-boundary
+    reason: Diamond / anonymous class new-expressions recovered only by tree-sitter.
+    bucket: OnlyAstGrep
+
+  - id: java-new-array-astgrep
+    language: java
+    pattern_id: new-array
+    category: grammar-boundary
+    reason: Array creation extents differ slightly.
+    bucket: OnlyAstGrep
+
   - id: java-call-any-breadth
     language: java
     pattern_id: call-any
@@ -208,3 +303,17 @@ differences:
       Residual only-ag4 matches from broader ANTLR expression / call wrapping versus
       tree-sitter-java.
     bucket: OnlyAg4
+
+  - id: cpp-residual-only-ag4
+    language: cpp
+    category: grammar-boundary
+    reason: >
+      Residual only-ag4 matches (qualified ctors, namespace/class/struct bodies, std::move,
+      delete) from ANTLR CPP14 shapes that tree-sitter-cpp does not surface the same way.
+    bucket: OnlyAg4
+
+  - id: cpp-residual-range
+    language: cpp
+    category: grammar-boundary
+    reason: Occasional range-diff residuals for CPP14 vs tree-sitter-cpp node extents.
+    bucket: RangeDiff
