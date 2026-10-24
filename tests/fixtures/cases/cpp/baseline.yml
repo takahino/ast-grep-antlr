@@ -1,9 +1,24 @@
 language: cpp
 cases:
+  - id: multi-args
+    pattern: "foo($$$ARGS)"
+    source: |
+      void m() { sink(foo(1, 2, 3)); }
+    expect:
+      - text: "foo(1, 2, 3)"
+        meta:
+          ARGS: "1, 2, 3"
+  - id: underscore
+    pattern: "bar($_)"
+    source: |
+      void m() { sink(bar(99)); }
+    expect:
+      - text: "bar(99)"
   - id: cout-literal
     pattern: "std::cout << $A"
     source: |
       void m() { std::cout << 42; }
     expect:
-      - meta:
+      - text: "std::cout << 42"
+        meta:
           A: "42"

@@ -264,7 +264,10 @@ public sealed class Ag4Tools
             var baseDir = Path.GetDirectoryName(Path.GetFullPath(config))!;
             foreach (var dir in cfg.RuleDirs ?? [])
             {
-                docs.AddRange(RuleLoader.LoadRuleDir(Path.Combine(baseDir, dir)));
+                foreach (var (doc, _) in RuleLoader.LoadRuleDir(Path.Combine(baseDir, dir)))
+                {
+                    docs.Add(doc);
+                }
             }
         }
 

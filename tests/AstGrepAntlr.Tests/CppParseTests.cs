@@ -48,6 +48,18 @@ public class CppParseTests
     }
 
     [Fact]
+    public void Matches_foo_call_in_expression_context()
+    {
+        var lang = new CppLanguage();
+        var code = "void m() { sink(foo(1, 2, 3)); }";
+        var tree = new TwoStageParser().Parse(lang, code).Tree;
+        var compiled = new PatternCompiler().Compile(lang, new PatternSpec("foo($$$ARGS)"));
+        var hits = new PatternMatcher().MatchAll(tree, compiled).ToList();
+        Assert.NotEmpty(hits);
+        Assert.Equal("1, 2, 3", hits[0].Meta["ARGS"].Text);
+    }
+
+    [Fact]
     public void Matches_identifier_metavar_in_cout()
     {
         var lang = new CppLanguage();

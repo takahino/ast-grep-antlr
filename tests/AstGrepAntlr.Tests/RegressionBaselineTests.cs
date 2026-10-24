@@ -177,10 +177,11 @@ public class RegressionBaselineTests
               pattern: System.out.println($A)
               inside:
                 kind: classBody
+                stopBy: end
             """;
         var doc = RuleLoader.LoadRule(yaml);
         var lang = new JavaLanguage();
-        // Current behavior: stopBy defaults to walking all ancestors (end-like).
+        // stopBy defaults to neighbor; classBody is an ancestor, so require stopBy: end.
         var tree = new TwoStageParser().Parse(lang, "class Outer { void m() { System.out.println(1); } }").Tree;
         var hits = new RuleEngine().Match(lang, tree, doc).ToList();
         Assert.NotEmpty(hits);
