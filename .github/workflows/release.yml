@@ -65,7 +65,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Install Linux AOT deps
@@ -117,7 +117,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - run: dotnet restore AstGrepAntlr.slnx
@@ -172,7 +172,7 @@ jobs:
         with:
           name: nupkg
           path: nupkg
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Push to NuGet.org
