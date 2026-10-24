@@ -53,6 +53,28 @@ public sealed class RuleEngine
     private CompiledPattern CompilePattern(ILanguage language, PatternSpec spec) =>
         _compiled.GetOrAdd((language.Id, spec), key => _compiler.Compile(language, key.Spec));
 
+    private static Dictionary<string, RuleNode> MergeUtils(
+        Dictionary<string, RuleNode>? fromConfig,
+        Dictionary<string, RuleNode>? fromDoc
+    )
+    {
+        if (fromConfig is null || fromConfig.Count == 0)
+        {
+            return fromDoc ?? new Dictionary<string, RuleNode>(StringComparer.Ordinal);
+        }
+
+        var map = new Dictionary<string, RuleNode>(fromConfig, StringComparer.Ordinal);
+        if (fromDoc is not null)
+        {
+            foreach (var (k, v) in fromDoc)
+            {
+                map[k] = v;
+            }
+        }
+
+        return map;
+    }
+
     public IEnumerable<(int NodeIndex, Dictionary<string, MetaVarValue> Meta)> Match(
         ILanguage language,
         SyntaxTree tree,
@@ -65,7 +87,7 @@ public sealed class RuleEngine
             yield break;
         }
 
-        var utilsMap = utils ?? doc.Utils ?? new Dictionary<string, RuleNode>();
+        var utilsMap = MergeUtils(utils, doc.Utils);
         foreach (var (node, env) in MatchRule(language, tree, doc.Rule, utilsMap, -1))
         {
             if (doc.Constraints is not null)
@@ -208,46 +230,52 @@ public sealed class RuleEngine
                 continue;
             }
 
-            if (rule.Inside is not null)
+            if (
+                rule.Inside is not null
+                && !RuleRelations.Holds(MatchRule, language, tree, rule.Inside, utils, node, RuleRelations.Kind.Inside)
+            )
             {
-                var ancestors = Ancestors(tree, node).ToList();
-                var insideOk = false;
-                foreach (var a in ancestors)
-                {
-                    foreach (var _ in MatchRule(language, tree, rule.Inside, utils, a))
-                    {
-                        insideOk = true;
-                        break;
-                    }
-
-                    if (insideOk)
-                    {
-                        break;
-                    }
-
-                    if (string.Equals(rule.Inside.StopBy, "end", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // keep walking
-                    }
-                    else if (rule.Inside.StopBy is not null && tree.KindMatches(a, rule.Inside.StopBy))
-                    {
-                        break;
-                    }
-                }
-
-                if (!insideOk)
-                {
-                    continue;
-                }
+                continue;
             }
 
-            if (rule.Has is not null)
+            if (
+                rule.Has is not null
+                && !RuleRelations.Holds(MatchRule, language, tree, rule.Has, utils, node, RuleRelations.Kind.Has)
+            )
             {
-                var hasAny = MatchRule(language, tree, rule.Has, utils, node).Any();
-                if (!hasAny)
-                {
-                    continue;
-                }
+                continue;
+            }
+
+            if (
+                rule.Precedes is not null
+                && !RuleRelations.Holds(
+                    MatchRule,
+                    language,
+                    tree,
+                    rule.Precedes,
+                    utils,
+                    node,
+                    RuleRelations.Kind.Precedes
+                )
+            )
+            {
+                continue;
+            }
+
+            if (
+                rule.Follows is not null
+                && !RuleRelations.Holds(
+                    MatchRule,
+                    language,
+                    tree,
+                    rule.Follows,
+                    utils,
+                    node,
+                    RuleRelations.Kind.Follows
+                )
+            )
+            {
+                continue;
             }
 
             yield return (node, env);
@@ -278,16 +306,6 @@ public sealed class RuleEngine
         }
 
         return new PatternSpec(rule.Pattern ?? string.Empty);
-    }
-
-    private static IEnumerable<int> Ancestors(SyntaxTree tree, int node)
-    {
-        var p = tree[node].Parent;
-        while (p >= 0)
-        {
-            yield return p;
-            p = tree[p].Parent;
-        }
     }
 
     private static bool ConstraintHolds(SyntaxTree tree, int node, string capturedText, RuleNode constraint)
