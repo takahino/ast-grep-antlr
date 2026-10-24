@@ -13,7 +13,10 @@ public static class BuiltinLanguages
         registry.RegisterAlias("c++", "cpp");
         registry.RegisterAlias("cc", "cpp");
         registry.RegisterAlias("cxx", "cpp");
-        // Additional languages (js/ts/csharp/plsql/postgresql/mysql) can be added as
+        registry.Register(new CSharpLanguage());
+        registry.RegisterAlias("cs", "csharp");
+        registry.RegisterAlias("c#", "csharp");
+        // Additional languages (js/ts/plsql/postgresql/mysql) can be added as
         // generated parsers or via sgconfig.yml customLanguages (.g4 / .interp).
         return registry;
     }

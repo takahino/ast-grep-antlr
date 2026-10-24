@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>AstGrepAntlr.Languages</RootNamespace>
-    <Description>Built-in ANTLR grammars for AstGrepAntlr.</Description>
+    <Description>Built-in language front-ends for AstGrepAntlr (ANTLR grammars + Roslyn C#).</Description>
     <PackageId>AstGrepAntlr.Languages</PackageId>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Antlr4.Runtime.Standard" />
     <PackageReference Include="Antlr4BuildTasks" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <ProjectReference Include="..\AstGrepAntlr.Core\AstGrepAntlr.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
