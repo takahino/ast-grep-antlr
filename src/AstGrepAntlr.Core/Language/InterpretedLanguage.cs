@@ -10,7 +10,7 @@ namespace AstGrepAntlr.Language;
 /// <summary>
 /// Language backed by ANTLR .interp files (actions/predicates are not executed).
 /// </summary>
-public sealed class InterpretedLanguage : ILanguage
+public sealed class InterpretedLanguage : IAntlrLanguage
 {
     private readonly string _grammarFileName;
     private readonly string[] _ruleNames;

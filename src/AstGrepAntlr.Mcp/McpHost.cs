@@ -104,23 +104,26 @@ public sealed class Ag4Tools
     {
         var lang = McpContext.Registry.Get(language);
         var tokens = new List<object>();
-        for (var i = 1; i <= lang.MaxTokenType; i++)
+        if (lang is IAntlrLanguage antlr)
         {
-            var sym = lang.Vocabulary.GetSymbolicName(i);
-            var lit = lang.Vocabulary.GetLiteralName(i);
-            if (sym is null && lit is null)
+            for (var i = 1; i <= antlr.MaxTokenType; i++)
             {
-                continue;
-            }
-
-            tokens.Add(
-                new
+                var sym = antlr.Vocabulary.GetSymbolicName(i);
+                var lit = antlr.Vocabulary.GetLiteralName(i);
+                if (sym is null && lit is null)
                 {
-                    type = i,
-                    symbolic = sym,
-                    literal = lit,
+                    continue;
                 }
-            );
+
+                tokens.Add(
+                    new
+                    {
+                        type = i,
+                        symbolic = sym,
+                        literal = lit,
+                    }
+                );
+            }
         }
 
         return JsonSerializer.Serialize(

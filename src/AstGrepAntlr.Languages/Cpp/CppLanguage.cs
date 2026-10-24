@@ -4,7 +4,7 @@ using AstGrepAntlr.Languages.Cpp;
 
 namespace AstGrepAntlr.Languages;
 
-public sealed class CppLanguage : ILanguage
+public sealed class CppLanguage : IAntlrLanguage
 {
     public string Id => "cpp";
     public IReadOnlyList<string> Extensions { get; } = [".cpp", ".cc", ".cxx", ".c++", ".hpp", ".hh", ".hxx", ".h"];

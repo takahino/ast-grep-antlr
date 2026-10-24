@@ -7,20 +7,15 @@ namespace AstGrepAntlr.Tree;
 /// <summary>Converts an ANTLR <see cref="IParseTree"/> into an arena <see cref="SyntaxTree"/> with chain collapse.</summary>
 public sealed class TreeBuilder
 {
-    public SyntaxTree Build(ILanguage language, string source, IParseTree root)
+    public SyntaxTree Build(IAntlrLanguage language, string source, IParseTree root)
     {
-        var nodes = new List<SyntaxNode>();
-        var kindIndex = new Dictionary<string, List<int>>(StringComparer.Ordinal);
-        var chainKinds = new List<string[]>();
+        var asm = new SyntaxTreeAssembler();
         // ANTLR CharStreams.fromString reports code-point offsets; .NET strings are UTF-16.
         var cpToUtf16 = BuildCodePointMap(source);
 
-        BuildNode(language, root, parent: -1, nodes, kindIndex, chainKinds, cpToUtf16);
+        BuildNode(language, root, parent: -1, asm, cpToUtf16);
 
-        // Second pass: collapse single-child rule chains and set ChainHead / ChainKinds.
-        CollapseChains(nodes, chainKinds);
-
-        return new SyntaxTree(source, language.Id, nodes.ToArray(), kindIndex, chainKinds.ToArray());
+        return asm.Build(source, language.Id);
     }
 
     private static int[]? BuildCodePointMap(string source)
@@ -72,18 +67,14 @@ public sealed class TreeBuilder
     }
 
     private static int BuildNode(
-        ILanguage language,
+        IAntlrLanguage language,
         IParseTree tree,
         int parent,
-        List<SyntaxNode> nodes,
-        Dictionary<string, List<int>> kindIndex,
-        List<string[]> chainKinds,
+        SyntaxTreeAssembler asm,
         int[]? cpToUtf16
     )
     {
-        var index = nodes.Count;
-        nodes.Add(default); // placeholder
-        chainKinds.Add([]);
+        var index = asm.Begin();
 
         SyntaxNodeKind kind;
         int typeId;
@@ -92,8 +83,6 @@ public sealed class TreeBuilder
         int end;
         bool isNamed;
 
-        // Source length for clamping is unknown here; use int.MaxValue then clamp via map helper.
-        // Actual source length is recovered from the map sentinel or left unbounded for BMP.
         var utf16Len = cpToUtf16 is null ? int.MaxValue : cpToUtf16[^1];
 
         if (tree is IErrorNode errorNode)
@@ -149,7 +138,7 @@ public sealed class TreeBuilder
         for (var i = 0; i < tree.ChildCount; i++)
         {
             var childTree = tree.GetChild(i);
-            var childIndex = BuildNode(language, childTree, index, nodes, kindIndex, chainKinds, cpToUtf16);
+            var childIndex = BuildNode(language, childTree, index, asm, cpToUtf16);
             childCount++;
             if (firstChild < 0)
             {
@@ -157,82 +146,31 @@ public sealed class TreeBuilder
             }
             else
             {
-                var prev = nodes[prevChild];
-                nodes[prevChild] = prev with { NextSibling = childIndex };
+                asm.SetNextSibling(prevChild, childIndex);
             }
 
             prevChild = childIndex;
         }
 
-        nodes[index] = new SyntaxNode
-        {
-            Index = index,
-            Kind = kind,
-            TypeId = typeId,
-            TypeName = typeName,
-            Start = start,
-            End = Math.Max(start, end),
-            Parent = parent,
-            FirstChild = firstChild,
-            NextSibling = -1,
-            ChildCount = childCount,
-            IsNamed = isNamed,
-            ChainHead = index,
-        };
-
-        AddKind(kindIndex, typeName, index);
-        if (kind is SyntaxNodeKind.Error or SyntaxNodeKind.Missing)
-        {
-            AddKind(kindIndex, "ERROR", index);
-        }
+        asm.Commit(
+            index,
+            new SyntaxNode
+            {
+                Index = index,
+                Kind = kind,
+                TypeId = typeId,
+                TypeName = typeName,
+                Start = start,
+                End = Math.Max(start, end),
+                Parent = parent,
+                FirstChild = firstChild,
+                NextSibling = -1,
+                ChildCount = childCount,
+                IsNamed = isNamed,
+                ChainHead = index,
+            }
+        );
 
         return index;
-    }
-
-    private static void AddKind(Dictionary<string, List<int>> kindIndex, string kind, int index)
-    {
-        if (!kindIndex.TryGetValue(kind, out var list))
-        {
-            list = [];
-            kindIndex[kind] = list;
-        }
-
-        list.Add(index);
-    }
-
-    private static void CollapseChains(List<SyntaxNode> nodes, List<string[]> chainKinds)
-    {
-        for (var i = 0; i < nodes.Count; i++)
-        {
-            if (nodes[i].Kind != SyntaxNodeKind.Rule || nodes[i].ChainHead != i)
-            {
-                continue;
-            }
-
-            // Find longest single-child rule chain starting at i.
-            var parts = new List<string> { nodes[i].TypeName };
-            var current = i;
-            while (nodes[current].ChildCount == 1 && nodes[current].FirstChild >= 0)
-            {
-                var child = nodes[current].FirstChild;
-                if (nodes[child].Kind != SyntaxNodeKind.Rule)
-                {
-                    break;
-                }
-
-                parts.Add(nodes[child].TypeName);
-                // Point child chain head to i
-                nodes[child] = nodes[child] with
-                {
-                    ChainHead = i,
-                };
-                current = child;
-            }
-
-            nodes[i] = nodes[i] with { ChainHead = i };
-            // Stored pre-split: KindMatches runs over every node of every tree, so splitting a
-            // joined string there would allocate on the hottest path in the matcher.
-            chainKinds[i] = parts.ToArray();
-        }
     }
 }

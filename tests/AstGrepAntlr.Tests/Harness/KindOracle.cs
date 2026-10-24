@@ -31,9 +31,10 @@ public static class KindOracle
     public static Dictionary<int, HashSet<string>> AllNodeKinds(ILanguage language, string source)
     {
         var parsed = new TwoStageParser().Parse(language, source);
+        var antlr = (IAntlrLanguage)language;
         var antlrRoot = Invoke(language, source);
         var fromAntlr = new Dictionary<(int Start, int End), HashSet<string>>();
-        Walk(language, antlrRoot, fromAntlr);
+        Walk(antlr, antlrRoot, fromAntlr);
 
         var map = new Dictionary<int, HashSet<string>>();
         var tree = parsed.Tree;
@@ -73,16 +74,17 @@ public static class KindOracle
 
     private static ParserRuleContext Invoke(ILanguage language, string source)
     {
+        var antlr = (IAntlrLanguage)language;
         var stream = CharStreams.fromString(source);
-        var lexer = language.CreateLexer(stream);
+        var lexer = antlr.CreateLexer(stream);
         lexer.RemoveErrorListeners();
         var tokens = new CommonTokenStream(lexer);
-        var parser = language.CreateParser(tokens);
+        var parser = antlr.CreateParser(tokens);
         parser.RemoveErrorListeners();
-        return language.InvokeRule(parser, language.StartRule);
+        return antlr.InvokeRule(parser, antlr.StartRule);
     }
 
-    private static void Walk(ILanguage language, IParseTree node, Dictionary<(int, int), HashSet<string>> into)
+    private static void Walk(IAntlrLanguage language, IParseTree node, Dictionary<(int, int), HashSet<string>> into)
     {
         if (node is ParserRuleContext rule && rule.Start is not null)
         {

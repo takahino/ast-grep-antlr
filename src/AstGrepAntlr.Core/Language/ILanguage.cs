@@ -1,9 +1,9 @@
-using Antlr4.Runtime;
+using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Tree;
 
 namespace AstGrepAntlr.Language;
 
-/// <summary>Language front-end: lexer/parser factory and pattern configuration.</summary>
+/// <summary>Language front-end: parse source/patterns into arena <see cref="SyntaxTree"/>s.</summary>
 public interface ILanguage
 {
     string Id { get; }
@@ -18,19 +18,16 @@ public interface ILanguage
     TimeSpan ParseTimeout { get; }
     long MaxFileBytes { get; }
 
-    Lexer CreateLexer(ICharStream stream);
-    Parser CreateParser(ITokenStream tokens);
-    ParserRuleContext InvokeRule(Parser parser, string ruleName);
-    bool IsNamedToken(IToken token, IVocabulary vocabulary);
+    /// <summary>Node kind names this language may emit (for MCP describe / tooling).</summary>
     IReadOnlyList<string> RuleNames { get; }
-    IVocabulary Vocabulary { get; }
+
+    ParseResult Parse(string source, LanguageParseOptions? options = null);
 
     /// <summary>
-    /// Highest token type the vocabulary defines, so callers can enumerate tokens without
-    /// guessing an upper bound. IVocabulary does not expose this, but every concrete
-    /// vocabulary ANTLR generates is a <see cref="Antlr4.Runtime.Vocabulary"/>.
+    /// Parse a pattern fragment with the given entry rule. Returns null when the fragment
+    /// does not consume the full input or produces parse errors.
     /// </summary>
-    int MaxTokenType => Vocabulary is Vocabulary v ? v.getMaxTokenType() : 0;
+    SyntaxTree? TryParseFragment(string source, string rule);
 }
 
 public sealed class LanguageParseOptions

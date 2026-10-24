@@ -4,7 +4,7 @@ using AstGrepAntlr.Languages.Java;
 
 namespace AstGrepAntlr.Languages;
 
-public sealed class JavaLanguage : ILanguage
+public sealed class JavaLanguage : IAntlrLanguage
 {
     public string Id => "java";
     public IReadOnlyList<string> Extensions { get; } = [".java"];

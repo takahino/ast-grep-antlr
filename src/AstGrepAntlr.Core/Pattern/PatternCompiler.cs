@@ -1,8 +1,4 @@
-using Antlr4.Runtime;
-using Antlr4.Runtime.Atn;
-using Antlr4.Runtime.Misc;
 using AstGrepAntlr.Language;
-using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Tree;
 
 namespace AstGrepAntlr.Pattern;
@@ -95,26 +91,26 @@ public sealed class PatternCompiler
             {
                 try
                 {
-                    var result = ParsePatternFragment(language, rewritten, rule);
-                    if (result is null)
+                    var tree = language.TryParseFragment(rewritten, rule);
+                    if (tree is null)
                     {
                         continue;
                     }
 
-                    var marked = MarkMetaVars(result.Tree, placeholders, placeholderSpans);
+                    var marked = MarkMetaVars(tree, placeholders, placeholderSpans);
                     if (marked < placeholders.Count)
                     {
                         continue;
                     }
 
-                    var root = DescendPatternRoot(result.Tree, result.Tree.Root);
+                    var root = DescendPatternRoot(tree, tree.Root);
                     if (!string.IsNullOrEmpty(spec.Selector))
                     {
-                        root = FindSelector(result.Tree, spec.Selector!) ?? root;
+                        root = FindSelector(tree, spec.Selector!) ?? root;
                     }
 
-                    var literals = ExtractRequiredLiterals(result.Tree, placeholders.Keys);
-                    return new CompiledPattern(result.Tree, root, spec.Strictness, rule, literals);
+                    var literals = ExtractRequiredLiterals(tree, placeholders.Keys);
+                    return new CompiledPattern(tree, root, spec.Strictness, rule, literals);
                 }
                 catch (Exception ex)
                 {
@@ -252,51 +248,6 @@ public sealed class PatternCompiler
         }
 
         return false;
-    }
-
-    private static ParseResult? ParsePatternFragment(ILanguage language, string source, string rule)
-    {
-        // SLL first (fast); fall back to LL for ambiguous fragments such as
-        // `for (String x : xs)` where Identifier looks like a type or expression.
-        return ParsePatternFragmentWithMode(language, source, rule, PredictionMode.SLL)
-            ?? ParsePatternFragmentWithMode(language, source, rule, PredictionMode.LL);
-    }
-
-    private static ParseResult? ParsePatternFragmentWithMode(
-        ILanguage language,
-        string source,
-        string rule,
-        PredictionMode mode
-    )
-    {
-        var stream = CharStreams.fromString(source);
-        var lexer = language.CreateLexer(stream);
-        lexer.RemoveErrorListeners();
-        var tokens = new CommonTokenStream(lexer);
-        var parser = language.CreateParser(tokens);
-        parser.RemoveErrorListeners();
-        parser.ErrorHandler = new BailErrorStrategy();
-        parser.Interpreter.PredictionMode = mode;
-        try
-        {
-            var tree = language.InvokeRule(parser, rule);
-            if (tokens.LA(1) != TokenConstants.EOF)
-            {
-                return null;
-            }
-
-            var builder = new TreeBuilder();
-            var syntax = builder.Build(language, source, tree);
-            return new ParseResult(syntax, Array.Empty<ParseDiagnostic>(), rule, false);
-        }
-        catch (ParseCanceledException)
-        {
-            return null;
-        }
-        catch (RecognitionException)
-        {
-            return null;
-        }
     }
 
     private static int DescendPatternRoot(SyntaxTree tree, int root)

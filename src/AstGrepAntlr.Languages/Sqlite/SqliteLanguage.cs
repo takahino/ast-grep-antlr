@@ -4,7 +4,7 @@ using AstGrepAntlr.Languages.Sqlite;
 
 namespace AstGrepAntlr.Languages;
 
-public sealed class SqliteLanguage : ILanguage
+public sealed class SqliteLanguage : IAntlrLanguage
 {
     public string Id => "sqlite";
     public IReadOnlyList<string> Extensions { get; } = [".sql", ".sqlite"];
