@@ -301,8 +301,10 @@
         互換の<strong>構造検索・書き換えツール</strong>です。主要言語（Java / C++ /
         Python）は<strong>tree-sitter</strong>（既定）で解析し、本家に近い kind
         名と速度を狙います。PL/SQL ・SQLite・独自 DSL は <strong>ANTLR4</strong> です。C# も既定は
-        tree-sitter で、<code>--backend roslyn</code> により <strong>Roslyn</strong> に切り替えられます。<code>--backend</code> /
-        <code>languageBackends</code> で Java / C++ / Python を ANTLR に戻せます。.NET 10 で実装しています。
+        tree-sitter で、<code>--backend roslyn</code> により
+        <strong>Roslyn</strong> に切り替えられます。<code>--backend</code> /
+        <code>languageBackends</code> で Java / C++ / Python を ANTLR に戻せます。.NET 10
+        で実装しています。
       </p>
       <ul class="tight">
         <li>
@@ -711,10 +713,9 @@
         Java / C++ / Python は本家 ast-grep と同じ tree-sitter 文法を既定にし、速度と kind
         名の互換を優先します（<code>TreeSitterLanguage</code> +
         <code>TreeSitterTreeBuilder</code>）。PL/SQL・SQLite・独自 DSL は BNF（g4）で拡張したいため
-        ANTLR のままです。C# の既定も tree-sitter-c-sharp で、Roslyn（<code>LanguageVersion.Latest</code>）は
-        <code>--backend roslyn</code> で選べます。<code
-          >ILanguage</code
-        >
+        ANTLR のままです。C# の既定も tree-sitter-c-sharp
+        で、Roslyn（<code>LanguageVersion.Latest</code>）は
+        <code>--backend roslyn</code> で選べます。<code>ILanguage</code>
         はパーサに依存しないので、照合エンジンを変えずにバックエンドだけ差し替えられます。<code
           >--backend antlr</code
         >
@@ -1855,8 +1856,7 @@ void ag4_free(char* buffer);                          // out_json は必ずこ�
         <a href="difftest/REPORT.md">difftest/REPORT.md</a> にあります（ANTLR ベースライン: Java
         tree-sitter: Java 98.65%、C++ 94.33%、Python 95.56%、C# 81.67%；ANTLR: Java 59.56%、C++
         43.56%、Python 54.68%；Roslyn C# 53.27%。いずれも known-differences 適用後の unexplained は
-        0）。内訳計測は
-        <code>tools/AstGrepAntlr.Bench</code>。解説は
+        0）。内訳計測は <code>tools/AstGrepAntlr.Bench</code>。解説は
         <a href="ast-grep-vs-ag4.html">ast-grep-vs-ag4.html</a> を参照してください。release
         のスモークテストには <code>-l java</code>（tree-sitter 既定）が含まれます。
       </p>
