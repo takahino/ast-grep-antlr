@@ -22,6 +22,9 @@ internal sealed class DiffTestOptions
 
     public bool SkipRewrite { get; init; }
 
+    /// <summary>ag4 parser backend for switchable languages (tree-sitter|antlr). Default tree-sitter.</summary>
+    public string Ag4Backend { get; init; } = "tree-sitter";
+
     public int SampleLimit { get; init; } = 25;
 
     public int RewriteFileLimit { get; init; } = 20;
@@ -151,6 +154,7 @@ internal static class DiffTestRunner
                                 SampleLimit = options.SampleLimit,
                                 RewriteFileLimit = options.RewriteFileLimit,
                                 SkipRewrite = options.SkipRewrite,
+                                Ag4Backend = options.Ag4Backend,
                             },
                             cancellationToken
                         );
@@ -269,6 +273,7 @@ internal static class DiffTestRunner
         public int SampleLimit { get; init; }
         public int RewriteFileLimit { get; init; }
         public bool SkipRewrite { get; init; }
+        public string Ag4Backend { get; init; } = "tree-sitter";
     }
 
     private static async Task<PatternReport> RunOnePatternAsync(
@@ -307,7 +312,8 @@ internal static class DiffTestRunner
                 ctx.SgConfig,
                 rewrite: null,
                 apply: false,
-                cancellationToken
+                cancellationToken,
+                backend: BackendForLanguage(language, ctx.Ag4Backend)
             );
         }
         else
@@ -330,7 +336,8 @@ internal static class DiffTestRunner
                 searchRoots,
                 ctx.SgConfig,
                 apply: false,
-                cancellationToken
+                cancellationToken,
+                backend: BackendForLanguage(language, ctx.Ag4Backend)
             );
         }
 
@@ -344,7 +351,14 @@ internal static class DiffTestRunner
         foreach (var item in classified)
         {
             counts.Add(item);
-            var explained = KnownDifferenceMatcher.IsExplained(ctx.Known, language, rule.Id, repo.Id, item.Bucket);
+            var explained = KnownDifferenceMatcher.IsExplained(
+                ctx.Known,
+                language,
+                rule.Id,
+                repo.Id,
+                item.Bucket,
+                BackendForLanguage(language, ctx.Ag4Backend)
+            );
             if (!explained && item.Bucket != MatchBucket.Same)
             {
                 unexplained.Add(item);
@@ -424,7 +438,8 @@ internal static class DiffTestRunner
                 ctx.SgConfig,
                 rewrite: null,
                 apply: false,
-                cancellationToken
+                cancellationToken,
+                backend: BackendForLanguage(ctx.Language, ctx.Ag4Backend)
             );
             var matches = JsonMatchParser.ParseToolOutput(probe.StdOut, ctx.Repo.Path);
             var files = matches
@@ -471,7 +486,8 @@ internal static class DiffTestRunner
                 ctx.SgConfig,
                 rewrite,
                 apply: true,
-                cancellationToken
+                cancellationToken,
+                backend: BackendForLanguage(ctx.Language, ctx.Ag4Backend)
             );
 
             var diffs = 0;
@@ -500,6 +516,21 @@ internal static class DiffTestRunner
         {
             return $"error: {ex.Message}";
         }
+    }
+
+    /// <summary>Only java/cpp/python accept --backend; csharp/plsql ignore it.</summary>
+    private static string? BackendForLanguage(string language, string? backend)
+    {
+        if (string.IsNullOrWhiteSpace(backend))
+        {
+            return null;
+        }
+
+        return language.ToLowerInvariant() switch
+        {
+            "java" or "cpp" or "python" or "c++" or "py" => backend,
+            _ => null,
+        };
     }
 
     private static string? TrimError(string stderr)

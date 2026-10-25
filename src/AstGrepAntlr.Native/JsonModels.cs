@@ -12,6 +12,9 @@ internal sealed class SearchRequest
     public SourceDto[]? Sources { get; set; }
     public string? Strictness { get; set; }
     public int? MaxResults { get; set; }
+
+    /// <summary>Optional parser backend: tree-sitter or antlr (switchable languages only).</summary>
+    public string? Backend { get; set; }
 }
 
 internal sealed class SourceDto

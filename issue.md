@@ -30,8 +30,9 @@
 既知の制限:
 
 - C# 組み込みは **Roslyn**（MIT）。grammars-v4 C# は EPL-1.0 のため未バンドル（`customLanguages` で利用可）
-- C++ の `<<` など巨大な expression 木へのパターンは MatchAll が重い場合あり
-- tree-sitter と ANTLR / Roslyn のノード境界差は `difftest/known-differences.yml` に記録
+- Java / C++ / Python の既定は **tree-sitter**。ANTLR は `--backend antlr` / `languageBackends` で選択可
+- C++ の `<<` など巨大な expression 木へのパターンは MatchAll が重い場合あり（特に ANTLR）
+- ノード境界差はバックエンドごとに `difftest/known-differences.yml`（任意の `backend:`）に記録
 
 ## 優先度一覧（調査時）
 

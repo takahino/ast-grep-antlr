@@ -162,6 +162,11 @@
         background: var(--accent-soft);
         color: var(--accent);
       }
+      .muted {
+        font-weight: 400;
+        font-size: 0.75em;
+        color: var(--muted);
+      }
       footer {
         margin-top: 3rem;
         padding-top: 1rem;
@@ -190,17 +195,17 @@
       <h1>ast-grep vs ag4 differences</h1>
       <p class="lede">
         Summary of comparing upstream <code>@ast-grep/cli@0.51.0</code> (tree-sitter) with ag4
-        (ANTLR) on real corpora using the same patterns. Focuses on deltas treated as
-        <strong>CST / grammar shape differences</strong>, not engine bugs.
+        (tree-sitter default for Java/C++/Python; optional ANTLR) on real corpora. Remaining gaps
+        are mostly matcher logic and C# (Roslyn), not engine bugs.
       </p>
 
       <div class="panel verdict">
         <strong>Policy:</strong> ag4 bugs (encoding, exit codes, byteOffset, pattern compile
-        failures, etc.) were fixed.
-        <strong>Hit-set drift caused by tree-sitter vs ANTLR trees is accepted</strong> and
-        catalogued in
+        failures, etc.) were fixed. With tree-sitter as the default backend, kind names align with
+        upstream; residual diffs are matcher behaviour and Roslyn vs tree-sitter-c-sharp. ANTLR-mode
+        CST drift is catalogued in
         <a href="difftest/known-differences.yml"><code>difftest/known-differences.yml</code></a>
-        with reasons. Matching upstream’s hit set 100% is not a goal.
+        (optional <code>backend:</code> field). Matching upstream’s hit set 100% is not a goal.
       </div>
 
       <h2>1. Comparison setup</h2>
@@ -226,98 +231,105 @@
 
       <div class="panel">
         <strong>ag4 built-in languages (current):</strong>
-        Java, C++ (CPP14), C# (Roslyn), <strong>Python 3</strong>, <strong>PL/SQL</strong>, SQLite.
-        Custom DSLs via <code>sgconfig.yml</code> <code>customLanguages</code> (<code>.g4</code> /
-        <code>.interp</code>) are also supported. Python has measured numbers in the table; PL/SQL
-        has a column only (no upstream language); SQLite is outside the table.
+        Java / C++ / Python (tree-sitter default, ANTLR optional), C# (Roslyn), PL/SQL &amp; SQLite
+        (ANTLR). Custom DSLs via <code>sgconfig.yml</code> <code>customLanguages</code> (<code
+          >.g4</code
+        >
+        / <code>.interp</code>). Difftest accepts <code>--backend</code> for both.
       </div>
 
       <h2>2. Numbers</h2>
+      <p>
+        Java / C++ / Python show <strong>ag4 (tree-sitter)</strong> /
+        <strong>ag4 (ANTLR)</strong> from <a href="difftest/REPORT.md">REPORT.md</a> (re-run
+        2026-10-24). C# is Roslyn only.
+      </p>
       <table>
         <thead>
           <tr>
             <th>Metric</th>
-            <th class="num">Java</th>
-            <th class="num">C++</th>
-            <th class="num">C#</th>
-            <th class="num">Python</th>
+            <th class="num">Java<br /><span class="muted">TS / ANTLR</span></th>
+            <th class="num">C++<br /><span class="muted">TS / ANTLR</span></th>
+            <th class="num">C#<br /><span class="muted">Roslyn</span></th>
+            <th class="num">Python<br /><span class="muted">TS / ANTLR</span></th>
             <th class="num">PL/SQL</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>Same</td>
-            <td class="num">21 393</td>
-            <td class="num">520</td>
+            <td class="num">24 088 / 21 393</td>
+            <td class="num">2 729 / 520</td>
             <td class="num">50 540</td>
-            <td class="num">6 938</td>
+            <td class="num">9 774 / 6 938</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Only ast-grep</td>
-            <td class="num">3 950</td>
-            <td class="num">2 724</td>
+            <td class="num">346 / 3 950</td>
+            <td class="num">56 / 2 724</td>
             <td class="num">39 042</td>
-            <td class="num">3 679</td>
+            <td class="num">283 / 3 679</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Only ag4</td>
-            <td class="num">7 261</td>
-            <td class="num">49</td>
+            <td class="num">157 / 7 261</td>
+            <td class="num">227 / 49</td>
             <td class="num">3 736</td>
-            <td class="num">42</td>
+            <td class="num">45 / 42</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Range diff</td>
-            <td class="num">0</td>
-            <td class="num">1</td>
+            <td class="num">0 / 0</td>
+            <td class="num">0 / 1</td>
             <td class="num">13</td>
-            <td class="num">0</td>
+            <td class="num">0 / 0</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Metavar diff</td>
-            <td class="num">4 671</td>
-            <td class="num">83</td>
+            <td class="num">5 580 / 4 671</td>
+            <td class="num">543 / 83</td>
             <td class="num">9 423</td>
-            <td class="num">1 010</td>
+            <td class="num">1 570 / 1 010</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Match rate</td>
-            <td class="num">~57%</td>
-            <td class="num">~15%</td>
+            <td class="num">~80% / ~57%</td>
+            <td class="num">~77% / ~15%</td>
             <td class="num">~49%</td>
-            <td class="num">~59%</td>
+            <td class="num">~84% / ~59%</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Speed (ag4 ÷ ast-grep)</td>
-            <td class="num">~18× slower</td>
-            <td class="num">~41× slower</td>
-            <td class="num">~6× slower</td>
-            <td class="num">~38× slower</td>
+            <td class="num">~5× / ~20×</td>
+            <td class="num">~5× / ~63×</td>
+            <td class="num">~6×</td>
+            <td class="num">~5× / ~46×</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Unexplained (after known-differences)</td>
+            <td class="num">0 / 0</td>
+            <td class="num">0 / 0</td>
             <td class="num">0</td>
-            <td class="num">0</td>
-            <td class="num">0</td>
-            <td class="num">0</td>
+            <td class="num">0 / 0</td>
             <td class="num">—</td>
           </tr>
         </tbody>
       </table>
       <p>
-        “—” in the PL/SQL column means <strong>no upstream language / not comparable</strong> (not
-        an ag4-only benchmark). Pre-fix Java baseline had 3 541 range-diffs; after real-file
-        <code>byteOffset</code> that is <strong>0</strong> for Java. Low C++ match rate is mostly
-        <strong>CPP14 grammar limits</strong> (C++17+, macros). C# uses a <strong>Roslyn</strong>
-        backend (<code>csharp-*</code>). Python indented-block patterns skew toward only-ast-grep
-        (<code>python-*</code>).
+        “—” in PL/SQL means <strong>no upstream language</strong>. tree-sitter default lifts match
+        rate and speed (esp. C++ 15%→77%, ~63×→~5×; Java OnlyAstGrep 2888→346 after context /
+        harness fixes). Residuals are catalogued under <code>backend: tree-sitter</code>
+        (<code>ts-*-matcher</code>, intentional <code>enhanced-for</code>, residual
+        <code>if-block</code>, etc.) so unexplained is 0. Low ANTLR C++ rate is
+        <strong>CPP14 limits</strong>. C# remains <strong>Roslyn</strong>
+        (<code>csharp-*</code>).
       </p>
 
       <h2>3. How to read “accuracy”</h2>
@@ -335,8 +347,11 @@
         </thead>
         <tbody>
           <tr>
-            <td>Same feel as upstream search/rules (Java, C++, C#, Python, …)</td>
-            <td><strong>Upstream ast-grep</strong> (accuracy and speed)</td>
+            <td>Same feel as upstream (Java / C++ / Python, tree-sitter default)</td>
+            <td>
+              <strong>Upstream</strong> or <strong>ag4 (tree-sitter)</strong> — kinds align; matcher
+              gaps remain
+            </td>
           </tr>
           <tr>
             <td>
@@ -345,15 +360,28 @@
             </td>
             <td><strong>ag4</strong></td>
           </tr>
+          <tr>
+            <td>C# (Roslyn CST)</td>
+            <td>ag4 (Roslyn) / upstream (tree-sitter-c-sharp) — aliases absorb some gaps</td>
+          </tr>
         </tbody>
       </table>
       <div class="panel note">
-        Extending <code>.g4</code> can <strong>increase parse coverage</strong> (especially C++). It
-        does not erase CST shape differences: the same source can still yield different hit sets and
-        metavar spans. Macros also are not solved by grammar alone.
+        Extending <code>.g4</code> helps ANTLR parse coverage (especially C++). It does not erase
+        CST shape differences. Prefer tree-sitter default when you want upstream-like kinds.
       </div>
 
       <h2>4. Typical differences (examples)</h2>
+
+      <h3>Often reduced with tree-sitter default</h3>
+      <ul class="compact">
+        <li>
+          Kind-name mismatch (e.g. <code>methodDeclaration</code> → <code>method_declaration</code>)
+        </li>
+        <li>ANTLR grammar limits (modern C++, Python indent blocks)</li>
+      </ul>
+
+      <h3>Remaining when using ANTLR (examples below are ANTLR baseline)</h3>
 
       <h3>
         <span class="tag tag-ag4">ag4 broader</span>
@@ -391,7 +419,7 @@ public String toString() { return ""; }</code></pre>
         <strong>only-ast-grep ≈ 1 450</strong> (ag4 misses).
       </p>
 
-      <h3>Other common drifts</h3>
+      <h3>Other common drifts (ANTLR / Roslyn)</h3>
       <ul class="compact">
         <li>
           <strong>Java · only upstream:</strong> import/package splitting, annotations, multi-catch
@@ -423,6 +451,13 @@ public String toString() { return ""; }</code></pre>
         </li>
       </ul>
 
+      <h3>Still present with tree-sitter (matcher logic)</h3>
+      <ul class="compact">
+        <li>Single-child unwrap, modifier skipping, extra (comments) handling</li>
+        <li><code>MetaVarVariants</code> and other ag4-only placeholder expansion</li>
+        <li>Metavar capture span drift even when the hit range matches</li>
+      </ul>
+
       <h2>5. Aligned behavior (not “differences”)</h2>
       <ul class="compact">
         <li>Exit codes (run 0/1/2, scan <code>--error-on</code>)</li>
@@ -431,6 +466,8 @@ public String toString() { return ""; }</code></pre>
         <li><code>stopBy</code> default neighbor, <code>precedes</code>/<code>follows</code></li>
         <li>gitignore, globs, hidden-file defaults</li>
         <li>Statement-pattern compile failures (if / for / try, …) largely fixed</li>
+        <li>Kind names match upstream (Java / C++ / Python tree-sitter default)</li>
+        <li><code>--backend</code> / <code>languageBackends</code> to keep ANTLR kinds</li>
       </ul>
 
       <h2>6. Related files</h2>
@@ -438,24 +475,26 @@ public String toString() { return ""; }</code></pre>
         <li><a href="difftest/REPORT.md">difftest/REPORT.md</a> — latest comparative summary</li>
         <li>
           <a href="difftest/known-differences.yml">difftest/known-differences.yml</a> —
-          accepted-diff catalog
+          accepted-diff catalog (optional <code>backend:</code>)
         </li>
         <li>
           <a href="difftest/patterns/java.yml">difftest/patterns/java.yml</a> /
           <a href="difftest/patterns/cpp.yml">cpp.yml</a> /
-          <a href="difftest/patterns/csharp.yml">csharp.yml</a> — patterns used
+          <a href="difftest/patterns/csharp.yml">csharp.yml</a> /
+          <a href="difftest/patterns/python.yml">python.yml</a> — patterns used
         </li>
         <li><a href="difftest/corpus.yml">difftest/corpus.yml</a> — pinned corpora</li>
+        <li><a href="tools/AstGrepAntlr.Bench">tools/AstGrepAntlr.Bench</a> — parse breakdown</li>
         <li><a href="issue.md">issue.md</a> — backlog status (Japanese)</li>
         <li><a href="README.md">README.md</a> / <a href="README.en.md">README.en.md</a> — usage</li>
       </ul>
 
       <footer>
-        Difftest numbers follow <a href="difftest/REPORT.md">difftest/REPORT.md</a> (Java / C++ /
-        C#). Language list: <a href="README.en.md">README.en.md</a>. Re-run with
+        Difftest numbers follow <a href="difftest/REPORT.md">difftest/REPORT.md</a> (Java / C++ / C#
+        / Python). Language list: <a href="README.en.md">README.en.md</a>. Re-run with
         <code
           >dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus
-          difftest/corpus.yml</code
+          difftest/corpus.yml --backend tree-sitter</code
         >
         ·
         <a href="ast-grep-vs-ag4.html">日本語版</a>

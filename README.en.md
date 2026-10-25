@@ -2,7 +2,11 @@
 
 English | [日本語](README.md)
 
-**Unofficial** structural search tool inspired by [ast-grep](https://ast-grep.github.io/), powered by [ANTLR4](https://www.antlr.org/) instead of tree-sitter.
+**Unofficial** structural search tool inspired by [ast-grep](https://ast-grep.github.io/). Parsers are chosen per language:
+
+- **Java / C++ / Python** — [tree-sitter](https://tree-sitter.github.io/) (default) for speed and upstream-compatible kind names
+- **PL/SQL / SQLite / custom DSLs** — [ANTLR4](https://www.antlr.org/) (`.g4` / `.interp`)
+- **C#** — [Roslyn](https://github.com/dotnet/roslyn) (`Microsoft.CodeAnalysis.CSharp`)
 
 This project is **not** affiliated with the official ast-grep project.
 
@@ -10,15 +14,16 @@ Internals (pipeline, parsing, matching, rule engine, hosts): [architecture.html]
 
 ## Features
 
-- Metavariable patterns: `$A`, `$_`, `$$$ARGS`, plus ANTLR extension `${A:expression}`
+- Metavariable patterns: `$A`, `$_`, `$$$ARGS`, typed `${A:expression}` (supertype / rule name)
 - YAML rules: `pattern`, `kind`, `inside`, `has`, `precedes`, `follows`, `all`/`any`/`not`, `constraints`, `matches`, `fix`, `files`/`ignores`
 - `stopBy`: `neighbor` (default, ast-grep-compatible), `end`, or a kind name
-- Continues after syntax errors (SLL → LL + error recovery)
+- Backend switch: `--backend tree-sitter|antlr`, `languageBackends` in `sgconfig.yml`
+- Continues after syntax errors (tree-sitter ERROR/MISSING; ANTLR SLL → LL + recovery)
 - Parallel file walk with literal prefilter, gitignore, and `--globs`
 - Encoding preservation (UTF-8/BOM, UTF-16/32, Shift_JIS, EUC-JP) via `--encoding` / `sgconfig.yml`
 - Custom DSLs via `.g4` / `.interp` (`sgconfig.yml` → `customLanguages`, lazy-loaded)
 - MCP server: `ag4 mcp` (stdio) for AI agents
-- Built-in languages: **Java**, **C++** (CPP14), **C#** (Roslyn), **Python** 3, **PL/SQL**, **SQLite** (more via custom grammars)
+- Built-in languages: **Java**, **C++**, **C#** (Roslyn), **Python** 3, **PL/SQL**, **SQLite** (more via custom grammars)
 
 ## Install
 
@@ -30,12 +35,13 @@ dotnet tool install -g AstGrepAntlr.Cli --add-source ./artifacts/nupkg
 dotnet run --project src/AstGrepAntlr.Cli -- run -p 'System.out.println($A)' -l java src/
 ```
 
-NativeAOT binaries are published on GitHub Releases (`win-x64` / `linux-x64` / `osx-arm64`).
+NativeAOT binaries are published on GitHub Releases (`win-x64` / `linux-x64` / `osx-arm64`). tree-sitter native libraries ship with the release (usually under `runtimes/<rid>/native/`).
 
 ## Quick start
 
 ```bash
 ag4 run -p 'System.out.println($A)' -l java path/to/src
+ag4 run -p 'System.out.println($A)' -l java --backend antlr path/to/src
 ag4 run -p 'System.out.println($A)' -l java --json path/to/src
 ag4 run -p 'foo($A)' -l java --strictness smart --max-results 20 --globs '**/*.java' src/
 ag4 run -p 'foo($A)' -l java --rewrite 'bar($A)' --apply src/
@@ -44,48 +50,61 @@ ag4 scan -c sgconfig.yml --error-on warning path/to/src
 ag4 debug parse -l java --code 'class A {}'
 ag4 debug pattern -l java -p 'System.out.println($A)'
 ag4 version
-ag4 mcp --root .                 # read-only MCP
-ag4 mcp --root . --allow-write   # enables rewrite_apply
+ag4 mcp --root .
+ag4 mcp --root . --allow-write
 ```
 
 ### Exit codes (ast-grep compatible)
 
-| Command | 0                                                | 1                        | 2                                            |
-| ------- | ------------------------------------------------ | ------------------------ | -------------------------------------------- |
-| `run`   | at least one match                               | no matches               | runtime error (missing path, bad pattern, …) |
-| `scan`  | no match at/above `--error-on` (default `error`) | match at/above threshold | runtime error (including zero rules loaded)  |
+| Command | 0                                                | 1                        | 2                                 |
+| ------- | ------------------------------------------------ | ------------------------ | --------------------------------- |
+| `run`   | ≥1 match                                         | no matches               | runtime error                     |
+| `scan`  | no match at/above `--error-on` (default `error`) | match at/above threshold | runtime error (including 0 rules) |
 
-Stderr messages are prefixed with `ag4:`. Use `--debug` for stack traces.
+stderr lines are prefixed with `ag4:`. Stack traces require `--debug`.
 
 ### JSON output
 
-`--json` / `--json=pretty|stream|compact` (default `pretty`). Fields align with ast-grep where practical:
-
-- 0-based `range` line/column; text UI stays 1-based
-- `byteOffset` (file encoding bytes, including BOM) and `charOffset` (UTF-16)
-- `metaVariables.single` / `multi` / `transformed` with ranges
-- `lines`, and on rewrite `replacement` / `replacementOffsets`
-- `file` as a path relative to the current directory
-- `encoding` when known
+`--json` / `--json=pretty|stream|compact` (default `pretty`). Fields align with ast-grep where practical: 0-based `range`, `byteOffset` / `charOffset`, `metaVariables`, `lines`, rewrite fields, relative `file`, optional `encoding`.
 
 ### Language ids
 
-| Id       | Aliases            | Extensions                                                 |
-| -------- | ------------------ | ---------------------------------------------------------- |
-| `java`   |                    | `.java`                                                    |
-| `cpp`    | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, `.cxx`, `.c++`, `.hpp`, `.hh`, `.hxx`, `.h` |
-| `csharp` | `cs`, `c#`         | `.cs`                                                      |
-| `python` | `py`               | `.py`                                                      |
-| `plsql`  | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql`                             |
-| `sqlite` |                    | `.sql`, `.sqlite`                                          |
+| Id       | Aliases            | Extensions                     | Default backend | Switch                    |
+| -------- | ------------------ | ------------------------------ | --------------- | ------------------------- |
+| `java`   |                    | `.java`                        | tree-sitter     | `--backend antlr`         |
+| `cpp`    | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, …               | tree-sitter     | `--backend antlr` (CPP14) |
+| `csharp` | `cs`, `c#`         | `.cs`                          | Roslyn          | —                         |
+| `python` | `py`               | `.py`                          | tree-sitter     | `--backend antlr`         |
+| `plsql`  | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql` | ANTLR           | —                         |
+| `sqlite` |                    | `.sql`, `.sqlite`              | ANTLR           | —                         |
 
-C++ uses the grammars-v4 **CPP14** grammar (MIT). C++17+ syntax and heavy macros may fail to parse; see [difftest/REPORT.md](difftest/REPORT.md).
+With tree-sitter, kind names match upstream ast-grep (`method_invocation`, `class_declaration`, …). With `--backend antlr`, kinds follow grammars-v4 (`methodCall`, `compilationunit`, …).
 
-Python 3 uses grammars-v4 **python3** (MIT) with INDENT/DEDENT handling.
+## Choosing a backend
 
-PL/SQL uses grammars-v4 **sql/plsql** (Apache-2.0). `.sql` is also listed for SQLite; pick the dialect with `-l`.
+```bash
+ag4 run -l java --backend tree-sitter -p '$F($$$ARGS)' src/
+ag4 run -l java --backend antlr -p '$F($$$ARGS)' src/
+```
 
-C# uses **Roslyn** (`Microsoft.CodeAnalysis.CSharp`, MIT). Node kinds are Roslyn `SyntaxKind` names in snake_case (`invocation_expression`), with tree-sitter-c-sharp aliases where names differ (`identifier_name` ↔ `identifier`, binary ops ↔ `binary_expression`, …).
+```yaml
+# sgconfig.yml
+languageBackends:
+  java: antlr
+  python: tree-sitter
+```
+
+CLI `--backend` overrides sgconfig and applies to all switchable languages. If tree-sitter natives cannot be loaded, ag4 warns on stderr and falls back to ANTLR.
+
+### Kind migration (ANTLR → tree-sitter)
+
+| ANTLR (examples)    | tree-sitter (examples) |
+| ------------------- | ---------------------- |
+| `methodDeclaration` | `method_declaration`   |
+| `methodCall`        | `method_invocation`    |
+| `compilationunit`   | `program`              |
+
+`${A:expression}` still works via tree-sitter supertype aliases. Update `kind:` in rules or keep `languageBackends: { java: antlr }` temporarily.
 
 ### Cursor MCP (`.cursor/mcp.json`)
 
@@ -100,13 +119,9 @@ C# uses **Roslyn** (`Microsoft.CodeAnalysis.CSharp`, MIT). Node kinds are Roslyn
 }
 ```
 
-## Custom DSL
+## Custom DSLs
 
 ```yaml
-# sgconfig.yml
-encoding: utf-8
-ruleDirs: [rules]
-utilDirs: [utils]
 customLanguages:
   calc:
     grammar: [grammars/CalcLexer.g4, grammars/CalcParser.g4]
@@ -116,43 +131,22 @@ customLanguages:
     metaVarVariants: ["{0}", "{0};"]
 ```
 
-Requires Java + `tools/antlr-4.13.2-complete.jar` (lookup: `--antlr-jar`, `ANTLR_JAR`, `tools/` under sgconfig/cwd ancestors, then `BaseDirectory`), or prebuilt `.interp` files. See [samples/dsl](samples/dsl).
-
-`run` / `debug` / `scan` accept `-c/--config`. Custom languages are registered lazily so `run -l java` does not compile unrelated grammars.
-
-### Pattern tips
-
-- Prefer concrete `patternRules` order (expressions/statements before the start rule).
-- Multi-metavars in blocks/class bodies use language `metaVarVariants` (`{0}`, `{0};`, `int {0};`, …).
-- Typed metavars: `${A:expression}` is checked with `KindMatches` at match time.
+Requires a JDK and `tools/antlr-4.13.2-complete.jar` (or `--antlr-jar` / `ANTLR_JAR`). See [samples/dsl](samples/dsl). Custom languages are registered lazily.
 
 ## Embedding / sample GUIs
 
-Cross-language embedding uses a NativeAOT shared library (`ag4_native`) with a small C ABI
-(`ag4_search` JSON in/out: filesystem `paths` or in-memory `sources` buffers). Sample GUIs that
-**load the DLL** (not the CLI):
+NativeAOT shared library `ag4_native` exposes a small C ABI (`ag4_search` JSON in/out; optional `backend`). Samples: [samples/gui/README.md](samples/gui/README.md) (place tree-sitter natives next to `ag4_native`). Header: [samples/gui/include/ag4_native.h](samples/gui/include/ag4_native.h).
 
-| Language | UI       | FFI      |
-| -------- | -------- | -------- |
-| C#       | WinForms | P/Invoke |
-| Java     | Swing    | JNA      |
-| Python   | tkinter  | ctypes   |
+In-process .NET: reference `AstGrepAntlr.Core` + `AstGrepAntlr.Languages` and call `Searcher`.
 
-See [samples/gui/README.md](samples/gui/README.md) (publish `ag4_native`, then run each sample).
-Header: [samples/gui/include/ag4_native.h](samples/gui/include/ag4_native.h).
-
-For pure .NET in-process use you can also reference `AstGrepAntlr.Core` + `AstGrepAntlr.Languages`
-and call `Searcher` directly.
-
-## Differential testing vs ast-grep
-
-Compare ag4 against pinned `@ast-grep/cli@0.51.0` on real Java/C++/C# corpora:
+## Differential tests vs ast-grep
 
 ```bash
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus difftest/corpus.yml
+dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus difftest/corpus.yml --backend antlr
 ```
 
-Clones go under `.difftest/` (gitignored). Summary: [difftest/REPORT.md](difftest/REPORT.md). CI: `.github/workflows/difftest.yml` (manual + weekly).
+See [difftest/REPORT.md](difftest/REPORT.md) and [ast-grep-vs-ag4.en.html](ast-grep-vs-ag4.en.html). Micro-benchmark: `tools/AstGrepAntlr.Bench`. Script: [bench/compare-ast-grep.ps1](bench/compare-ast-grep.ps1) (`-Backend`, prefers a published `ag4`).
 
 ## Development
 
@@ -165,7 +159,7 @@ dotnet csharpier check .
 npx prettier --check .
 ```
 
-Requires JDK (for Antlr4BuildTasks) and .NET SDK 10 (see `global.json`). Known issues and fix status: [issue.md](issue.md).
+Needs JDK (Antlr4BuildTasks) and .NET SDK 10. tree-sitter natives come prebuilt from NuGet (TreeSitter.DotNet) — **no C toolchain required**. See [issue.md](issue.md).
 
 ## License
 

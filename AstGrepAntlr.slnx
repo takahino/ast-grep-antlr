@@ -11,5 +11,6 @@
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/AstGrepAntlr.DiffTest/AstGrepAntlr.DiffTest.csproj" />
+    <Project Path="tools/AstGrepAntlr.Bench/AstGrepAntlr.Bench.csproj" />
   </Folder>
 </Solution>

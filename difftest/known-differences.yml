@@ -287,9 +287,10 @@ differences:
     reason: Method reference vs qualified expression boundary differs under ANTLR.
     bucket: OnlyAg4
 
-  # Catch-all for remaining Java CST / grammar mismatches after engine fixes above.
+  # Catch-all for remaining Java CST / grammar mismatches (ANTLR backend).
   - id: java-residual-only-ast-grep
     language: java
+    backend: antlr
     category: grammar-boundary
     reason: >
       Residual only-ast-grep matches after ag4 engine fixes; attributed to tree-sitter
@@ -298,22 +299,46 @@ differences:
 
   - id: java-residual-only-ag4
     language: java
+    backend: antlr
     category: grammar-boundary
     reason: >
       Residual only-ag4 matches from broader ANTLR expression / call wrapping versus
       tree-sitter-java.
     bucket: OnlyAg4
 
+  - id: java-residual-metavar-antlr
+    language: java
+    backend: antlr
+    category: grammar-boundary
+    reason: Residual metavar-diff from ANTLR Java vs tree-sitter-java capture extents.
+    bucket: MetaVarDiff
+
   - id: cpp-residual-only-ag4
     language: cpp
+    backend: antlr
     category: grammar-boundary
     reason: >
       Residual only-ag4 matches (qualified ctors, namespace/class/struct bodies, std::move,
       delete) from ANTLR CPP14 shapes that tree-sitter-cpp does not surface the same way.
     bucket: OnlyAg4
 
+  - id: cpp-residual-only-ast-grep-antlr
+    language: cpp
+    backend: antlr
+    category: grammar-boundary
+    reason: Residual only-ast-grep from CPP14 parse gaps vs tree-sitter-cpp.
+    bucket: OnlyAstGrep
+
+  - id: cpp-residual-metavar-antlr
+    language: cpp
+    backend: antlr
+    category: grammar-boundary
+    reason: Residual metavar-diff from ANTLR CPP14 vs tree-sitter-cpp capture extents.
+    bucket: MetaVarDiff
+
   - id: cpp-residual-range
     language: cpp
+    backend: antlr
     category: grammar-boundary
     reason: Occasional range-diff residuals for CPP14 vs tree-sitter-cpp node extents.
     bucket: RangeDiff
@@ -415,6 +440,7 @@ differences:
 
   - id: python-residual-only-ast-grep
     language: python
+    backend: antlr
     category: grammar-boundary
     reason: >
       Residual only-ast-grep (None literals, assignments, imports, list comps, returns)
@@ -423,6 +449,7 @@ differences:
 
   - id: python-residual-only-ag4
     language: python
+    backend: antlr
     category: grammar-boundary
     reason: >
       Residual only-ag4 from ANTLR Python3 shapes that tree-sitter does not surface the
@@ -431,12 +458,120 @@ differences:
 
   - id: python-residual-metavar
     language: python
+    backend: antlr
     category: grammar-boundary
     reason: Residual metavar-diff from ANTLR Python3 vs tree-sitter-python capture extents.
     bucket: MetaVarDiff
 
   - id: python-residual-range
     language: python
+    backend: antlr
     category: grammar-boundary
     reason: Residual range-diff from ANTLR Python3 vs tree-sitter-python node extents.
+    bucket: RangeDiff
+
+  # --- tree-sitter backend: matcher residuals vs upstream (same grammar family) ---
+  - id: ts-java-metavar-matcher
+    language: java
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      With tree-sitter-java on both sides, metavar capture spans still differ due to ag4
+      MetaVarVariants, single-child unwrap, and modifier/extra skipping vs upstream.
+    bucket: MetaVarDiff
+
+  - id: ts-java-if-block-only-sg
+    language: java
+    backend: tree-sitter
+    pattern_id: if-block
+    category: matcher
+    reason: >
+      After expression-context fixes, residual only-ast-grep on if ($COND) { $$$BODY }
+      (commons-lang ~328) remains MetaVar/body-shape sensitive; not collapsed as a clear
+      compile bug — leave as known matcher residual.
+    bucket: OnlyAstGrep
+
+  - id: ts-java-only-ast-grep-matcher
+    language: java
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      Residual only-ast-grep after Only* bugfixes (statement-first contexts, exact-span);
+      mostly if-block / try shapes and other strict pattern-root gaps vs upstream.
+    bucket: OnlyAstGrep
+
+  - id: ts-java-only-ag4-matcher
+    language: java
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      Residual only-ag4 from ag4-broader matching (enhanced-for variants, lambda/import
+      edges, explicit this/super after constructor_body wrap).
+    bucket: OnlyAg4
+
+  - id: ts-java-range-matcher
+    language: java
+    backend: tree-sitter
+    category: matcher
+    reason: Occasional range-diff from pattern-root descent differences vs upstream.
+    bucket: RangeDiff
+
+  - id: ts-cpp-metavar-matcher
+    language: cpp
+    backend: tree-sitter
+    category: matcher
+    reason: Metavar capture extents differ for calls / members under ag4 vs upstream.
+    bucket: MetaVarDiff
+
+  - id: ts-cpp-only-ast-grep-matcher
+    language: cpp
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      Residual only-ast-grep after #include metavar and statement-context fixes
+      (if/namespace bodies and a few quote-includes).
+    bucket: OnlyAstGrep
+
+  - id: ts-cpp-only-ag4-matcher
+    language: cpp
+    backend: tree-sitter
+    category: matcher
+    reason: Residual only-ag4 from ag4 call / delete / sizeof matching differences.
+    bucket: OnlyAg4
+
+  - id: ts-cpp-range-matcher
+    language: cpp
+    backend: tree-sitter
+    category: matcher
+    reason: Occasional range-diff residuals under tree-sitter-cpp.
+    bucket: RangeDiff
+
+  - id: ts-python-metavar-matcher
+    language: python
+    backend: tree-sitter
+    category: matcher
+    reason: Metavar capture extents differ for calls / defs / if-suites vs upstream.
+    bucket: MetaVarDiff
+
+  - id: ts-python-only-ast-grep-matcher
+    language: python
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      Residual only-ast-grep after dotted_name B6 exemption (attrs import-from edges,
+      assignments, None) vs upstream.
+    bucket: OnlyAstGrep
+
+  - id: ts-python-only-ag4-matcher
+    language: python
+    backend: tree-sitter
+    category: matcher
+    reason: Residual only-ag4 from ag4 call / attribute matching differences.
+    bucket: OnlyAg4
+
+  - id: ts-python-range-matcher
+    language: python
+    backend: tree-sitter
+    category: matcher
+    reason: Occasional range-diff residuals under tree-sitter-python.
     bucket: RangeDiff

@@ -8,7 +8,7 @@ namespace AstGrepAntlr.Native;
 
 internal static class SearchHost
 {
-    private static readonly Lazy<Language.LanguageRegistry> Registry = new(BuiltinLanguages.CreateRegistry);
+    private static readonly Lazy<Language.LanguageRegistry> Registry = new(() => BuiltinLanguages.CreateRegistry());
 
     public static string Search(string requestJson)
     {
@@ -45,6 +45,23 @@ internal static class SearchHost
         )
         {
             throw new ArgumentException($"Unknown strictness '{req.Strictness}'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.Backend))
+        {
+            if (!LanguageBackendNames.TryParse(req.Backend, out var backend))
+            {
+                throw new ArgumentException($"Unknown backend '{req.Backend}'.");
+            }
+
+            try
+            {
+                BuiltinLanguages.ApplyBackend(Registry.Value, req.Language!, backend);
+            }
+            catch (ArgumentException)
+            {
+                // Non-switchable language (csharp / plsql / …): ignore backend.
+            }
         }
 
         List<MatchResult> matches;

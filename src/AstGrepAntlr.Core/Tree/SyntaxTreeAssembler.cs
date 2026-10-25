@@ -10,6 +10,16 @@ public sealed class SyntaxTreeAssembler
     private readonly Dictionary<string, List<int>> _kindIndex = new(StringComparer.Ordinal);
     private readonly List<string[]> _extraKinds = [];
     private readonly List<string[]> _chainKinds = [];
+    private readonly bool _collapseChains;
+
+    /// <param name="collapseChains">
+    /// When true (default), collapse single-child rule chains — useful for deep ANTLR CSTs.
+    /// tree-sitter trees are already flatter; pass false to keep node kinds exact.
+    /// </param>
+    public SyntaxTreeAssembler(bool collapseChains = true)
+    {
+        _collapseChains = collapseChains;
+    }
 
     public int Count => _nodes.Count;
 
@@ -52,7 +62,26 @@ public sealed class SyntaxTreeAssembler
 
     public SyntaxTree Build(string source, string languageId)
     {
-        CollapseChains();
+        if (_collapseChains)
+        {
+            CollapseChains();
+        }
+        else
+        {
+            // Still seed chainKinds with each node's own TypeName (+ aliases) so KindMatches works.
+            for (var i = 0; i < _nodes.Count; i++)
+            {
+                var parts = new List<string>();
+                AddUnique(parts, _nodes[i].TypeName);
+                foreach (var alias in _extraKinds[i])
+                {
+                    AddUnique(parts, alias);
+                }
+
+                _chainKinds[i] = parts.ToArray();
+            }
+        }
+
         return new SyntaxTree(source, languageId, _nodes.ToArray(), _kindIndex, _chainKinds.ToArray());
     }
 

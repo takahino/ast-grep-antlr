@@ -76,7 +76,9 @@ public static class Ag4Cli
         Option<bool> debugOpt
     )
     {
-        var root = new RootCommand("ag4 — structural search with ANTLR4 (ast-grep compatible, unofficial)");
+        var root = new RootCommand(
+            "ag4 — structural search (tree-sitter / ANTLR / Roslyn; ast-grep compatible, unofficial)"
+        );
 
         var runCmd = new Command("run", "Search with a pattern");
         var patternOpt = new Option<string>("--pattern", "-p") { Description = "AST pattern", Required = true };
@@ -90,6 +92,7 @@ public static class Ag4Cli
         };
         var runConfigOpt = CreateConfigOption();
         var runAntlrJarOpt = CreateAntlrJarOption();
+        var runBackendOpt = CreateBackendOption();
         var strictnessOpt = new Option<string>("--strictness")
         {
             Description = "Pattern strictness: cst, smart, ast, relaxed",
@@ -128,6 +131,7 @@ public static class Ag4Cli
         runCmd.Options.Add(encodingOpt);
         runCmd.Options.Add(runConfigOpt);
         runCmd.Options.Add(runAntlrJarOpt);
+        runCmd.Options.Add(runBackendOpt);
         runCmd.Options.Add(strictnessOpt);
         runCmd.Options.Add(maxResultsOpt);
         runCmd.Options.Add(globsOpt);
@@ -157,7 +161,12 @@ public static class Ag4Cli
 
                     var configPath = ResolveConfig(parseResult.GetValue(runConfigOpt), paths);
                     ApplyAntlrJar(parseResult.GetValue(runAntlrJarOpt), configPath);
-                    CustomLanguageBootstrap.ApplyConfig(registry, configPath);
+                    CustomLanguageBootstrap.ApplyConfig(
+                        registry,
+                        configPath,
+                        parseResult.GetValue(runBackendOpt),
+                        stderr
+                    );
                     encoding ??= LoadConfigEncoding(configPath);
 
                     var strictnessName = parseResult.GetValue(strictnessOpt) ?? "smart";
@@ -249,6 +258,7 @@ public static class Ag4Cli
             DefaultValueFactory = _ => "error",
         };
         var scanAntlrJarOpt = CreateAntlrJarOption();
+        var scanBackendOpt = CreateBackendOption();
         var scanNoIgnoreOpt = CreateNoIgnoreOption();
         var scanPaths = new Argument<string[]>("paths") { Arity = ArgumentArity.ZeroOrMore };
         scanCmd.Options.Add(ruleOpt);
@@ -258,6 +268,7 @@ public static class Ag4Cli
         scanCmd.Options.Add(scanEncoding);
         scanCmd.Options.Add(errorOnOpt);
         scanCmd.Options.Add(scanAntlrJarOpt);
+        scanCmd.Options.Add(scanBackendOpt);
         scanCmd.Options.Add(scanNoIgnoreOpt);
         scanCmd.Arguments.Add(scanPaths);
         scanCmd.SetAction(parseResult =>
@@ -286,7 +297,12 @@ public static class Ag4Cli
                     }
 
                     ApplyAntlrJar(parseResult.GetValue(scanAntlrJarOpt), effectiveConfig);
-                    CustomLanguageBootstrap.ApplyConfig(registry, effectiveConfig);
+                    CustomLanguageBootstrap.ApplyConfig(
+                        registry,
+                        effectiveConfig,
+                        parseResult.GetValue(scanBackendOpt),
+                        stderr
+                    );
                     encoding ??= LoadConfigEncoding(effectiveConfig);
 
                     var docs = new List<SgRuleDocument>();
@@ -391,11 +407,13 @@ public static class Ag4Cli
         var debugCode = new Option<string?>("--code") { Description = "Code string (else read file arg)" };
         var debugConfigOpt = CreateConfigOption();
         var debugAntlrJarOpt = CreateAntlrJarOption();
+        var debugBackendOpt = CreateBackendOption();
         var debugFile = new Argument<string?>("file") { Arity = ArgumentArity.ZeroOrOne };
         debugParse.Options.Add(debugLang);
         debugParse.Options.Add(debugCode);
         debugParse.Options.Add(debugConfigOpt);
         debugParse.Options.Add(debugAntlrJarOpt);
+        debugParse.Options.Add(debugBackendOpt);
         debugParse.Arguments.Add(debugFile);
         debugParse.SetAction(pr =>
             RunHandler(
@@ -407,7 +425,7 @@ public static class Ag4Cli
                     var paths = pr.GetValue(debugFile) is { } f ? new[] { f } : Array.Empty<string>();
                     var configPath = ResolveConfig(pr.GetValue(debugConfigOpt), paths);
                     ApplyAntlrJar(pr.GetValue(debugAntlrJarOpt), configPath);
-                    CustomLanguageBootstrap.ApplyConfig(registry, configPath);
+                    CustomLanguageBootstrap.ApplyConfig(registry, configPath, pr.GetValue(debugBackendOpt), stderr);
                     var lang = registry.Get(pr.GetValue(debugLang)!);
                     var code =
                         pr.GetValue(debugCode)
@@ -430,10 +448,12 @@ public static class Ag4Cli
         var debugPatLang = new Option<string>("--lang", "-l") { Required = true };
         var debugPatConfigOpt = CreateConfigOption();
         var debugPatAntlrJarOpt = CreateAntlrJarOption();
+        var debugPatBackendOpt = CreateBackendOption();
         debugPattern.Options.Add(debugPatLang);
         debugPattern.Options.Add(patOpt);
         debugPattern.Options.Add(debugPatConfigOpt);
         debugPattern.Options.Add(debugPatAntlrJarOpt);
+        debugPattern.Options.Add(debugPatBackendOpt);
         debugPattern.SetAction(pr =>
             RunHandler(
                 pr,
@@ -443,7 +463,7 @@ public static class Ag4Cli
                 {
                     var configPath = ResolveConfig(pr.GetValue(debugPatConfigOpt), []);
                     ApplyAntlrJar(pr.GetValue(debugPatAntlrJarOpt), configPath);
-                    CustomLanguageBootstrap.ApplyConfig(registry, configPath);
+                    CustomLanguageBootstrap.ApplyConfig(registry, configPath, pr.GetValue(debugPatBackendOpt), stderr);
                     var lang = registry.Get(pr.GetValue(debugPatLang)!);
                     var pattern = pr.GetValue(patOpt)!;
                     var compiled = new PatternCompiler().Compile(lang, new PatternSpec(pattern));
@@ -465,10 +485,12 @@ public static class Ag4Cli
         };
         var mcpConfig = CreateConfigOption();
         var mcpAntlrJarOpt = CreateAntlrJarOption();
+        var mcpBackendOpt = CreateBackendOption();
         var mcpAllowWrite = new Option<bool>("--allow-write");
         mcpCmd.Options.Add(mcpRoot);
         mcpCmd.Options.Add(mcpConfig);
         mcpCmd.Options.Add(mcpAntlrJarOpt);
+        mcpCmd.Options.Add(mcpBackendOpt);
         mcpCmd.Options.Add(mcpAllowWrite);
         mcpCmd.SetAction(async pr =>
         {
@@ -483,7 +505,7 @@ public static class Ag4Cli
                 var config = pr.GetValue(mcpConfig) ?? SgConfigLocator.FindUpwards();
                 ApplyAntlrJar(pr.GetValue(mcpAntlrJarOpt), config);
                 var allowWrite = pr.GetValue(mcpAllowWrite);
-                CustomLanguageBootstrap.ApplyConfig(registry, config);
+                CustomLanguageBootstrap.ApplyConfig(registry, config, pr.GetValue(mcpBackendOpt), stderr);
                 await AstGrepAntlr.Mcp.McpHost.RunAsync(registry, roots, allowWrite);
                 return 0;
             }
@@ -526,6 +548,12 @@ public static class Ag4Cli
 
     private static Option<string?> CreateAntlrJarOption() =>
         new("--antlr-jar") { Description = "Path to antlr-*-complete.jar" };
+
+    private static Option<string?> CreateBackendOption() =>
+        new("--backend")
+        {
+            Description = "Parser backend for switchable languages (java/cpp/python): tree-sitter (default) or antlr",
+        };
 
     private static Option<bool> CreateNoIgnoreOption() =>
         new("--no-ignore") { Description = "Do not respect .gitignore or default skip dirs (still skips .git)" };
@@ -673,16 +701,54 @@ internal static class SgConfigLocator
 
 internal static class CustomLanguageBootstrap
 {
-    public static void ApplyConfig(LanguageRegistry registry, string? configPath)
+    public static void ApplyConfig(
+        LanguageRegistry registry,
+        string? configPath,
+        string? backendCli = null,
+        TextWriter? warn = null
+    )
     {
-        if (string.IsNullOrEmpty(configPath) || !File.Exists(configPath))
+        LanguageBackend? global = null;
+        if (!string.IsNullOrWhiteSpace(backendCli))
         {
-            return;
+            if (!LanguageBackendNames.TryParse(backendCli, out var parsed))
+            {
+                throw new InvalidOperationException($"Unknown backend '{backendCli}'. Use tree-sitter or antlr.");
+            }
+
+            global = parsed;
         }
 
-        var cfg = RuleLoader.LoadConfig(File.ReadAllText(configPath));
-        var baseDir = Path.GetDirectoryName(Path.GetFullPath(configPath)) ?? ".";
-        if (cfg.CustomLanguages is null)
+        Dictionary<string, LanguageBackend>? perLang = null;
+        SgConfig? cfg = null;
+        string baseDir = ".";
+        if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
+        {
+            cfg = RuleLoader.LoadConfig(File.ReadAllText(configPath));
+            baseDir = Path.GetDirectoryName(Path.GetFullPath(configPath)) ?? ".";
+            if (cfg.LanguageBackends is { Count: > 0 })
+            {
+                perLang = new Dictionary<string, LanguageBackend>(StringComparer.OrdinalIgnoreCase);
+                foreach (var (langId, name) in cfg.LanguageBackends)
+                {
+                    if (LanguageBackendNames.TryParse(name, out var b))
+                    {
+                        perLang[langId] = b;
+                    }
+                    else
+                    {
+                        warn?.WriteLine($"ag4: warning: unknown languageBackend '{name}' for '{langId}'.");
+                    }
+                }
+            }
+        }
+
+        if (global is not null || perLang is not null)
+        {
+            BuiltinLanguages.ApplyBackends(registry, perLang, global, warn);
+        }
+
+        if (cfg?.CustomLanguages is null)
         {
             return;
         }

@@ -11,6 +11,10 @@ dotnet publish src/AstGrepAntlr.Native/AstGrepAntlr.Native.csproj \
 
 Produces `ag4_native.dll` (plus companion files) under the output directory.
 
+Also keep **tree-sitter native libraries** next to `ag4_native` (from TreeSitter.DotNet
+`runtimes/<rid>/native/`: `tree-sitter` plus `tree-sitter-java` / `cpp` / `python` as needed).
+Without them, Java / C++ / Python fall back to ANTLR with a stderr warning.
+
 ## C ABI
 
 See [samples/gui/include/ag4_native.h](../../samples/gui/include/ag4_native.h).

@@ -139,8 +139,17 @@ public sealed class PatternMatcher
     private static IEnumerable<int> SelectChildren(SyntaxTree tree, int index, Strictness strictness)
     {
         // Smart (default) and Cst keep unnamed tokens; Smart skips the extras on the target side
-        // later, in MatchSequence. Ast/Relaxed drop them up front.
-        return strictness is Strictness.Ast or Strictness.Relaxed ? tree.NamedChildren(index) : tree.Children(index);
+        // later, in MatchSequence. Ast/Relaxed drop them up front. Always skip tree-sitter "extra"
+        // (comments) except under Cst.
+        IEnumerable<int> kids = strictness is Strictness.Ast or Strictness.Relaxed
+            ? tree.NamedChildren(index)
+            : tree.Children(index);
+        if (strictness is Strictness.Cst)
+        {
+            return kids;
+        }
+
+        return kids.Where(c => !tree[c].IsExtra);
     }
 
     private static bool MatchSequence(
@@ -315,16 +324,23 @@ public sealed class PatternMatcher
     private static bool IsSkippableModifier(SyntaxTree target, int index)
     {
         var n = target[index];
+        if (n.IsExtra)
+        {
+            return true;
+        }
+
         if (!n.IsNamed)
         {
             return false;
         }
 
         // ANTLR wraps `final` etc. in variableModifier / classOrInterfaceModifier rules.
+        // tree-sitter-java uses modifiers / modifier.
         if (
             string.Equals(n.TypeName, "variableModifier", StringComparison.OrdinalIgnoreCase)
             || string.Equals(n.TypeName, "classOrInterfaceModifier", StringComparison.OrdinalIgnoreCase)
             || string.Equals(n.TypeName, "modifier", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(n.TypeName, "modifiers", StringComparison.OrdinalIgnoreCase)
         )
         {
             return true;
@@ -356,10 +372,21 @@ public sealed class PatternMatcher
             return false;
         }
 
+        // dotted_name / attribute chains legitimately have multiple identifier children
+        // (e.g. `ctypes.wintypes` vs pattern `$M` compiled as a single-identifier dotted_name).
+        var pKind = pattern[pIndex].TypeName;
+        if (
+            string.Equals(pKind, "dotted_name", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(pKind, "attribute", StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return false;
+        }
+
         // Only apply when the target node itself matches the pattern metavar node's kind (or chain).
         if (
-            !string.Equals(pattern[pIndex].TypeName, target[tIndex].TypeName, StringComparison.Ordinal)
-            && !target.KindMatches(tIndex, pattern[pIndex].TypeName)
+            !string.Equals(pKind, target[tIndex].TypeName, StringComparison.Ordinal)
+            && !target.KindMatches(tIndex, pKind)
         )
         {
             return false;

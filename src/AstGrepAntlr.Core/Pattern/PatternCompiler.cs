@@ -374,7 +374,8 @@ public sealed class PatternCompiler
                 continue;
             }
 
-            if (!string.Equals(tree.Text(i), placeholder, StringComparison.Ordinal))
+            var text = tree.Text(i);
+            if (!TextContainsPlaceholder(text, placeholder))
             {
                 continue;
             }
@@ -388,6 +389,37 @@ public sealed class PatternCompiler
         }
 
         return best;
+    }
+
+    /// <summary>
+    /// Match bare placeholders and path/string tokens that wrap them
+    /// (e.g. <c>&lt;__MV0__&gt;</c>, <c>"__MV0__"</c> for #include patterns).
+    /// </summary>
+    private static bool TextContainsPlaceholder(string text, string placeholder)
+    {
+        if (string.Equals(text, placeholder, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (text.Length >= placeholder.Length + 2)
+        {
+            if (
+                text[0] == '<'
+                && text[^1] == '>'
+                && text.AsSpan(1, text.Length - 2).SequenceEqual(placeholder.AsSpan())
+            )
+            {
+                return true;
+            }
+
+            if ((text[0] == '"' && text[^1] == '"') || (text[0] == '\'' && text[^1] == '\''))
+            {
+                return text.AsSpan(1, text.Length - 2).SequenceEqual(placeholder.AsSpan());
+            }
+        }
+
+        return false;
     }
 
     private static int? FindSelector(SyntaxTree tree, string selectorKind)

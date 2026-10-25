@@ -14,6 +14,10 @@ dotnet publish src/AstGrepAntlr.Native/AstGrepAntlr.Native.csproj \
 
 You should see `samples/gui/lib/ag4_native.dll`.
 
+Also ensure tree-sitter natives (`tree-sitter*.dll` / `.so` / `.dylib` from
+TreeSitter.DotNet `runtimes/<rid>/native/`) sit beside `ag4_native` so Java / C++ / Python
+use the default tree-sitter backend. If they are missing, ag4 falls back to ANTLR.
+
 Optional: `set AG4_NATIVE_DIR=C:\path\to\samples\gui\lib`
 
 Header: [include/ag4_native.h](include/ag4_native.h)

@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>AstGrepAntlr.Cli</RootNamespace>
     <AssemblyName>ag4</AssemblyName>
-    <Description>CLI for structural search with ANTLR4 (ast-grep compatible).</Description>
+    <Description>CLI for structural search with tree-sitter / ANTLR / Roslyn (ast-grep compatible).</Description>
     <PackageId>AstGrepAntlr.Cli</PackageId>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>ag4</ToolCommandName>

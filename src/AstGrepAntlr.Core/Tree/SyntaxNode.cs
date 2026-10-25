@@ -15,6 +15,10 @@ public readonly struct SyntaxNode
     public required int ChildCount { get; init; }
     public required bool IsNamed { get; init; }
     public required int ChainHead { get; init; }
+
+    /// <summary>tree-sitter "extra" nodes (comments, etc.); ignored under relaxed/signature-like matching.</summary>
+    public bool IsExtra { get; init; }
+
     public string? MetaVarName { get; init; }
     public bool IsMultiMetaVar { get; init; }
     public string? MetaVarTypedRule { get; init; }

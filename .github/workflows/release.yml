@@ -89,6 +89,11 @@ jobs:
           mkdir -p /tmp/ag4-smoke
           printf '%s\n' 'class T { void M() { foo(1); } }' > /tmp/ag4-smoke/Sample.cs
           "$BIN" run -l csharp -p "$AG4_SMOKE_PATTERN" /tmp/ag4-smoke | grep -q foo
+          printf '%s\n' 'class T { void m() { foo(1); } }' > /tmp/ag4-smoke/Sample.java
+          "$BIN" run -l java --backend tree-sitter -p "$AG4_SMOKE_PATTERN" /tmp/ag4-smoke | grep -q foo
+          ls "$BIN"* >/dev/null
+          # tree-sitter natives must ship beside the binary (runtimes/<rid>/native or same dir)
+          find "$(dirname "$BIN")" -name '*tree-sitter*' | head -n 5 | grep -q tree-sitter
       - name: Pack archive
         shell: bash
         run: |

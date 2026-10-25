@@ -2,19 +2,45 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>AstGrepAntlr.Languages</RootNamespace>
-    <Description>Built-in language front-ends for AstGrepAntlr (ANTLR grammars + Roslyn C#).</Description>
+    <Description>Built-in language front-ends for AstGrepAntlr (tree-sitter / ANTLR / Roslyn).</Description>
     <PackageId>AstGrepAntlr.Languages</PackageId>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591;CS3021</NoWarn>
     <Antlr4UseCSharpGenerator>true</Antlr4UseCSharpGenerator>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Antlr4.Runtime.Standard" />
     <PackageReference Include="Antlr4BuildTasks" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <!-- Managed TreeSitter.dll unused (own LibraryImport); keep native RID assets and flow them to consumers. -->
+    <PackageReference
+      Include="TreeSitter.DotNet"
+      ExcludeAssets="compile"
+      GeneratePathProperty="true"
+      PrivateAssets="compile"
+    />
     <ProjectReference Include="..\AstGrepAntlr.Core\AstGrepAntlr.Core.csproj" />
   </ItemGroup>
+  <!-- Drop unused grammar natives from output/publish; keep core + java/cpp/python. -->
+  <Target Name="FilterTreeSitterNatives" AfterTargets="ResolvePackageAssets">
+    <PropertyGroup>
+      <_TsKeep>;tree-sitter;libtree-sitter;tree-sitter-java;libtree-sitter-java;tree-sitter-cpp;libtree-sitter-cpp;tree-sitter-python;libtree-sitter-python;</_TsKeep>
+    </PropertyGroup>
+    <ItemGroup>
+      <_TsDrop
+        Include="@(NativeCopyLocalItems)"
+        Condition="$([System.String]::Copy('%(Filename)').Contains('tree-sitter')) and !$(_TsKeep.Contains(';%(Filename);'))"
+      />
+      <NativeCopyLocalItems Remove="@(_TsDrop)" />
+      <_TsDropPublish
+        Include="@(ResolvedFileToPublish)"
+        Condition="$([System.String]::Copy('%(Filename)').Contains('tree-sitter')) and !$(_TsKeep.Contains(';%(Filename);'))"
+      />
+      <ResolvedFileToPublish Remove="@(_TsDropPublish)" />
+    </ItemGroup>
+  </Target>
   <ItemGroup>
     <Antlr4 Include="..\..\grammars\java\JavaLexer.g4">
       <Generator>MSBuild:Compile</Generator>

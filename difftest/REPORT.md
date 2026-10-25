@@ -1,17 +1,39 @@
 # Difftest report (ast-grep vs ag4)
 
-Generated (UTC): `2026-10-24T02:34:34Z` (C++ pass) / `2026-10-24T02:23:29Z` (Java pass) / `2026-10-24T03:49:49Z` (C# pass) / `2026-10-24T15:19:06Z` (Python pass)  
+Generated (UTC): `2026-10-24T18:10Z` (Java/C++/Python tree-sitter, Only\* bugfixes) / `2026-10-24T16:21–16:57Z` (ANTLR) / `2026-10-24T16:17Z` (C#)  
 Baseline tool: `@ast-grep/cli@0.51.0`  
 Mode: `comparative`
 
 ```bash
+# tree-sitter (default for java/cpp/python)
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
-  --corpus difftest/corpus.yml --skip-clone --skip-npm --skip-rewrite --timeout-seconds 90
+  --corpus difftest/corpus.yml --backend tree-sitter --skip-clone --skip-npm --skip-rewrite --timeout-seconds 90
+
+# ANTLR (opt-in)
+dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
+  --corpus difftest/corpus.yml --backend antlr --skip-clone --skip-npm --skip-rewrite --timeout-seconds 90
 ```
+
+C# is always Roslyn (no `--backend` effect).
 
 ## Summary
 
-### Java
+### Java — tree-sitter (default)
+
+| Metric                                    |  Value |
+| ----------------------------------------- | -----: |
+| Same                                      |  24088 |
+| Only ast-grep                             |    346 |
+| Only ag4                                  |    157 |
+| Range diff                                |      0 |
+| Metavar diff                              |   5580 |
+| Match rate                                | 79.84% |
+| Unexplained (after known-differences.yml) |      0 |
+| ast-grep time (ms)                        |  10745 |
+| ag4 time (ms)                             |  48992 |
+| Speed ratio (ag4 / ast-grep)              |  4.56x |
+
+### Java — ANTLR
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
@@ -22,26 +44,41 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | Metavar diff                              |   4671 |
 | Match rate                                | 57.39% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  13694 |
-| ag4 time (ms)                             | 247844 |
-| Speed ratio (ag4 / ast-grep)              | 18.10x |
+| ast-grep time (ms)                        |  10792 |
+| ag4 time (ms)                             | 216441 |
+| Speed ratio (ag4 / ast-grep)              | 20.06x |
 
-### C++
+### C++ — tree-sitter (default)
 
-| Metric                                                   |  Value |
-| -------------------------------------------------------- | -----: |
-| Same                                                     |    520 |
-| Only ast-grep                                            |   2724 |
-| Only ag4                                                 |     49 |
-| Range diff                                               |      1 |
-| Metavar diff                                             |     83 |
-| Match rate                                               | 15.40% |
-| Unexplained (after known-differences.yml, post catch-up) |    0\* |
-| ast-grep time (ms)                                       |  14947 |
-| ag4 time (ms)                                            | 606889 |
-| Speed ratio (ag4 / ast-grep)                             | 40.60x |
+| Metric                                    |  Value |
+| ----------------------------------------- | -----: |
+| Same                                      |   2729 |
+| Only ast-grep                             |     56 |
+| Only ag4                                  |    227 |
+| Range diff                                |      0 |
+| Metavar diff                              |    543 |
+| Match rate                                | 76.77% |
+| Unexplained (after known-differences.yml) |      0 |
+| ast-grep time (ms)                        |  10831 |
+| ag4 time (ms)                             |  49636 |
+| Speed ratio (ag4 / ast-grep)              |  4.58x |
 
-\*C++ pass reported 31 unexplained before residual `cpp-residual-*` entries were added to [known-differences.yml](known-differences.yml); re-run with those entries yields 0 unexplained for the same buckets.
+### C++ — ANTLR
+
+| Metric                                    |  Value |
+| ----------------------------------------- | -----: |
+| Same                                      |    520 |
+| Only ast-grep                             |   2724 |
+| Only ag4                                  |     49 |
+| Range diff                                |      1 |
+| Metavar diff                              |     83 |
+| Match rate                                | 15.40% |
+| Unexplained (after known-differences.yml) |      0 |
+| ast-grep time (ms)                        |  13117 |
+| ag4 time (ms)                             | 831937 |
+| Speed ratio (ag4 / ast-grep)              | 63.42x |
+
+Low ANTLR match rate is mostly **CPP14 grammar limits** (C++17+, macros).
 
 ### C# (Roslyn)
 
@@ -54,17 +91,26 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | Metavar diff                              |   9423 |
 | Match rate                                | 49.19% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  18018 |
-| ag4 time (ms)                             | 108163 |
-| Speed ratio (ag4 / ast-grep)              |  6.00x |
+| ast-grep time (ms)                        |  12527 |
+| ag4 time (ms)                             |  70577 |
+| Speed ratio (ag4 / ast-grep)              |  5.63x |
 
-Notes:
+### Python — tree-sitter (default)
 
-- Backend is **Roslyn** (`Microsoft.CodeAnalysis.CSharp`), not grammars-v4 (EPL).
-- Kind names are Roslyn `SyntaxKind` snake_case with tree-sitter-c-sharp aliases (`identifier_name` ↔ `identifier`, etc.).
-- Large only-ast-grep on `cast-expr` / `kind-identifier` and only-ag4 on brace block patterns are documented in [known-differences.yml](known-differences.yml) as `csharp-*`.
+| Metric                                    |  Value |
+| ----------------------------------------- | -----: |
+| Same                                      |   9774 |
+| Only ast-grep                             |    283 |
+| Only ag4                                  |     45 |
+| Range diff                                |      0 |
+| Metavar diff                              |   1570 |
+| Match rate                                | 83.74% |
+| Unexplained (after known-differences.yml) |      0 |
+| ast-grep time (ms)                        |   7134 |
+| ag4 time (ms)                             |  32285 |
+| Speed ratio (ag4 / ast-grep)              |  4.53x |
 
-### Python
+### Python — ANTLR
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
@@ -74,43 +120,34 @@ Notes:
 | Range diff                                |      0 |
 | Metavar diff                              |   1010 |
 | Match rate                                | 59.46% |
-| Unexplained (after known-differences.yml) |    0\* |
-| ast-grep time (ms)                        |  10664 |
-| ag4 time (ms)                             | 408625 |
-| Speed ratio (ag4 / ast-grep)              | 38.32x |
-
-\*First Python pass reported 4731 unexplained before residual `python-*` entries were added to [known-differences.yml](known-differences.yml); re-run with those entries yields 0 unexplained for the same buckets.
-
-Notes:
-
-- Indent-sensitive block patterns (`if` / `for` / `def` / `class` / `with` / `try`) largely only-ast-grep: tree-sitter-python matches indented suites that ANTLR Python3 patterns often miss.
-- Call / metavariable volume on `$F($$$ARGS)` and attribute calls is documented as `python-*`.
+| Unexplained (after known-differences.yml) |      0 |
+| ast-grep time (ms)                        |  10122 |
+| ag4 time (ms)                             | 469568 |
+| Speed ratio (ag4 / ast-grep)              | 46.39x |
 
 ### PL/SQL
 
-Not compared: upstream `@ast-grep/cli` has no built-in PL/SQL language. The comparison HTML lists a PL/SQL column as N/A only.
+Not compared: upstream `@ast-grep/cli` has no built-in PL/SQL language.
 
-## Baseline comparison (Phase 0b, pre-fix Java)
+## Notes (hybrid backends / Only\* fixes)
 
-```
-Totals: same=49172 only-ast-grep=14122 only-ag4=649 range-diff=3541 metavar-diff=17048
-```
-
-Notes vs Phase 0b:
-
-- **range-diff 3541 → 0** (Java): byteOffset / JSON alignment.
-- Pattern compile failures for statement/block patterns largely resolved.
-- **enhanced-for** (`for ($T $V : $ITER)`) compiles via bare type MetaVarVariants; fixture: `tests/fixtures/cases/java/enhanced-for.yml`.
-- Remaining only-\* / metavar-diff volumes: [known-differences.yml](known-differences.yml).
+- Default for Java / C++ / Python is **tree-sitter**.
+- Versus ANTLR: match rate **Java 57%→80%**, **C++ 15%→77%**, **Python 59%→84%**; speed ratio **~20×→5×**, **~63×→5×**, **~46×→5×**.
+- Bugfixes that removed large OnlyAstGrep buckets:
+  - Expression-context false accepts for statement fragments (`$VAR = $VAL;`, `break;`, …)
+  - Python `dotted_name` excluded from B6 single-child list guard
+  - C++ `#include <$H>` metavar marking for `<…>` / `"…"` path tokens
+  - DiffTest passes `-p=@Override` as `-p=…` so the dotnet host does not treat `@` as a response file
+- Remaining Only\* are mostly intentional matcher differences (`enhanced-for`, `qualified-call`, residual `if-block`) plus MetaVarDiff; catalogued under `backend: tree-sitter` (`ts-*-matcher`).
+- Parse vs match cost breakdown: `tools/AstGrepAntlr.Bench`.
 
 ## Configuration
 
 - Patterns: [patterns/java.yml](patterns/java.yml), [patterns/cpp.yml](patterns/cpp.yml), [patterns/csharp.yml](patterns/csharp.yml), [patterns/python.yml](patterns/python.yml)
-- Corpus: [corpus.yml](corpus.yml) — Apache commons-lang, java-design-patterns, leveldb, cereal, fmt, Newtonsoft.Json, Humanizer, click, attrs (tag + SHA)
-- `.h` as cpp: [sgconfig.yml](sgconfig.yml) `languageGlobs` for ast-grep
-- Harness: `tools/AstGrepAntlr.DiffTest` vs `@ast-grep/cli@0.51.0`
+- Corpus: [corpus.yml](corpus.yml)
+- Harness: `tools/AstGrepAntlr.DiffTest` vs `@ast-grep/cli@0.51.0` (`--backend tree-sitter|antlr`)
 
 ## Artifacts / CI
 
-- Machine-readable: `.difftest/report/latest/details.json` (gitignored)
-- CI: [.github/workflows/difftest.yml](../.github/workflows/difftest.yml) — `workflow_dispatch` + weekly cron; **not** on every PR; fails on unexplained diffs
+- Machine-readable: `.difftest/report/latest/` (gitignored); per-backend copies under `.difftest/report/by-backend/`
+- CI: [.github/workflows/difftest.yml](../.github/workflows/difftest.yml) — `workflow_dispatch` + weekly cron; fails on unexplained diffs

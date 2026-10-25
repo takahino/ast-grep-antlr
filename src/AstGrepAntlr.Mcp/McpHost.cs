@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Text.Json;
 using AstGrepAntlr.Language;
+using AstGrepAntlr.Languages;
+using AstGrepAntlr.Languages.TreeSitter;
 using AstGrepAntlr.Matching;
 using AstGrepAntlr.Output;
 using AstGrepAntlr.Parsing;
@@ -92,6 +94,7 @@ public sealed class Ag4Tools
             startRule = l.StartRule,
             patternRules = l.PatternRules,
             ignoreCase = l.IgnoreCase,
+            backend = DescribeBackend(l),
         });
         return JsonSerializer.Serialize(list);
     }
@@ -135,11 +138,21 @@ public sealed class Ag4Tools
                 patternRules = lang.PatternRules,
                 metaVarPlaceholder = lang.MetaVarPlaceholderTemplate,
                 ignoreCase = lang.IgnoreCase,
+                backend = DescribeBackend(lang),
                 ruleNames = lang.RuleNames,
                 tokens,
             }
         );
     }
+
+    private static string DescribeBackend(ILanguage lang) =>
+        lang switch
+        {
+            TreeSitterLanguage => "tree-sitter",
+            IAntlrLanguage => "antlr",
+            CSharpLanguage => "roslyn",
+            _ => "unknown",
+        };
 
     [
         McpServerTool(Name = "dump_syntax_tree", ReadOnly = true),

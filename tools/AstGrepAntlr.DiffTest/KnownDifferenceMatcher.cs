@@ -7,7 +7,8 @@ internal static class KnownDifferenceMatcher
         string language,
         string patternId,
         string repoId,
-        MatchBucket bucket
+        MatchBucket bucket,
+        string? ag4Backend = null
     )
     {
         if (bucket == MatchBucket.Same)
@@ -20,6 +21,33 @@ internal static class KnownDifferenceMatcher
             if (
                 !string.IsNullOrWhiteSpace(entry.Language)
                 && !string.Equals(entry.Language, language, StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                continue;
+            }
+
+            if (
+                !string.IsNullOrWhiteSpace(entry.Backend)
+                && !string.IsNullOrWhiteSpace(ag4Backend)
+                && !string.Equals(entry.Backend, ag4Backend, StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                continue;
+            }
+
+            // Untagged grammar-parse / grammar-boundary entries historically described
+            // ANTLR CST vs upstream tree-sitter. When ag4 also uses tree-sitter, ignore them
+            // unless they are explicitly tagged backend: tree-sitter (or antlr).
+            if (
+                string.IsNullOrWhiteSpace(entry.Backend)
+                && !string.IsNullOrWhiteSpace(ag4Backend)
+                && ag4Backend.Equals("tree-sitter", StringComparison.OrdinalIgnoreCase)
+                && language is "java" or "cpp" or "python"
+                && entry.Category is not null
+                && (
+                    entry.Category.Contains("grammar-parse", StringComparison.OrdinalIgnoreCase)
+                    || entry.Category.Contains("grammar-boundary", StringComparison.OrdinalIgnoreCase)
+                )
             )
             {
                 continue;

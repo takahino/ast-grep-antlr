@@ -77,4 +77,10 @@ internal sealed class KnownDifference
 
     /// <summary>Optional bucket filter: OnlyAstGrep, OnlyAg4, RangeDiff, MetaVarDiff.</summary>
     public string? Bucket { get; set; }
+
+    /// <summary>
+    /// Optional ag4 backend filter: <c>tree-sitter</c>, <c>antlr</c>, or <c>roslyn</c>.
+    /// When omitted, the entry applies to all backends (legacy).
+    /// </summary>
+    public string? Backend { get; set; }
 }

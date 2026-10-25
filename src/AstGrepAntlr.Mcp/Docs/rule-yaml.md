@@ -8,12 +8,18 @@ message: ...
 rule:
   pattern: System.out.println($A)
   inside:
-    kind: methodDeclaration
+    kind: method_declaration
     stopBy: end
 constraints:
   A:
-    kind: literal
+    kind: string_literal
 fix: logger.info($A)
 ```
 
 Composite: `all`, `any`, `not`, `matches`. Relational: `inside`, `has`, `precedes`, `follows`.
+
+Kind names depend on the language backend:
+
+- **tree-sitter** (default for Java / C++ / Python): upstream-style names such as `method_declaration`, `call_expression`
+- **ANTLR** (`--backend antlr` / `languageBackends`): grammar rule names such as `methodDeclaration`
+- **Roslyn** (C#): Roslyn `SyntaxKind` snake_case with some tree-sitter-c-sharp aliases

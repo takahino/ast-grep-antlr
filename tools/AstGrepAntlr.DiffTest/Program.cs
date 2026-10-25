@@ -50,6 +50,11 @@ internal static class Program
             Description = "Write difftest/REPORT.md from the run",
             DefaultValueFactory = _ => true,
         };
+        var backendOption = new Option<string>("--backend")
+        {
+            Description = "ag4 parser backend for java/cpp/python: tree-sitter (default) or antlr",
+            DefaultValueFactory = _ => "tree-sitter",
+        };
 
         var rootCommand = new RootCommand("ast-grep vs ag4 differential test harness");
         rootCommand.Options.Add(rootOption);
@@ -65,6 +70,7 @@ internal static class Program
         rootCommand.Options.Add(skipRewriteOption);
         rootCommand.Options.Add(timeoutOption);
         rootCommand.Options.Add(writeReportOption);
+        rootCommand.Options.Add(backendOption);
 
         var exitCode = 0;
         rootCommand.SetAction(async parseResult =>
@@ -90,6 +96,7 @@ internal static class Program
                         SkipRewrite = parseResult.GetValue(skipRewriteOption),
                         ToolTimeoutSeconds = parseResult.GetValue(timeoutOption),
                         LanguageFilter = parseResult.GetValue(languageOption),
+                        Ag4Backend = parseResult.GetValue(backendOption) ?? "tree-sitter",
                     },
                     CancellationToken.None
                 );

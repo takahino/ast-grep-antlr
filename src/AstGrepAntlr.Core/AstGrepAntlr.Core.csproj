@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>AstGrepAntlr</RootNamespace>
-    <Description>Structural search engine using ANTLR4 parse trees (ast-grep compatible).</Description>
+    <Description>Structural search engine (tree-sitter / ANTLR / Roslyn arena trees; ast-grep compatible).</Description>
     <PackageId>AstGrepAntlr.Core</PackageId>
     <IsAotCompatible>false</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

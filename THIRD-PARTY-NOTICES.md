@@ -18,6 +18,20 @@
 
 Source: https://github.com/antlr/grammars-v4
 
+These `.g4` trees are used by the **ANTLR** backend. tree-sitter grammars for Java / C++ / Python come from NuGet natives (below), not from this directory.
+
+## tree-sitter (native)
+
+| Component          | License | Notes                                           |
+| ------------------ | ------- | ----------------------------------------------- |
+| tree-sitter        | MIT     | Core library via TreeSitter.DotNet natives      |
+| tree-sitter-java   | MIT     | Bundled grammar                                 |
+| tree-sitter-cpp    | MIT     | Bundled grammar                                 |
+| tree-sitter-python | MIT     | Bundled grammar                                 |
+| TreeSitter.DotNet  | MIT     | NuGet: `runtimes/<rid>/native/` (win/linux/osx) |
+
+Bindings are custom `LibraryImport` (`TsNative`); unused grammar natives are filtered from publish output.
+
 ## NuGet dependencies
 
 - YamlDotNet — MIT
@@ -25,6 +39,7 @@ Source: https://github.com/antlr/grammars-v4
 - ModelContextProtocol — MIT
 - Microsoft.Extensions.\* — MIT
 - Microsoft.CodeAnalysis.CSharp (Roslyn) — MIT
+- TreeSitter.DotNet — MIT (natives; see above)
 - xunit / test SDK — Apache-2.0 / MIT
 
 ## Dev tooling

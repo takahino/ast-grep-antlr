@@ -158,11 +158,15 @@ internal static class SearchRunner
         string? configPath,
         string? rewrite,
         bool apply,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        string? backend = null
     )
     {
-        var args = new List<string> { ag4Dll, "run", "-p", pattern, "-l", language, "--json" };
+        // Use -p=VALUE so patterns starting with '@' (e.g. @Override) are not treated as
+        // dotnet response files (a bare argv token `@…` is expanded by the host).
+        var args = new List<string> { ag4Dll, "run", "-p=" + pattern, "-l", language, "--json" };
         AppendConfig(args, configPath);
+        AppendBackend(args, backend);
         AppendRewrite(args, rewrite, apply, updateFlag: "--apply");
         args.AddRange(searchPaths);
 
@@ -191,11 +195,13 @@ internal static class SearchRunner
         IReadOnlyList<string> searchPaths,
         string? configPath,
         bool apply,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        string? backend = null
     )
     {
         var args = new List<string> { ag4Dll, "scan", "-r", ruleFile, "--json" };
         AppendConfig(args, configPath);
+        AppendBackend(args, backend);
         if (apply)
         {
             args.Add("--update-all");
@@ -231,6 +237,15 @@ internal static class SearchRunner
         }
     }
 
+    private static void AppendBackend(List<string> args, string? backend)
+    {
+        if (!string.IsNullOrWhiteSpace(backend))
+        {
+            args.Add("--backend");
+            args.Add(backend);
+        }
+    }
+
     private static void AppendRewrite(List<string> args, string? rewrite, bool apply, string updateFlag)
     {
         if (string.IsNullOrWhiteSpace(rewrite))
@@ -238,8 +253,8 @@ internal static class SearchRunner
             return;
         }
 
-        args.Add("--rewrite");
-        args.Add(rewrite);
+        // Same response-file hazard as -p when rewrite starts with '@'.
+        args.Add("--rewrite=" + rewrite);
         if (apply)
         {
             args.Add(updateFlag);

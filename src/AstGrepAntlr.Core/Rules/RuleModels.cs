@@ -48,6 +48,13 @@ public sealed class SgConfig
     public List<string>? RuleDirs { get; set; }
     public List<string>? UtilDirs { get; set; }
     public string? Encoding { get; set; }
+
+    /// <summary>
+    /// Per-language parser backend override (e.g. <c>java: antlr</c>, <c>python: tree-sitter</c>).
+    /// Values are CLI names: <c>tree-sitter</c>, <c>antlr</c>, <c>roslyn</c>.
+    /// </summary>
+    public Dictionary<string, string>? LanguageBackends { get; set; }
+
     public Dictionary<string, CustomLanguageConfig>? CustomLanguages { get; set; }
 }
 

@@ -67,6 +67,18 @@ public static class RuleLoader
             Encoding = GetString(root, "encoding"),
         };
 
+        if (TryGet(root, "languageBackends", out var backends) && backends is YamlMappingNode bmap)
+        {
+            config.LanguageBackends = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, value) in bmap.Children)
+            {
+                if (key is YamlScalarNode k && value is YamlScalarNode v && k.Value is not null && v.Value is not null)
+                {
+                    config.LanguageBackends[k.Value] = v.Value;
+                }
+            }
+        }
+
         if (TryGet(root, "customLanguages", out var customs) && customs is YamlMappingNode cmap)
         {
             config.CustomLanguages = new Dictionary<string, CustomLanguageConfig>(StringComparer.OrdinalIgnoreCase);

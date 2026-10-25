@@ -1,0 +1,2008 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ag4 アーキテクチャ</title>
+    <style>
+      :root {
+        --ink: #1a1f1c;
+        --muted: #5a635c;
+        --paper: #f3efe6;
+        --panel: #fffdf8;
+        --line: #d4cfc3;
+        --accent: #0d6b5c;
+        --accent-soft: #d8ebe6;
+        --warn: #8a4b12;
+        --warn-soft: #f3e4d4;
+        --code-bg: #e8e4da;
+        --glow-a: #dde8e4;
+        --glow-b: #e8dfd0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ink: #e6e2d9;
+          --muted: #a3aaa4;
+          --paper: #141715;
+          --panel: #1c201e;
+          --line: #3a403c;
+          --accent: #5fc2ad;
+          --accent-soft: #1d3832;
+          --warn: #e3a263;
+          --warn-soft: #3a2a1b;
+          --code-bg: #262a27;
+          --glow-a: #1b2a26;
+          --glow-b: #2a241c;
+        }
+      }
+      :root[data-theme="dark"] {
+        --ink: #e6e2d9;
+        --muted: #a3aaa4;
+        --paper: #141715;
+        --panel: #1c201e;
+        --line: #3a403c;
+        --accent: #5fc2ad;
+        --accent-soft: #1d3832;
+        --warn: #e3a263;
+        --warn-soft: #3a2a1b;
+        --code-bg: #262a27;
+        --glow-a: #1b2a26;
+        --glow-b: #2a241c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(ellipse 80% 50% at 10% -10%, var(--glow-a) 0%, transparent 55%),
+          radial-gradient(ellipse 60% 40% at 100% 0%, var(--glow-b) 0%, transparent 50%),
+          var(--paper);
+        background-color: var(--paper);
+        line-height: 1.7;
+      }
+      main {
+        max-width: 60rem;
+        margin: 0 auto;
+        padding: 2.5rem 1rem 4rem;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: "IBM Plex Serif", "Source Han Serif JP", "Noto Serif JP", serif;
+        line-height: 1.35;
+      }
+      h1 {
+        font-size: 2rem;
+        margin: 0 0 0.5rem;
+      }
+      h2 {
+        font-size: 1.45rem;
+        margin: 3rem 0 0.75rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--line);
+      }
+      h3 {
+        font-size: 1.1rem;
+        margin: 1.75rem 0 0.5rem;
+      }
+      .lede {
+        color: var(--muted);
+        margin: 0 0 1.5rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      code,
+      pre {
+        font-family: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+        font-size: 0.88em;
+      }
+      code {
+        background: var(--code-bg);
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        overflow-wrap: anywhere;
+      }
+      pre {
+        background: var(--code-bg);
+        padding: 0.8rem 1rem;
+        overflow-x: auto;
+        border-radius: 4px;
+        line-height: 1.5;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+      nav.toc {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 1rem 1.25rem;
+      }
+      nav.toc ol {
+        margin: 0;
+        padding-left: 1.4rem;
+        columns: 2 16rem;
+        column-gap: 2rem;
+      }
+      nav.toc li {
+        break-inside: avoid;
+      }
+      .tbl {
+        overflow-x: auto;
+        margin: 1rem 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.92rem;
+        background: var(--panel);
+      }
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 0.4rem 0.6rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--accent-soft);
+        font-weight: 600;
+      }
+      .note,
+      .decision {
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+        padding: 0.75rem 1rem;
+        margin: 1.25rem 0;
+      }
+      .decision strong:first-child {
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      .caution {
+        border-left: 4px solid var(--warn);
+        background: var(--warn-soft);
+        padding: 0.75rem 1rem;
+        margin: 1.25rem 0;
+      }
+      figure {
+        margin: 1.5rem 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 1rem;
+      }
+      figcaption {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+      }
+      /* Diagram styling lives here because inline SVGs must stay self-contained (no <style>). */
+      svg.dg {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        color: var(--ink);
+      }
+      svg.dg text {
+        fill: currentColor;
+        font-size: 13px;
+        font-family: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      }
+      svg.dg .t {
+        font-weight: 600;
+      }
+      svg.dg .s,
+      svg.dg .lbl {
+        fill: var(--muted);
+        font-size: 11px;
+      }
+      svg.dg .mono {
+        font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      }
+      svg.dg .acc {
+        fill: var(--accent);
+      }
+      svg.dg .wrn {
+        fill: var(--warn);
+      }
+      svg.dg .box {
+        fill: var(--panel);
+        stroke: currentColor;
+        stroke-width: 1.2;
+      }
+      svg.dg .box.accent {
+        fill: var(--accent-soft);
+        stroke: var(--accent);
+        stroke-width: 1.6;
+      }
+      svg.dg .box.warn {
+        fill: var(--warn-soft);
+        stroke: var(--warn);
+      }
+      svg.dg .ghost {
+        fill: none;
+        stroke: var(--muted);
+        stroke-dasharray: 4 3;
+      }
+      svg.dg .lane {
+        fill: var(--accent-soft);
+        fill-opacity: 0.35;
+        stroke: var(--accent);
+        stroke-dasharray: 6 4;
+      }
+      svg.dg .chain {
+        fill: var(--accent-soft);
+        fill-opacity: 0.6;
+        stroke: var(--accent);
+        stroke-dasharray: 5 3;
+      }
+      svg.dg .edge {
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.3;
+      }
+      svg.dg .edge.dash {
+        stroke-dasharray: 5 4;
+      }
+      svg.dg .edge.acc-e {
+        stroke: var(--accent);
+      }
+      ul.tight li,
+      ol.tight li {
+        margin: 0.15rem 0;
+      }
+      footer {
+        margin-top: 3rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>ag4 アーキテクチャ</h1>
+      <p class="lede">
+        ast-grep-antlr（<code>ag4</code>）の内部構造を、データの流れに沿ってまとめた資料です。対象は
+        working tree の現状（Java / C++ / Python は tree-sitter 既定、PL/SQL / SQLite / DSL は
+        ANTLR、C# は Roslyn）で、記載したクラス名・ファイルはすべて
+        <code>src/</code> 配下に実在します。
+      </p>
+
+      <nav class="toc" aria-label="目次">
+        <ol>
+          <li><a href="#overview">概要と設計方針</a></li>
+          <li><a href="#solution">ソリューション構成</a></li>
+          <li><a href="#pipeline">検索パイプライン</a></li>
+          <li><a href="#languages">言語フロントエンド層</a></li>
+          <li><a href="#parse">2 段階パース</a></li>
+          <li><a href="#tree">アリーナ構文木</a></li>
+          <li><a href="#compile">パターンコンパイル</a></li>
+          <li><a href="#match">マッチング</a></li>
+          <li><a href="#rules">YAML ルールエンジン</a></li>
+          <li><a href="#text">文字コードとオフセット</a></li>
+          <li><a href="#rewrite">リライト</a></li>
+          <li><a href="#hosts">ホスト層（CLI / MCP / Native）</a></li>
+          <li><a href="#qa">テストと差分テスト</a></li>
+          <li><a href="#extend">拡張ポイント</a></li>
+          <li><a href="#limits">既知の制約</a></li>
+        </ol>
+      </nav>
+
+      <!-- ============================================================ -->
+      <h2 id="overview">1. 概要と設計方針</h2>
+      <p>
+        ag4 は
+        <a href="https://ast-grep.github.io/">ast-grep</a>
+        互換の<strong>構造検索・書き換えツール</strong>です。主要言語（Java / C++ /
+        Python）は<strong>tree-sitter</strong>（既定）で解析し、本家に近い kind
+        名と速度を狙います。PL/SQL ・SQLite・独自 DSL は <strong>ANTLR4</strong>、C# は
+        <strong>Roslyn</strong> です。<code>--backend</code> / <code>languageBackends</code> で Java
+        / C++ / Python を ANTLR に戻せます。.NET 10 で実装しています。
+      </p>
+      <ul class="tight">
+        <li>
+          <strong>ast-grep 互換の外部仕様</strong> — CLI のサブコマンド、YAML ルールのスキーマ、JSON
+          出力のフィールド（0 始まりの <code>range</code>、<code>metaVariables</code>
+          など）、終了コードを揃える。
+        </li>
+        <li>
+          <strong>文法は差し替え可能</strong> —
+          照合エンジンはパーサ固有の型を知らず、共通のアリーナ木
+          <code>SyntaxTree</code> だけを見る。言語は <code>ILanguage</code> を実装すれば追加できる。
+        </li>
+        <li>
+          <strong>ハイブリッドバックエンド</strong> — 速度・本家互換は tree-sitter、BNF / 独自 DSL
+          は ANTLR、現行 C# 仕様追従は Roslyn。
+        </li>
+        <li>
+          <strong>構文エラーがあっても止まらない</strong> — tree-sitter は ERROR/MISSING
+          を木に残す。ANTLR は SLL → LL + エラー回復。
+        </li>
+        <li>
+          <strong>文字コードを壊さない</strong> — Shift_JIS / EUC-JP / UTF-16 / BOM
+          付きファイルも、検出した文字コードのまま書き戻す。
+        </li>
+        <li>
+          <strong>独自 DSL</strong> — <code>.g4</code> / <code>.interp</code> を
+          <code>sgconfig.yml</code> に書けば、ビルドし直さずに使える。
+        </li>
+      </ul>
+
+      <!-- ============================================================ -->
+      <h2 id="solution">2. ソリューション構成</h2>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 430"
+          role="img"
+          aria-label="3 つのホスト（CLI・MCP・Native）が Languages と Core に依存し、Languages が Core の ILanguage を実装する依存グラフ"
+        >
+          <defs>
+            <marker
+              id="m1"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <!-- consumers -->
+          <rect class="ghost" x="30" y="16" width="200" height="40" rx="4" />
+          <text x="130" y="41" text-anchor="middle">ターミナル / CI</text>
+          <rect class="ghost" x="280" y="16" width="200" height="40" rx="4" />
+          <text x="380" y="41" text-anchor="middle">AI エージェント</text>
+          <rect class="ghost" x="530" y="16" width="200" height="40" rx="4" />
+          <text x="630" y="41" text-anchor="middle">GUI サンプル (C#/Java/Py)</text>
+          <line class="edge" x1="130" y1="56" x2="130" y2="108" marker-end="url(#m1)" />
+          <text class="lbl" x="138" y="87">CLI 引数</text>
+          <line class="edge" x1="380" y1="56" x2="380" y2="108" marker-end="url(#m1)" />
+          <text class="lbl" x="388" y="87">JSON-RPC / stdio</text>
+          <line class="edge" x1="630" y1="56" x2="630" y2="108" marker-end="url(#m1)" />
+          <text class="lbl" x="638" y="87">C ABI + JSON</text>
+          <!-- hosts -->
+          <rect class="box" x="30" y="110" width="200" height="60" rx="4" />
+          <text class="t" x="130" y="136" text-anchor="middle">AstGrepAntlr.Cli</text>
+          <text class="s" x="130" y="155" text-anchor="middle">ag4 · System.CommandLine</text>
+          <rect class="box" x="280" y="110" width="200" height="60" rx="4" />
+          <text class="t" x="380" y="136" text-anchor="middle">AstGrepAntlr.Mcp</text>
+          <text class="s" x="380" y="155" text-anchor="middle">ModelContextProtocol</text>
+          <rect class="box" x="530" y="110" width="200" height="60" rx="4" />
+          <text class="t" x="630" y="136" text-anchor="middle">AstGrepAntlr.Native</text>
+          <text class="s" x="630" y="155" text-anchor="middle">NativeAOT 共有ライブラリ</text>
+          <line class="edge" x1="230" y1="140" x2="278" y2="140" marker-end="url(#m1)" />
+          <text class="lbl" x="254" y="132" text-anchor="middle">ag4 mcp</text>
+          <!-- hosts -> languages -->
+          <line class="edge" x1="130" y1="170" x2="228" y2="228" marker-end="url(#m1)" />
+          <line class="edge" x1="380" y1="170" x2="380" y2="228" marker-end="url(#m1)" />
+          <text class="lbl" x="388" y="205">CreateRegistry()</text>
+          <line class="edge" x1="630" y1="170" x2="532" y2="228" marker-end="url(#m1)" />
+          <!-- languages -->
+          <rect class="box accent" x="150" y="230" width="460" height="60" rx="4" />
+          <text class="t" x="380" y="255" text-anchor="middle">AstGrepAntlr.Languages</text>
+          <text class="s" x="380" y="275" text-anchor="middle">
+            tree-sitter (Java/C++/Python) + ANTLR (PL/SQL/SQLite/DSL) + Roslyn (C#)
+          </text>
+          <line class="edge" x1="380" y1="290" x2="380" y2="338" marker-end="url(#m1)" />
+          <text class="lbl" x="388" y="319">ILanguage を実装</text>
+          <!-- core -->
+          <rect class="box" x="150" y="340" width="460" height="70" rx="4" />
+          <text class="t" x="380" y="363" text-anchor="middle">AstGrepAntlr.Core</text>
+          <text class="s" x="380" y="382" text-anchor="middle">
+            パターン / 照合 / ルール / 探索 / 文字コード / リライト
+          </text>
+          <text class="s mono" x="380" y="399" text-anchor="middle">
+            Antlr4.Runtime · TreeSitter natives · YamlDotNet
+          </text>
+          <!-- direct core refs -->
+          <polyline class="edge dash" points="40,170 40,375 148,375" marker-end="url(#m1)" />
+          <polyline class="edge dash" points="720,170 720,375 612,375" marker-end="url(#m1)" />
+          <text class="lbl" x="48" y="312">Core を直接参照</text>
+        </svg>
+        <figcaption>
+          3 つのホストは、どれも <code>BuiltinLanguages.CreateRegistry()</code> で言語を用意し、Core
+          の <code>Searcher</code> を直接呼びます（破線）。CLI は <code>ag4 mcp</code> で MCP
+          ホストを起動します。
+        </figcaption>
+      </figure>
+
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>プロジェクト</th>
+              <th>責務</th>
+              <th>主なファイル</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>src/AstGrepAntlr.Core</code></td>
+              <td>
+                エンジン本体。言語インターフェース、パース、アリーナ木、パターン、照合、ルール、ファイル探索、文字コード、出力、リライト（約
+                5,500 行）
+              </td>
+              <td>
+                <code>Search/Searcher.cs</code>, <code>Pattern/PatternCompiler.cs</code>,
+                <code>Matching/PatternMatcher.cs</code>, <code>Rules/RuleEngine.cs</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>src/AstGrepAntlr.Languages</code></td>
+              <td>
+                組み込み言語。tree-sitter（LibraryImport + TreeSitter.DotNet
+                ネイティブ）、ANTLR（<code>grammars/*/*.g4</code>）、C# は Roslyn。<code
+                  >ApplyBackend</code
+                >
+                で切替
+              </td>
+              <td>
+                <code>BuiltinLanguages.cs</code>, <code>TreeSitter/</code>, <code>Java/</code>,
+                <code>Cpp/</code>, <code>CSharp/</code>, <code>Python/</code>, <code>PlSql/</code>,
+                <code>Sqlite/</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>tools/AstGrepAntlr.Bench</code></td>
+              <td>読み込み・パース・照合の時間内訳マイクロベンチ</td>
+              <td><code>Program.cs</code></td>
+            </tr>
+            <tr>
+              <td><code>src/AstGrepAntlr.Cli</code></td>
+              <td>
+                <code>ag4</code> コマンド（dotnet tool / NativeAOT バイナリ）。sgconfig
+                の探索と、カスタム言語の遅延登録
+              </td>
+              <td><code>Ag4Cli.cs</code></td>
+            </tr>
+            <tr>
+              <td><code>src/AstGrepAntlr.Mcp</code></td>
+              <td>
+                stdio で動く MCP サーバ。ツールを公開し、操作できるパスを
+                <code>--root</code> 内に制限する
+              </td>
+              <td><code>McpHost.cs</code></td>
+            </tr>
+            <tr>
+              <td><code>src/AstGrepAntlr.Native</code></td>
+              <td>
+                NativeAOT の共有ライブラリ <code>ag4_native</code>。JSON を受けて JSON を返す C ABI
+              </td>
+              <td>
+                <code>NativeExports.cs</code>, <code>SearchHost.cs</code>,
+                <code>JsonModels.cs</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>tools/AstGrepAntlr.DiffTest</code></td>
+              <td>実在 OSS のコードで ast-grep と結果を突き合わせる差分テスト</td>
+              <td><code>DiffTestRunner.cs</code>, <code>MatchComparer.cs</code></td>
+            </tr>
+            <tr>
+              <td><code>tests/AstGrepAntlr.Tests</code></td>
+              <td>xUnit テスト。言語ごとのパーステスト、回帰ベースライン、オラクルを使うテスト</td>
+              <td><code>RegressionBaselineTests.cs</code>, <code>Harness/</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============================================================ -->
+      <h2 id="pipeline">3. 検索パイプライン</h2>
+      <p>
+        <code>ag4 run</code> も <code>ag4 scan</code> も、MCP の <code>find_code</code> も、最後は
+        <code>Searcher</code>
+        の同じ処理にたどり着きます。パターンのコンパイルは 1
+        回だけ行い、ファイルごとの処理は並列に実行します。
+      </p>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 800 430"
+          role="img"
+          aria-label="パターンのコンパイルとファイル列挙は 1 回だけ実行し、ファイルごとに読込・プレフィルタ・パース・照合・結果化を並列に行い、最後に整列して出力する"
+        >
+          <defs>
+            <marker
+              id="m2"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <!-- once -->
+          <rect class="box" x="20" y="40" width="190" height="60" rx="4" />
+          <text class="t" x="115" y="64" text-anchor="middle">FileWalker.Enumerate</text>
+          <text class="s" x="115" y="84" text-anchor="middle">gitignore / globs / 拡張子</text>
+          <rect class="box" x="260" y="40" width="180" height="60" rx="4" />
+          <text class="t" x="350" y="64" text-anchor="middle">LanguageRegistry.Get</text>
+          <text class="s" x="350" y="84" text-anchor="middle">言語 id → ILanguage</text>
+          <rect class="box accent" x="520" y="40" width="200" height="60" rx="4" />
+          <text class="t" x="620" y="64" text-anchor="middle">PatternCompiler.Compile</text>
+          <text class="s" x="620" y="84" text-anchor="middle">RequiredLiterals を抽出</text>
+          <line class="edge" x1="260" y1="70" x2="212" y2="70" marker-end="url(#m2)" />
+          <text class="lbl" x="236" y="62" text-anchor="middle">拡張子</text>
+          <line class="edge" x1="440" y1="70" x2="518" y2="70" marker-end="url(#m2)" />
+          <text class="lbl" x="479" y="62" text-anchor="middle">ILanguage</text>
+          <!-- feeds into lane -->
+          <line class="edge" x1="88" y1="100" x2="88" y2="198" marker-end="url(#m2)" />
+          <text class="lbl" x="96" y="140">パス（遅延列挙）</text>
+          <line class="edge dash acc-e" x1="560" y1="100" x2="246" y2="198" marker-end="url(#m2)" />
+          <text class="lbl" x="380" y="140" text-anchor="middle">必須リテラル</text>
+          <line class="edge dash acc-e" x1="640" y1="100" x2="558" y2="198" marker-end="url(#m2)" />
+          <text class="lbl" x="604" y="158">CompiledPattern</text>
+          <!-- per-file lane -->
+          <rect class="lane" x="10" y="170" width="780" height="160" rx="6" />
+          <rect class="box" x="20" y="200" width="136" height="64" rx="4" />
+          <text class="t" x="88" y="224" text-anchor="middle" style="font-size: 12px">
+            SourceFile.TryRead
+          </text>
+          <text class="s" x="88" y="244" text-anchor="middle">文字コード判定</text>
+          <rect class="box" x="176" y="200" width="136" height="64" rx="4" />
+          <text class="t" x="244" y="224" text-anchor="middle">Prefilter</text>
+          <text class="s" x="244" y="244" text-anchor="middle">必須リテラル検査</text>
+          <rect class="box" x="332" y="200" width="136" height="64" rx="4" />
+          <text class="t" x="400" y="224" text-anchor="middle">ILanguage.Parse</text>
+          <text class="s" x="400" y="244" text-anchor="middle">SLL → LL</text>
+          <rect class="box" x="488" y="200" width="136" height="64" rx="4" />
+          <text class="t" x="556" y="220" text-anchor="middle">照合</text>
+          <text class="s" x="556" y="238" text-anchor="middle">PatternMatcher</text>
+          <text class="s" x="556" y="253" text-anchor="middle">RuleEngine</text>
+          <rect class="box" x="644" y="200" width="136" height="64" rx="4" />
+          <text class="t" x="712" y="224" text-anchor="middle">ToMatch</text>
+          <text class="s" x="712" y="244" text-anchor="middle">行・列・byte offset</text>
+          <line class="edge" x1="156" y1="232" x2="174" y2="232" marker-end="url(#m2)" />
+          <line class="edge" x1="312" y1="232" x2="330" y2="232" marker-end="url(#m2)" />
+          <line class="edge" x1="468" y1="232" x2="486" y2="232" marker-end="url(#m2)" />
+          <line class="edge" x1="624" y1="232" x2="642" y2="232" marker-end="url(#m2)" />
+          <text class="lbl wrn" x="244" y="288" text-anchor="middle">
+            不一致 → パースせずスキップ
+          </text>
+          <text class="lbl" x="20" y="320">Parallel.ForEach — ファイル単位・CPU 数で並列</text>
+          <!-- collect -->
+          <line class="edge" x1="712" y1="264" x2="712" y2="358" marker-end="url(#m2)" />
+          <text class="lbl" x="720" y="345">MatchResult</text>
+          <rect class="box" x="630" y="360" width="160" height="56" rx="4" />
+          <text class="t" x="710" y="393" text-anchor="middle">ConcurrentBag</text>
+          <rect class="box" x="390" y="360" width="200" height="56" rx="4" />
+          <text class="t" x="490" y="383" text-anchor="middle">OrderTake</text>
+          <text class="s" x="490" y="402" text-anchor="middle">file (Ordinal) → start 順</text>
+          <rect class="box" x="20" y="360" width="330" height="56" rx="4" />
+          <text class="t" x="185" y="383" text-anchor="middle">
+            TextPrinter / JsonPrinter / Rewriter
+          </text>
+          <text class="s" x="185" y="402" text-anchor="middle">--json / --rewrite / --apply</text>
+          <line class="edge" x1="630" y1="388" x2="592" y2="388" marker-end="url(#m2)" />
+          <line class="edge" x1="390" y1="388" x2="352" y2="388" marker-end="url(#m2)" />
+        </svg>
+        <figcaption>
+          上段は 1 回の呼び出しで 1 度だけ実行し、帯の中はファイルごとに並列に実行します。<code
+            >Prefilter</code
+          >
+          は、パターンに含まれる 2
+          文字以上の名前付きトークン（識別子やキーワード）がファイル本文に全部含まれるかを
+          <code>IndexOf</code> で調べ、1
+          つでも欠けていればパース自体を省きます。結果はファイル名（Ordinal）と開始位置で並べ直すので、並列でも出力は決定的です。
+        </figcaption>
+      </figure>
+      <ul class="tight">
+        <li>
+          <code>Searcher.RunPattern</code>（パターン）、<code>RunRule</code>（YAML
+          ルール）、<code>RunPatternOnSources</code>（ディスクを読まずにメモリ上のバッファを検索）の
+          3 つの入口は、どれも <code>SearchFiles</code> / <code>SearchSources</code> →
+          <code>CollectMatches</code> という同じ流れを通ります。
+        </li>
+        <li>
+          <code>MaxFileBytes</code>（組み込み言語は 8 MiB、<code>.interp</code> 言語は 4
+          MiB）を超えるファイルは読みません。読込やパースの失敗は、<code>run --show-errors</code> で
+          <code>ShowErrors</code> が有効なときだけ <code>ag4: skip …</code> として stderr
+          に出します。
+        </li>
+        <li>
+          <code>FileWalker</code> は <code>bin</code> / <code>obj</code> /
+          <code>node_modules</code> を常に除外します。<code>.gitignore</code> は親ディレクトリから
+          git ルートまで、さらに
+          <code>.git/info/exclude</code>
+          も読み込みます（<code>GitIgnoreMatcher</code>：後に書かれたパターンが優先、否定パターン対応）。
+        </li>
+      </ul>
+
+      <!-- ============================================================ -->
+      <h2 id="languages">4. 言語フロントエンド層</h2>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 370"
+          role="img"
+          aria-label="ANTLR 系の言語は IAntlrLanguage の既定実装を共有し、C# は ILanguage を直接実装して Roslyn を使う。どちらも同じ SyntaxTree を出力する"
+        >
+          <defs>
+            <marker
+              id="m3"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <rect class="box" x="280" y="20" width="200" height="56" rx="4" />
+          <text class="t" x="380" y="44" text-anchor="middle">ILanguage</text>
+          <text class="s" x="380" y="63" text-anchor="middle">Parse / TryParseFragment</text>
+          <rect class="box" x="40" y="120" width="360" height="56" rx="4" />
+          <text class="t" x="220" y="144" text-anchor="middle">IAntlrLanguage</text>
+          <text class="s" x="220" y="163" text-anchor="middle">既定実装 → AntlrTwoStageParser</text>
+          <rect class="box accent" x="460" y="120" width="260" height="56" rx="4" />
+          <text class="t" x="590" y="144" text-anchor="middle">CSharpLanguage</text>
+          <text class="s" x="590" y="163" text-anchor="middle">
+            Roslyn (LanguageVersion.Latest)
+          </text>
+          <line class="edge" x1="220" y1="120" x2="330" y2="78" marker-end="url(#m3)" />
+          <text class="lbl" x="262" y="94" text-anchor="end">継承</text>
+          <line class="edge" x1="590" y1="120" x2="430" y2="78" marker-end="url(#m3)" />
+          <text class="lbl" x="522" y="94">直接実装</text>
+          <!-- antlr children -->
+          <rect class="box" x="20" y="210" width="58" height="44" rx="4" />
+          <text class="t" x="49" y="237" text-anchor="middle" style="font-size: 12px">Java</text>
+          <rect class="box" x="84" y="210" width="58" height="44" rx="4" />
+          <text class="t" x="113" y="229" text-anchor="middle" style="font-size: 12px">C++</text>
+          <text class="s" x="113" y="245" text-anchor="middle">CPP14</text>
+          <rect class="box" x="148" y="210" width="58" height="44" rx="4" />
+          <text class="t" x="177" y="237" text-anchor="middle" style="font-size: 12px">Python</text>
+          <rect class="box" x="212" y="210" width="58" height="44" rx="4" />
+          <text class="t" x="241" y="237" text-anchor="middle" style="font-size: 12px">PL/SQL</text>
+          <rect class="box" x="276" y="210" width="58" height="44" rx="4" />
+          <text class="t" x="305" y="237" text-anchor="middle" style="font-size: 12px">SQLite</text>
+          <rect class="box" x="340" y="210" width="58" height="44" rx="4" />
+          <text class="t" x="369" y="229" text-anchor="middle" style="font-size: 12px">DSL</text>
+          <text class="s" x="369" y="245" text-anchor="middle">.interp</text>
+          <line class="edge" x1="49" y1="210" x2="49" y2="178" marker-end="url(#m3)" />
+          <line class="edge" x1="113" y1="210" x2="113" y2="178" marker-end="url(#m3)" />
+          <line class="edge" x1="177" y1="210" x2="177" y2="178" marker-end="url(#m3)" />
+          <line class="edge" x1="241" y1="210" x2="241" y2="178" marker-end="url(#m3)" />
+          <line class="edge" x1="305" y1="210" x2="305" y2="178" marker-end="url(#m3)" />
+          <line class="edge" x1="369" y1="210" x2="369" y2="178" marker-end="url(#m3)" />
+          <!-- roslyn child -->
+          <rect class="box" x="460" y="210" width="260" height="44" rx="4" />
+          <text class="t" x="590" y="229" text-anchor="middle">RoslynTreeBuilder</text>
+          <text class="s" x="590" y="245" text-anchor="middle">
+            snake_case kind + tree-sitter 別名
+          </text>
+          <line class="edge" x1="590" y1="176" x2="590" y2="208" marker-end="url(#m3)" />
+          <!-- shared tree -->
+          <rect class="box accent" x="20" y="300" width="720" height="52" rx="4" />
+          <text class="t" x="380" y="321" text-anchor="middle">
+            SyntaxTreeAssembler → SyntaxTree
+          </text>
+          <text class="s" x="380" y="340" text-anchor="middle">
+            全言語共通のアリーナ木（照合とルール評価はこれだけを見る）
+          </text>
+          <line class="edge" x1="209" y1="254" x2="209" y2="298" marker-end="url(#m3)" />
+          <text class="lbl" x="217" y="281">TreeBuilder</text>
+          <line class="edge" x1="590" y1="254" x2="590" y2="298" marker-end="url(#m3)" />
+          <text class="lbl" x="598" y="281">Build</text>
+        </svg>
+        <figcaption>
+          バックエンドは言語ごとに選べます。ANTLR 系の言語はレキサ・パーサの生成関数と
+          <code>InvokeRule</code> を用意するだけで、パース処理は
+          <code>IAntlrLanguage</code>
+          のインターフェース既定実装を共有します。出力される木はどちらの系統でも同じ形式です。
+        </figcaption>
+      </figure>
+
+      <div class="decision">
+        <strong>設計判断：tree-sitter の採用と ANTLR / Roslyn の併存</strong>
+        Java / C++ / Python は本家 ast-grep と同じ tree-sitter 文法を既定にし、速度と kind
+        名の互換を優先します（<code>TreeSitterLanguage</code> +
+        <code>TreeSitterTreeBuilder</code>）。PL/SQL・SQLite・独自 DSL は BNF（g4）で拡張したいため
+        ANTLR のままです。C# は Roslyn（<code>LanguageVersion.Latest</code>）のままです。<code
+          >ILanguage</code
+        >
+        はパーサに依存しないので、照合エンジンを変えずにバックエンドだけ差し替えられます。<code
+          >--backend antlr</code
+        >
+        / <code>languageBackends</code> で旧 ANTLR kind のルールも維持できます。
+      </div>
+
+      <h3>組み込み言語</h3>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>id</th>
+              <th>別名</th>
+              <th>拡張子</th>
+              <th>ルート kind / StartRule</th>
+              <th>既定バックエンド</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>java</code></td>
+              <td></td>
+              <td>.java</td>
+              <td><code>program</code>（ANTLR 時 <code>compilationunit</code>）</td>
+              <td>tree-sitter-java（切替可）</td>
+            </tr>
+            <tr>
+              <td><code>cpp</code></td>
+              <td>c++, cc, cxx</td>
+              <td>.cpp .cc .cxx .c++ .hpp .hh .hxx .h</td>
+              <td><code>translation_unit</code>（ANTLR 時 CPP14 <code>translationUnit</code>）</td>
+              <td>tree-sitter-cpp（切替可）</td>
+            </tr>
+            <tr>
+              <td><code>csharp</code></td>
+              <td>cs, c#</td>
+              <td>.cs</td>
+              <td><code>compilation_unit</code></td>
+              <td>Roslyn (MIT)</td>
+            </tr>
+            <tr>
+              <td><code>python</code></td>
+              <td>py</td>
+              <td>.py</td>
+              <td><code>module</code>（ANTLR 時 <code>file_input</code>）</td>
+              <td>tree-sitter-python（切替可）</td>
+            </tr>
+            <tr>
+              <td><code>plsql</code></td>
+              <td>pl/sql</td>
+              <td>.pls .pkb .pks .sql</td>
+              <td><code>sql_script</code></td>
+              <td>grammars-v4 sql/plsql (Apache-2.0)</td>
+            </tr>
+            <tr>
+              <td><code>sqlite</code></td>
+              <td></td>
+              <td>.sql .sqlite</td>
+              <td><code>parse</code></td>
+              <td>grammars-v4 sqlite</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <code>.sql</code> は PL/SQL と SQLite の両方に登録されているので、どちらとして扱うかは
+        <code>-l</code> で指定します。文法のライセンスは
+        <a href="THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a> と各
+        <code>grammars/*/LICENSE</code> を参照してください。
+      </p>
+
+      <h3>LanguageRegistry</h3>
+      <ul class="tight">
+        <li><code>Register</code>：インスタンスをすぐに登録します（組み込み言語）。</li>
+        <li>
+          <code>RegisterLazy</code>：生成関数だけを登録し、最初の
+          <code>Get</code> で実体を作ります。<code>run -l java</code>
+          のときに、sgconfig に書かれた無関係な DSL
+          文法までコンパイルしないための仕組みです。生成関数はロックの外で呼ぶので、別名経由で
+          <code>Get</code> が入れ子になってもデッドロックしません。
+        </li>
+        <li>
+          <code>RegisterAlias</code>：<code>c++</code> →
+          <code>cpp</code>
+          のような別名を、登録済みの言語にも遅延登録の言語にも張れます。バックエンド切替時は
+          <code>BuiltinLanguages.ApplyBackend</code> が別名を再登録します。
+        </li>
+        <li>
+          <code>BuiltinLanguages.ApplyBackend</code> / <code>ApplyBackends</code>：Java / C++ /
+          Python を tree-sitter と ANTLR の間で差し替えます。ネイティブが読めないときは ANTLR
+          にフォールバックします。
+        </li>
+      </ul>
+
+      <h3>独自 DSL（customLanguages）</h3>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 225"
+          role="img"
+          aria-label="sgconfig の customLanguages は遅延登録され、.interp はそのまま読み込み、.g4 はキャッシュ経由で .interp に変換してから InterpretedLanguage を作る"
+        >
+          <defs>
+            <marker
+              id="m4"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <rect class="box" x="10" y="30" width="140" height="56" rx="4" />
+          <text class="t" x="80" y="54" text-anchor="middle">sgconfig.yml</text>
+          <text class="s" x="80" y="73" text-anchor="middle">customLanguages</text>
+          <rect class="box" x="190" y="30" width="160" height="56" rx="4" />
+          <text class="t" x="270" y="54" text-anchor="middle">RegisterLazy</text>
+          <text class="s" x="270" y="73" text-anchor="middle">初回 Get まで保留</text>
+          <rect class="box" x="430" y="30" width="150" height="56" rx="4" />
+          <text class="t" x="505" y="54" text-anchor="middle">InterpFileReader</text>
+          <text class="s" x="505" y="73" text-anchor="middle">ATN・語彙を復元</text>
+          <rect class="box accent" x="600" y="30" width="152" height="56" rx="4" />
+          <text class="t" x="676" y="54" text-anchor="middle" style="font-size: 12px">
+            InterpretedLanguage
+          </text>
+          <text class="s" x="676" y="73" text-anchor="middle">ParserInterpreter</text>
+          <line class="edge" x1="150" y1="58" x2="188" y2="58" marker-end="url(#m4)" />
+          <line class="edge" x1="350" y1="58" x2="428" y2="58" marker-end="url(#m4)" />
+          <text class="lbl" x="390" y="50" text-anchor="middle">.interp 指定</text>
+          <line class="edge" x1="580" y1="58" x2="598" y2="58" marker-end="url(#m4)" />
+          <rect class="box" x="280" y="140" width="200" height="56" rx="4" />
+          <text class="t" x="380" y="164" text-anchor="middle">GrammarInterpCache</text>
+          <text class="s" x="380" y="183" text-anchor="middle">文法の SHA でキャッシュ確認</text>
+          <polyline class="edge" points="230,86 230,168 278,168" marker-end="url(#m4)" />
+          <text class="lbl" x="238" y="125">.g4 指定</text>
+          <polyline class="edge" points="480,168 505,168 505,88" marker-end="url(#m4)" />
+          <text class="lbl" x="513" y="130">.interp を生成</text>
+          <text class="lbl" x="280" y="216">
+            未生成なら AntlrJarLocator → java -jar antlr-4.13.2-complete.jar
+          </text>
+        </svg>
+        <figcaption>
+          生成した <code>.interp</code> は
+          <code>%LocalAppData%/ag4/cache/&lt;hash&gt;/</code> にキャッシュします。jar は
+          <code>--antlr-jar</code> → <code>ANTLR_JAR</code> → sgconfig
+          のあるディレクトリとその祖先の <code>tools/</code> → カレントディレクトリとその祖先の
+          <code>tools/</code> → <code>AppContext.BaseDirectory</code> の順に探します。<code
+            >InterpretedLanguage</code
+          >
+          は DFA キャッシュをファイル間で共有して使い回します。
+        </figcaption>
+      </figure>
+      <div class="caution">
+        <code>.interp</code>
+        による解釈実行では、文法に書かれたアクションと述語（<code>{…}?</code>）は実行されません。述語に頼る文法（Python
+        の INDENT/DEDENT など）は、組み込み言語として C# の LexerBase / ParserBase
+        と一緒に生成する必要があります。
+      </div>
+
+      <!-- ============================================================ -->
+      <h2 id="parse">5. パース（ANTLR 2 段階 / tree-sitter）</h2>
+      <p>
+        ANTLR 系は下記の SLL → LL です。tree-sitter 系（<code>TreeSitterLanguage</code>）は UTF-16LE
+        で <code>ts_parser_parse_string_encoding</code> を呼び、スレッドごとに parser
+        を保持して並列検索に耐えます。ERROR / MISSING から <code>ParseDiagnostic</code>
+        を集め、アリーナ変換後にネイティブ木を解放します。パターン片は文脈テンプレート（例:
+        <code>class __AG4 &#123; void __m() &#123; &#123;0&#125; &#125; &#125;</code
+        >）に埋め込んでパースし、埋め込み範囲と一致するノードを取り出します。
+      </p>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 235"
+          role="img"
+          aria-label="まず SLL と Bail 戦略で解析し、エラーがなければそのまま採用する。構文エラーなら先頭に戻って LL とエラー回復で解析し直す"
+        >
+          <defs>
+            <marker
+              id="m5"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <rect class="box" x="10" y="60" width="130" height="56" rx="4" />
+          <text class="t" x="75" y="84" text-anchor="middle">Lexer</text>
+          <text class="s" x="75" y="103" text-anchor="middle">CommonTokenStream</text>
+          <rect class="box accent" x="180" y="60" width="200" height="56" rx="4" />
+          <text class="t" x="280" y="84" text-anchor="middle">SLL + BailErrorStrategy</text>
+          <text class="s" x="280" y="103" text-anchor="middle">高速・エラーで即中断</text>
+          <rect class="box" x="560" y="60" width="190" height="56" rx="4" />
+          <text class="t" x="655" y="84" text-anchor="middle">ParseResult</text>
+          <text class="s" x="655" y="103" text-anchor="middle">TreeBuilder → SyntaxTree</text>
+          <rect class="box warn" x="180" y="160" width="200" height="56" rx="4" />
+          <text class="t" x="280" y="184" text-anchor="middle">LL + DefaultErrorStrategy</text>
+          <text class="s" x="280" y="203" text-anchor="middle">エラー回復・ERROR ノード化</text>
+          <line class="edge" x1="140" y1="88" x2="178" y2="88" marker-end="url(#m5)" />
+          <line class="edge" x1="380" y1="88" x2="558" y2="88" marker-end="url(#m5)" />
+          <text class="lbl" x="470" y="80" text-anchor="middle">パーサエラーなし（大半）</text>
+          <line class="edge" x1="280" y1="116" x2="280" y2="158" marker-end="url(#m5)" />
+          <text class="lbl" x="288" y="141">失敗 → tokens.Seek(0)</text>
+          <polyline class="edge" points="380,188 655,188 655,118" marker-end="url(#m5)" />
+          <text class="lbl" x="470" y="180" text-anchor="middle">UsedLlFallback = true</text>
+        </svg>
+        <figcaption>
+          <code>AntlrTwoStageParser.Parse</code> の流れです。SLL
+          の結果の診断数がレキサエラーの数と等しければ（パーサエラーが 0
+          件なら）、その結果を採用します。<code>ParseCanceledException</code> /
+          <code>RecognitionException</code> が出たときも LL
+          にフォールバックします。<code>ParseTimeout</code>（30 秒）はリンクした
+          <code>CancellationTokenSource</code> で効かせています。
+        </figcaption>
+      </figure>
+      <p>
+        パターン片の解析（<code>AntlrPatternParser.TryParseFragment</code>）は Bail
+        戦略だけを使い、SLL → LL の順に試します。入力を
+        <code>EOF</code>
+        まで読み切れなかった場合は失敗（<code>null</code>）とします。ソース側は「多少壊れていても解析を続ける」、パターン側は「厳密に解析できたものだけ採用する」という非対称な方針です。
+      </p>
+
+      <!-- ============================================================ -->
+      <h2 id="tree">6. アリーナ構文木</h2>
+      <p>
+        ANTLR の <code>IParseTree</code>（オブジェクトのグラフ）は <code>TreeBuilder</code> が
+        <code>SyntaxNode[]</code>
+        の配列（アリーナ）に変換します。親・最初の子・次の兄弟は配列のインデックスで指すので、照合中のポインタ追跡や割り当てを減らせます。
+      </p>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>フィールド</th>
+              <th>意味</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Kind</code></td>
+              <td>
+                <code>Rule</code> / <code>Token</code> / <code>Error</code> / <code>Missing</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>TypeId</code>, <code>TypeName</code></td>
+              <td>ルール名またはトークンの記号名（kind 照合に使う）</td>
+            </tr>
+            <tr>
+              <td><code>Start</code>, <code>End</code></td>
+              <td>デコード後の文字列での UTF-16 オフセット（開始は含み、終了は含まない）</td>
+            </tr>
+            <tr>
+              <td>
+                <code>Parent</code>, <code>FirstChild</code>, <code>NextSibling</code>,
+                <code>ChildCount</code>
+              </td>
+              <td>インデックスで木を表すリンク（存在しなければ -1）</td>
+            </tr>
+            <tr>
+              <td><code>IsNamed</code></td>
+              <td>
+                tree-sitter の named / anonymous に相当。<code>(</code> のような記号は unnamed
+              </td>
+            </tr>
+            <tr>
+              <td><code>IsExtra</code></td>
+              <td>
+                tree-sitter の extra（コメントなど）。cst 以外の strictness では子選択時に除外
+              </td>
+            </tr>
+            <tr>
+              <td><code>ChainHead</code></td>
+              <td>単一子チェーンの先頭ノードのインデックス（ANTLR 向け畳み込み）</td>
+            </tr>
+            <tr>
+              <td>
+                <code>MetaVarName</code>, <code>IsMultiMetaVar</code>, <code>MetaVarTypedRule</code>
+              </td>
+              <td>パターン木でだけ使う。メタ変数の印</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 640 480"
+          role="img"
+          aria-label="foo(x); の木で、子が 1 つだけのルールが連なる部分（チェーン）の kind を先頭ノードにまとめる例"
+        >
+          <!-- chains -->
+          <rect class="chain" x="130" y="72" width="140" height="106" rx="8" />
+          <rect class="chain" x="230" y="202" width="140" height="226" rx="8" />
+          <text class="lbl acc" x="284" y="120">chainKinds =</text>
+          <text class="lbl acc mono" x="284" y="136">[expression, methodCall]</text>
+          <text class="lbl acc" x="384" y="300">chainKinds =</text>
+          <text class="lbl acc mono" x="384" y="316">[expressionList, expression,</text>
+          <text class="lbl acc mono" x="384" y="332">primary, identifier]</text>
+          <!-- edges -->
+          <line class="edge" x1="320" y1="50" x2="200" y2="80" />
+          <line class="edge" x1="320" y1="50" x2="440" y2="84" />
+          <line class="edge" x1="200" y1="110" x2="200" y2="140" />
+          <line class="edge" x1="200" y1="170" x2="70" y2="210" />
+          <line class="edge" x1="200" y1="170" x2="170" y2="214" />
+          <line class="edge" x1="200" y1="170" x2="300" y2="210" />
+          <line class="edge" x1="200" y1="170" x2="430" y2="214" />
+          <line class="edge" x1="70" y1="240" x2="70" y2="262" />
+          <line class="edge" x1="300" y1="240" x2="300" y2="270" />
+          <line class="edge" x1="300" y1="300" x2="300" y2="330" />
+          <line class="edge" x1="300" y1="360" x2="300" y2="390" />
+          <line class="edge" x1="300" y1="420" x2="300" y2="442" />
+          <!-- nodes -->
+          <rect class="box" x="260" y="20" width="120" height="30" rx="4" />
+          <text x="320" y="40" text-anchor="middle" class="mono">statement</text>
+          <rect class="box" x="140" y="80" width="120" height="30" rx="4" />
+          <text x="200" y="100" text-anchor="middle" class="mono">expression</text>
+          <text x="440" y="98" text-anchor="middle" class="mono s">';'</text>
+          <rect class="box" x="140" y="140" width="120" height="30" rx="4" />
+          <text x="200" y="160" text-anchor="middle" class="mono">methodCall</text>
+          <rect class="box" x="10" y="210" width="120" height="30" rx="4" />
+          <text x="70" y="230" text-anchor="middle" class="mono">identifier</text>
+          <text x="170" y="228" text-anchor="middle" class="mono s">'('</text>
+          <rect class="box" x="240" y="210" width="120" height="30" rx="4" />
+          <text x="300" y="230" text-anchor="middle" class="mono" style="font-size: 12px">
+            expressionList
+          </text>
+          <text x="430" y="228" text-anchor="middle" class="mono s">')'</text>
+          <text x="70" y="276" text-anchor="middle" class="mono s">"foo"</text>
+          <rect class="box" x="240" y="270" width="120" height="30" rx="4" />
+          <text x="300" y="290" text-anchor="middle" class="mono">expression</text>
+          <rect class="box" x="240" y="330" width="120" height="30" rx="4" />
+          <text x="300" y="350" text-anchor="middle" class="mono">primary</text>
+          <rect class="box" x="240" y="390" width="120" height="30" rx="4" />
+          <text x="300" y="410" text-anchor="middle" class="mono">identifier</text>
+          <text x="300" y="456" text-anchor="middle" class="mono s">"x"</text>
+        </svg>
+        <figcaption>
+          <code>foo(x);</code>
+          の木を簡略化した例です。四角はルール、引用符はトークンを表します。<code
+            >SyntaxTreeAssembler.CollapseChains</code
+          >
+          は、子を 1 つしか持たないルールの連なりをたどり、各ノードの
+          <code>ChainHead</code> を先頭に揃え、途中の kind 名を
+          <code>chainKinds[head]</code> にまとめます。そのため
+          <code>SyntaxTree.KindMatches(i, "primary")</code> は先頭の
+          <code>expressionList</code> でも真になり、ANTLR 特有の深い単一子チェーンを tree-sitter
+          の平らな木に近い感覚で扱えます。
+        </figcaption>
+      </figure>
+      <ul class="tight">
+        <li>
+          ANTLR の
+          <code>CharStreams.fromString</code> はコードポイント単位のオフセットを返すため、<code
+            >TreeBuilder</code
+          >
+          は UTF-16
+          への対応表を作ります。サロゲートペアを含まない入力では対応表を作らず、オフセットをそのまま使います。tree-sitter
+          は UTF-16LE バイト単位なので、バイトオフセット ÷ 2 がそのまま UTF-16
+          文字オフセットです。単一子チェーンの畳み込みは ANTLR 向け（tree-sitter
+          では無効）。supertype は別名として kind 索引に登録します。
+        </li>
+        <li>
+          kind ごとの索引（<code>_kindIndex</code>）には型名・別名・<code>ERROR</code>
+          を登録します。<code>chainKinds</code> は分割済みの配列で持ちます。<code>KindMatches</code>
+          はすべての木の全ノードに対して呼ばれる最も実行回数の多い処理なので、そこで文字列を分割して割り当てが起きないようにするためです。
+        </li>
+      </ul>
+
+      <!-- ============================================================ -->
+      <h2 id="compile">7. パターンコンパイル</h2>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 220"
+          role="img"
+          aria-label="メタ変数をプレースホルダに置き換え、置換形とエントリルールの組み合わせを順に試して解析し、成功したらメタ変数に印を付けて CompiledPattern にする"
+        >
+          <defs>
+            <marker
+              id="m7"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <rect class="box" x="10" y="40" width="135" height="60" rx="4" />
+          <text class="t" x="77" y="64" text-anchor="middle">パターン</text>
+          <text class="s mono" x="77" y="84" text-anchor="middle">foo($$$ARGS)</text>
+          <rect class="box" x="160" y="40" width="135" height="60" rx="4" />
+          <text class="t" x="227" y="64" text-anchor="middle">MetaVar.FindAll</text>
+          <text class="s mono" x="227" y="84" text-anchor="middle">$A $$$X ${A:rule}</text>
+          <rect class="box" x="310" y="40" width="135" height="60" rx="4" />
+          <text class="t" x="377" y="64" text-anchor="middle">プレースホルダ化</text>
+          <text class="s mono" x="377" y="84" text-anchor="middle">foo(__MV0__)</text>
+          <rect class="box accent" x="460" y="40" width="135" height="60" rx="4" />
+          <text class="t" x="527" y="64" text-anchor="middle">TryParseFragment</text>
+          <text class="s" x="527" y="84" text-anchor="middle">PatternRules 順</text>
+          <rect class="box" x="610" y="40" width="135" height="60" rx="4" />
+          <text class="t" x="677" y="64" text-anchor="middle">MarkMetaVars</text>
+          <text class="s" x="677" y="84" text-anchor="middle">最外ノードに印</text>
+          <line class="edge" x1="145" y1="70" x2="158" y2="70" marker-end="url(#m7)" />
+          <line class="edge" x1="295" y1="70" x2="308" y2="70" marker-end="url(#m7)" />
+          <line class="edge" x1="445" y1="70" x2="458" y2="70" marker-end="url(#m7)" />
+          <line class="edge" x1="595" y1="70" x2="608" y2="70" marker-end="url(#m7)" />
+          <text class="lbl" x="602" y="32" text-anchor="middle">成功</text>
+          <polyline
+            class="edge acc-e"
+            points="527,100 527,180 377,180 377,102"
+            marker-end="url(#m7)"
+          />
+          <text class="lbl" x="452" y="200" text-anchor="middle">
+            失敗 → 次の組み合わせ（最大 4096 回）
+          </text>
+          <rect class="box accent" x="560" y="150" width="185" height="56" rx="4" />
+          <text class="t" x="652" y="174" text-anchor="middle">CompiledPattern</text>
+          <text class="s" x="652" y="193" text-anchor="middle">Root · RequiredLiterals</text>
+          <line class="edge" x1="677" y1="100" x2="677" y2="148" marker-end="url(#m7)" />
+        </svg>
+        <figcaption>
+          メタ変数ごとに置換形（<code>MetaVarVariants</code>：<code>{0}</code>、<code>{0};</code>、<code
+            >int {0}</code
+          >、<code>void {0}(){}</code>
+          など）を選び、その組み合わせごとにエントリルール（<code>PatternRules</code>）を順に試します。組み合わせの総数は大きくなりうるので、上限は
+          4096 回です。tree-sitter では「エントリルール」の代わりに文脈テンプレート（例:
+          <code>class __AG4 { void __m() { {0} } }</code
+          >）へ埋め込んでパースし、埋め込んだ範囲と一致するノードを取り出します。末尾の MISSING（例:
+          省略された <code>;</code>）はパターン木から除きます。
+        </figcaption>
+      </figure>
+      <ol class="tight">
+        <li>
+          <strong>シードプラン</strong>：全メタ変数を <code>{0}</code> にする案、<code>$$$</code>
+          を文にする案、名前から推測する案（<code>BODY</code> / <code>TRY</code> /
+          <code>CATCH</code> を含む名前は文、<code>ARG</code> / <code>PARAM</code> を含む名前は
+          <code>int {0}</code>）を先に試します。
+        </li>
+        <li>
+          <strong>オドメータ</strong
+          >：シードで解析できなければ、右端のメタ変数から順に置換形を切り替えて総当たりします（入れ子の本体ほど先に変わります）。
+        </li>
+        <li>
+          <strong>印付け</strong
+          >：挿入したテキストとスパンが完全に一致するノードのうち最も外側のものに印を付け、トークンだけが見つかった場合は単一子チェーンを上にたどります。これで
+          <code>${A:expression}</code>
+          のような型付きメタ変数が式チェーンの先頭に付きます。印を付けられないメタ変数が残った組み合わせは不採用です。
+        </li>
+        <li>
+          <strong>ルートの確定</strong>：<code>DescendPatternRoot</code> で、意味のある子が 1
+          つしかない間は下に降ります（<code>&lt;EOF&gt;</code> は無視）。<code>context</code> と
+          <code>selector</code> を指定した場合は、selector の kind
+          に一致するノードをルートにします。
+        </li>
+        <li>
+          <strong>必須リテラル</strong>：プレースホルダ以外の名前付きトークンで 2 文字以上のものを
+          <code>RequiredLiterals</code> にします。
+        </li>
+      </ol>
+
+      <!-- ============================================================ -->
+      <h2 id="match">8. マッチング</h2>
+      <p>
+        <code>PatternMatcher.MatchAll</code> は、パターンのルートの kind
+        に一致する対象ノード（<code>NodesMatchingKind</code>）を候補にします。ルートがメタ変数の場合は全ノードが候補です。同じ範囲にヒットした結果は
+        1 件にまとめます。
+      </p>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 210"
+          role="img"
+          aria-label="子の並びの照合。$A は a に、カンマはカンマに、$$$REST は残りの b, c に対応する"
+        >
+          <text class="lbl" x="10" y="56">pattern</text>
+          <text class="lbl" x="10" y="160">target</text>
+          <rect class="box" x="70" y="36" width="100" height="30" rx="4" />
+          <text x="120" y="56" text-anchor="middle" class="mono">$A</text>
+          <rect class="box" x="200" y="36" width="80" height="30" rx="4" />
+          <text x="240" y="56" text-anchor="middle" class="mono">','</text>
+          <rect class="box accent" x="400" y="36" width="160" height="30" rx="4" />
+          <text x="480" y="56" text-anchor="middle" class="mono">$$$REST</text>
+          <rect class="box" x="70" y="140" width="100" height="30" rx="4" />
+          <text x="120" y="160" text-anchor="middle" class="mono">a</text>
+          <rect class="box" x="200" y="140" width="80" height="30" rx="4" />
+          <text x="240" y="160" text-anchor="middle" class="mono">','</text>
+          <rect class="box" x="320" y="140" width="80" height="30" rx="4" />
+          <text x="360" y="160" text-anchor="middle" class="mono">b</text>
+          <rect class="box" x="440" y="140" width="80" height="30" rx="4" />
+          <text x="480" y="160" text-anchor="middle" class="mono">','</text>
+          <rect class="box" x="560" y="140" width="80" height="30" rx="4" />
+          <text x="600" y="160" text-anchor="middle" class="mono">c</text>
+          <line class="edge" x1="120" y1="66" x2="120" y2="140" />
+          <line class="edge" x1="240" y1="66" x2="240" y2="140" />
+          <path class="edge acc-e" d="M330,134 V126 H630 V134" />
+          <line class="edge acc-e" x1="480" y1="66" x2="480" y2="126" />
+          <text class="lbl" x="128" y="105">env[A] = a</text>
+          <text class="lbl" x="248" y="105">文字列一致</text>
+          <text class="lbl acc" x="488" y="100">REST = "b, c"</text>
+          <text class="lbl" x="355" y="196" text-anchor="middle">
+            $$$ は短いほうから 1 つずつ伸ばし、残りの並びが一致した長さで確定する
+          </text>
+        </svg>
+        <figcaption>
+          <code>MatchSequence</code> は子の並びを左から対応付けます。<code>$$$</code>
+          は、取り込む長さを変えるたびに <code>env</code>
+          を複製して後続を照合するバックトラックで処理し、取り込んだ値は区切り記号も含めたソースの連続した範囲になります。同じ名前のメタ変数が
+          2 回出てきた場合は、テキストが一致することを要求します。
+        </figcaption>
+      </figure>
+      <ul class="tight">
+        <li>
+          <strong>単一子アンラップ</strong>：kind が一致しなくても、対象かパターンの片方が子を 1
+          つだけ持つなら、1 段降りて照合し直します（<code>cst</code>
+          以外）。
+        </li>
+        <li>
+          <strong>smart での読み飛ばし</strong>：対象側にだけある unnamed
+          トークンや、メタ変数の直前にある修飾子（<code>final</code> / <code>public</code> /
+          <code>variableModifier</code> など）は読み飛ばします。そのため
+          <code>catch ($E $N)</code> が <code>catch (final Exception e)</code>
+          にもヒットします。
+        </li>
+        <li>
+          <strong>B6 リストガード</strong>：パターン側のメタ変数ノードが kind K の子を 1
+          つだけ持つのに、対象側の同じ kind のノードが K の子を 2
+          つ以上持つ場合は不一致にします（<code>$A</code> が引数リスト全体を飲み込むのを防ぎます）。
+        </li>
+        <li>
+          <strong>型付きメタ変数</strong>：<code>${A:expression}</code> は、照合時に
+          <code>KindMatches(node, "expression")</code> を追加で検査します。
+        </li>
+      </ul>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>Strictness</th>
+              <th>比較する子</th>
+              <th>kind の一致</th>
+              <th>対象側の余分な子</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>cst</code></td>
+              <td>全トークン</td>
+              <td>必須（不一致なら即失敗）</td>
+              <td>許さない</td>
+            </tr>
+            <tr>
+              <td><code>smart</code>（既定）</td>
+              <td>全トークン（対象側の unnamed は読み飛ばし可）</td>
+              <td>必須（単一子アンラップで救済）</td>
+              <td>unnamed のみ許す</td>
+            </tr>
+            <tr>
+              <td><code>ast</code></td>
+              <td>named のみ</td>
+              <td>必須（単一子アンラップで救済）</td>
+              <td>末尾の余りを許す</td>
+            </tr>
+            <tr>
+              <td><code>relaxed</code></td>
+              <td>named のみ</td>
+              <td>検査しない</td>
+              <td>末尾の余りを許す</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============================================================ -->
+      <h2 id="rules">9. YAML ルールエンジン</h2>
+      <p>
+        <code>RuleLoader</code>（YamlDotNet）がルール YAML を <code>SgRuleDocument</code> /
+        <code>RuleNode</code> に、<code>sgconfig.yml</code> を
+        <code>SgConfig</code> に読み込みます。<code>RuleEngine.MatchRule</code> は
+        <code>RuleNode</code> を再帰的に評価します。
+      </p>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 185"
+          role="img"
+          aria-label="atomic 規則で候補ノードを作り、inside・has・precedes・follows の関係規則で順に絞り込む"
+        >
+          <defs>
+            <marker
+              id="m9"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <rect class="box accent" x="10" y="30" width="160" height="60" rx="4" />
+          <text class="t" x="90" y="54" text-anchor="middle">シード生成</text>
+          <text class="s" x="90" y="74" text-anchor="middle">pattern / kind / regex</text>
+          <rect class="box" x="196" y="30" width="100" height="60" rx="4" />
+          <text class="t mono" x="246" y="54" text-anchor="middle">inside</text>
+          <text class="s" x="246" y="74" text-anchor="middle">祖先</text>
+          <rect class="box" x="312" y="30" width="100" height="60" rx="4" />
+          <text class="t mono" x="362" y="54" text-anchor="middle">has</text>
+          <text class="s" x="362" y="74" text-anchor="middle">子孫</text>
+          <rect class="box" x="428" y="30" width="100" height="60" rx="4" />
+          <text class="t mono" x="478" y="54" text-anchor="middle">precedes</text>
+          <text class="s" x="478" y="74" text-anchor="middle">後ろの兄弟</text>
+          <rect class="box" x="544" y="30" width="100" height="60" rx="4" />
+          <text class="t mono" x="594" y="54" text-anchor="middle">follows</text>
+          <text class="s" x="594" y="74" text-anchor="middle">前の兄弟</text>
+          <rect class="box" x="664" y="30" width="86" height="60" rx="4" />
+          <text class="t" x="707" y="65" text-anchor="middle">採用</text>
+          <line class="edge" x1="170" y1="60" x2="194" y2="60" marker-end="url(#m9)" />
+          <line class="edge" x1="296" y1="60" x2="310" y2="60" marker-end="url(#m9)" />
+          <line class="edge" x1="412" y1="60" x2="426" y2="60" marker-end="url(#m9)" />
+          <line class="edge" x1="528" y1="60" x2="542" y2="60" marker-end="url(#m9)" />
+          <line class="edge" x1="644" y1="60" x2="662" y2="60" marker-end="url(#m9)" />
+          <text class="lbl" x="420" y="122" text-anchor="middle">
+            どれか 1 つでも成り立たなければ破棄（候補ノードごとに MatchRule を再帰呼び出し）
+          </text>
+          <text class="lbl" x="420" y="146" text-anchor="middle">
+            stopBy: neighbor = 1 段だけ / end = 端まで / kind 名 = そのノードで停止
+          </text>
+          <text class="lbl" x="420" y="170" text-anchor="middle">指定がない関係規則は素通し</text>
+        </svg>
+        <figcaption>
+          atomic 規則（<code>pattern</code> / <code>kind</code> /
+          <code>regex</code
+          >）で候補を作り、関係規則（<code>RuleRelations.Holds</code>）で絞り込みます。stopBy
+          の既定値は ast-grep と同じ <code>neighbor</code> です。
+        </figcaption>
+      </figure>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>種類</th>
+              <th>評価方法</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>all</code></td>
+              <td>各分岐の結果を、ソース範囲 (Start, End) をキーにした積集合にする</td>
+            </tr>
+            <tr>
+              <td><code>any</code></td>
+              <td>各分岐の結果を範囲で重複を除いて和集合にする</td>
+            </tr>
+            <tr>
+              <td><code>not</code></td>
+              <td>
+                スコープ内の全ノードから、内側の規則の結果を引いた補集合（メタ変数は持たない）
+              </td>
+            </tr>
+            <tr>
+              <td><code>matches</code></td>
+              <td>
+                <code>utils</code> の規則を名前で参照する（sgconfig の
+                <code>utilDirs</code> とルール内の <code>utils</code> をマージし、ルール側を優先）
+              </td>
+            </tr>
+            <tr>
+              <td><code>constraints</code></td>
+              <td>マッチした後で、取り込んだメタ変数に kind / regex の条件を検査する</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="tight">
+        <li>
+          <strong>コンパイル済みパターンのキャッシュ</strong>：<code
+            >(LanguageId, PatternSpec)</code
+          >
+          をキーに <code>ConcurrentDictionary</code>
+          に保存します。パターンはファイルに依存しないので、N 個のファイルを scan
+          してもパターンのコンパイルは 1 回で済みます。
+        </li>
+        <li>
+          <strong>プレフィルタが正しく働く条件</strong>：<code>all</code>
+          は全分岐の必須リテラルを合わせたもの、<code>any</code> / <code>not</code> /
+          <code>matches</code>
+          はパターン無しでもマッチしうるので必須リテラルは空とします。こうすることで、プレフィルタがヒットするはずのファイルを誤って除外することはありません。
+        </li>
+      </ul>
+
+      <!-- ============================================================ -->
+      <h2 id="text">10. 文字コードとオフセット</h2>
+      <p>
+        <code>SourceFile</code> はファイルをバイト列のまま保持し、<code
+          >EncodingDetector.Detect</code
+        >
+        の判定（明示指定 → BOM → 厳密な UTF-8 → Shift_JIS / EUC-JP
+        のスコア比較）に従ってデコードします。生のバイト列の SHA-256
+        も記録し、リライト時の楽観ロックに使います。
+      </p>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 225"
+          role="img"
+          aria-label="BOM・あ・絵文字・a を例に、バイト・UTF-16・コードポイントの 3 種類のオフセットの対応を示す"
+        >
+          <text class="t" x="10" y="54">byte</text>
+          <text class="s" x="10" y="68">ファイル (BOM 込み)</text>
+          <text class="t" x="10" y="114">UTF-16</text>
+          <text class="s" x="10" y="128">.NET string</text>
+          <text class="t" x="10" y="174">code point</text>
+          <text class="s" x="10" y="188">ANTLR CharStream</text>
+          <text class="lbl" x="216" y="28" text-anchor="middle">BOM</text>
+          <text class="lbl" x="348" y="28" text-anchor="middle">あ</text>
+          <text class="lbl" x="502" y="28" text-anchor="middle">😀</text>
+          <text class="lbl" x="612" y="28" text-anchor="middle">a</text>
+          <!-- bytes -->
+          <rect class="box" x="150" y="40" width="44" height="32" />
+          <rect class="box" x="194" y="40" width="44" height="32" />
+          <rect class="box" x="238" y="40" width="44" height="32" />
+          <rect class="box" x="282" y="40" width="44" height="32" />
+          <rect class="box" x="326" y="40" width="44" height="32" />
+          <rect class="box" x="370" y="40" width="44" height="32" />
+          <rect class="box" x="414" y="40" width="44" height="32" />
+          <rect class="box" x="458" y="40" width="44" height="32" />
+          <rect class="box" x="502" y="40" width="44" height="32" />
+          <rect class="box" x="546" y="40" width="44" height="32" />
+          <rect class="box" x="590" y="40" width="44" height="32" />
+          <text class="mono s" x="172" y="60" text-anchor="middle">EF</text>
+          <text class="mono s" x="216" y="60" text-anchor="middle">BB</text>
+          <text class="mono s" x="260" y="60" text-anchor="middle">BF</text>
+          <text class="mono s" x="304" y="60" text-anchor="middle">E3</text>
+          <text class="mono s" x="348" y="60" text-anchor="middle">81</text>
+          <text class="mono s" x="392" y="60" text-anchor="middle">82</text>
+          <text class="mono s" x="436" y="60" text-anchor="middle">F0</text>
+          <text class="mono s" x="480" y="60" text-anchor="middle">9F</text>
+          <text class="mono s" x="524" y="60" text-anchor="middle">98</text>
+          <text class="mono s" x="568" y="60" text-anchor="middle">80</text>
+          <text class="mono s" x="612" y="60" text-anchor="middle">61</text>
+          <!-- utf16 -->
+          <rect class="ghost" x="150" y="100" width="132" height="32" />
+          <text class="lbl" x="216" y="120" text-anchor="middle">除去</text>
+          <rect class="box" x="282" y="100" width="132" height="32" />
+          <text x="348" y="121" text-anchor="middle">0: あ</text>
+          <rect class="box accent" x="414" y="100" width="88" height="32" />
+          <text class="mono s" x="458" y="120" text-anchor="middle">1: D83D</text>
+          <rect class="box accent" x="502" y="100" width="88" height="32" />
+          <text class="mono s" x="546" y="120" text-anchor="middle">2: DE00</text>
+          <rect class="box" x="590" y="100" width="44" height="32" />
+          <text x="612" y="121" text-anchor="middle">3: a</text>
+          <!-- code points -->
+          <rect class="ghost" x="150" y="160" width="132" height="32" />
+          <rect class="box" x="282" y="160" width="132" height="32" />
+          <text x="348" y="181" text-anchor="middle">0: あ</text>
+          <rect class="box" x="414" y="160" width="176" height="32" />
+          <text x="502" y="181" text-anchor="middle">1: 😀</text>
+          <rect class="box" x="590" y="160" width="44" height="32" />
+          <text x="612" y="181" text-anchor="middle">2: a</text>
+          <!-- consumers -->
+          <text class="lbl" x="648" y="60">→ byteOffset</text>
+          <text class="lbl" x="648" y="120">→ charOffset</text>
+          <text class="lbl" x="648" y="180">→ トークン位置</text>
+        </svg>
+        <figcaption>
+          ANTLR はコードポイント単位、.NET の文字列は UTF-16 単位、JSON の
+          <code>byteOffset</code> はディスク上のバイト（BOM 込み）単位です。<code>TreeBuilder</code>
+          がコードポイントを UTF-16 に変換し、<code>OffsetMap.Utf16RangeToBytes</code> が UTF-16
+          をバイトに変換します。行・列は
+          <code>LineMap</code> が改行位置の配列を二分探索して求めます（テキスト出力は 1 始まり、JSON
+          は 0 始まり）。
+        </figcaption>
+      </figure>
+
+      <!-- ============================================================ -->
+      <h2 id="rewrite">11. リライト</h2>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 225"
+          role="img"
+          aria-label="重なりを除いたマッチを末尾から置換して差分を作り、適用時はハッシュを再照合してから元の文字コードで一時ファイルに書き、置き換える"
+        >
+          <defs>
+            <marker
+              id="m11"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <rect class="box" x="10" y="30" width="130" height="56" rx="4" />
+          <text class="t" x="75" y="54" text-anchor="middle">MatchResult[]</text>
+          <text class="s" x="75" y="73" text-anchor="middle">+ ApplyTemplate</text>
+          <rect class="box" x="160" y="30" width="170" height="56" rx="4" />
+          <text class="t" x="245" y="54" text-anchor="middle">DeduplicateOverlaps</text>
+          <text class="s" x="245" y="73" text-anchor="middle">重なりは外側を優先</text>
+          <rect class="box" x="350" y="30" width="150" height="56" rx="4" />
+          <text class="t" x="425" y="54" text-anchor="middle">末尾から置換</text>
+          <text class="s" x="425" y="73" text-anchor="middle">前方の offset がずれない</text>
+          <rect class="box" x="520" y="30" width="130" height="56" rx="4" />
+          <text class="t" x="585" y="54" text-anchor="middle">UnifiedDiff</text>
+          <text class="s" x="585" y="73" text-anchor="middle">preview</text>
+          <line class="edge" x1="140" y1="58" x2="158" y2="58" marker-end="url(#m11)" />
+          <line class="edge" x1="330" y1="58" x2="348" y2="58" marker-end="url(#m11)" />
+          <line class="edge" x1="500" y1="58" x2="518" y2="58" marker-end="url(#m11)" />
+          <line class="edge" x1="585" y1="86" x2="585" y2="138" marker-end="url(#m11)" />
+          <text class="lbl" x="593" y="116">--apply / --update-all</text>
+          <rect class="box accent" x="520" y="140" width="130" height="56" rx="4" />
+          <text class="t" x="585" y="164" text-anchor="middle">ハッシュ再照合</text>
+          <text class="s" x="585" y="183" text-anchor="middle">SHA-256 (生バイト)</text>
+          <rect class="box" x="350" y="140" width="150" height="56" rx="4" />
+          <text class="t" x="425" y="164" text-anchor="middle">再エンコード</text>
+          <text class="s" x="425" y="183" text-anchor="middle">検出した文字コード・BOM</text>
+          <rect class="box" x="160" y="140" width="170" height="56" rx="4" />
+          <text class="t" x="245" y="164" text-anchor="middle">*.ag4tmp へ書込</text>
+          <text class="s" x="245" y="183" text-anchor="middle">WriteAllBytes</text>
+          <rect class="box" x="10" y="140" width="130" height="56" rx="4" />
+          <text class="t" x="75" y="164" text-anchor="middle">File.Move</text>
+          <text class="s" x="75" y="183" text-anchor="middle">overwrite: true</text>
+          <line class="edge" x1="520" y1="168" x2="502" y2="168" marker-end="url(#m11)" />
+          <line class="edge" x1="350" y1="168" x2="332" y2="168" marker-end="url(#m11)" />
+          <line class="edge" x1="160" y1="168" x2="142" y2="168" marker-end="url(#m11)" />
+          <text class="lbl wrn" x="585" y="214" text-anchor="middle">
+            不一致 → 中止（ファイルは変更しない）
+          </text>
+        </svg>
+        <figcaption>
+          <code>Rewriter.ApplyAtomic</code> は、preview
+          を作った後にファイルが書き換えられていれば適用を中止します（ハッシュによる楽観ロック）。元の文字コードで表せない文字が含まれる場合は
+          <code>EncoderFallbackException</code> をエラーメッセージ付きの
+          <code>InvalidOperationException</code> に変換して止めます。
+        </figcaption>
+      </figure>
+      <p>
+        テンプレートの置換は <code>$$$NAME</code> → <code>$NAME</code> → 名前なしの
+        <code>$$$</code> の順に行います。CLI では <code>run --rewrite … [--apply]</code> と
+        <code>scan --update-all</code>（ルールの <code>fix</code>）、MCP では
+        <code>rewrite_preview</code> / <code>rewrite_apply</code> がこの処理を使います。
+      </p>
+
+      <!-- ============================================================ -->
+      <h2 id="hosts">12. ホスト層（CLI / MCP / Native）</h2>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 265"
+          role="img"
+          aria-label="CLI・MCP・Native の 3 つの入口は、どれも同じ Searcher を呼ぶ。MCP は --root の境界の内側でだけ動く"
+        >
+          <defs>
+            <marker
+              id="m12"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <text class="lbl acc" x="380" y="13" text-anchor="middle">
+            --root 境界 (EnsureUnderRoot)
+          </text>
+          <rect
+            class="ghost"
+            x="260"
+            y="20"
+            width="240"
+            height="92"
+            rx="6"
+            style="stroke: var(--accent)"
+          />
+          <rect class="box" x="10" y="30" width="220" height="72" rx="4" />
+          <text class="t" x="120" y="52" text-anchor="middle">CLI (ag4)</text>
+          <text class="s" x="120" y="71" text-anchor="middle">run / scan / debug / version</text>
+          <text class="s" x="120" y="88" text-anchor="middle">終了コード 0 / 1 / 2</text>
+          <rect class="box" x="270" y="30" width="220" height="72" rx="4" />
+          <text class="t" x="380" y="52" text-anchor="middle">MCP (ag4 mcp)</text>
+          <text class="s" x="380" y="71" text-anchor="middle">9 tools · stdio</text>
+          <text class="s" x="380" y="88" text-anchor="middle">rewrite_apply は --allow-write</text>
+          <rect class="box" x="530" y="30" width="220" height="72" rx="4" />
+          <text class="t" x="640" y="52" text-anchor="middle">ag4_native</text>
+          <text class="s" x="640" y="71" text-anchor="middle">ag4_search (JSON in/out)</text>
+          <text class="s" x="640" y="88" text-anchor="middle">paths / sources (メモリ)</text>
+          <rect class="box accent" x="170" y="190" width="420" height="60" rx="4" />
+          <text class="t" x="380" y="214" text-anchor="middle">Searcher</text>
+          <text class="s" x="380" y="234" text-anchor="middle">
+            RunPattern · RunRule · RunPatternOnSources
+          </text>
+          <line class="edge" x1="120" y1="102" x2="258" y2="188" marker-end="url(#m12)" />
+          <text class="lbl" x="178" y="150" text-anchor="end">RunPattern / RunRule</text>
+          <line class="edge" x1="380" y1="112" x2="380" y2="188" marker-end="url(#m12)" />
+          <text class="lbl" x="388" y="155">RunPattern / RunRule</text>
+          <line class="edge" x1="640" y1="102" x2="502" y2="188" marker-end="url(#m12)" />
+          <text class="lbl" x="588" y="146">RunPatternOnSources</text>
+          <text class="lbl" x="588" y="160">/ RunPattern</text>
+        </svg>
+        <figcaption>
+          3
+          つのホストは、引数の解析・境界の検査・出力形式だけを担当する薄い層です。検索の意味（どのノードがヒットするか）は
+          <code>Searcher</code>
+          より下の層だけで決まるので、どのホストから呼んでも結果は同じです。
+        </figcaption>
+      </figure>
+
+      <h3>CLI（<code>Ag4Cli</code>, System.CommandLine）</h3>
+      <ul class="tight">
+        <li>
+          <code>run</code>（パターン検索・リライト）、<code>scan</code>（YAML ルール）、<code
+            >debug parse|pattern</code
+          >（<code>TreeDumper</code>
+          による木の表示）、<code>mcp</code>、<code>version</code>。
+        </li>
+        <li>
+          <code>--backend tree-sitter|antlr</code>（java / cpp / python）。sgconfig の
+          <code>languageBackends</code> より CLI が優先。
+        </li>
+        <li>
+          <code>-c</code> を省略すると、パスから上に向かって
+          <code>sgconfig.yml</code> を探します（<code>SgConfigLocator.FindUpwards</code>）。<code
+            >CustomLanguageBootstrap.ApplyConfig</code
+          >
+          が <code>languageBackends</code> と <code>customLanguages</code> を適用します。
+        </li>
+        <li>
+          stderr のメッセージには <code>ag4:</code> を付け、スタックトレースは
+          <code>--debug</code> のときだけ出します。
+        </li>
+      </ul>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>コマンド</th>
+              <th>0</th>
+              <th>1</th>
+              <th>2</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>run</code></td>
+              <td>1 件以上マッチ</td>
+              <td>マッチなし</td>
+              <td>実行時エラー</td>
+            </tr>
+            <tr>
+              <td><code>scan</code></td>
+              <td><code>--error-on</code> 以上の重要度のマッチなし</td>
+              <td>しきい値以上のマッチあり</td>
+              <td>実行時エラー（ルールが 0 件の場合も含む）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>MCP（<code>McpHost</code>, ModelContextProtocol）</h3>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>ツール</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>list_languages</code> / <code>describe_language</code></td>
+              <td>言語の一覧と、kind 名・パターンルールの情報</td>
+            </tr>
+            <tr>
+              <td><code>dump_syntax_tree</code></td>
+              <td>コードやパターンの木を表示（<code>TreeDumper</code>）</td>
+            </tr>
+            <tr>
+              <td><code>find_code</code> / <code>find_code_by_rule</code> / <code>scan</code></td>
+              <td>パターン・ルール・sgconfig による検索</td>
+            </tr>
+            <tr>
+              <td><code>test_match_code_rule</code></td>
+              <td>ルールをコード片に当てて試す</td>
+            </tr>
+            <tr>
+              <td><code>rewrite_preview</code></td>
+              <td>差分の preview（読み取り専用）</td>
+            </tr>
+            <tr>
+              <td><code>rewrite_apply</code></td>
+              <td>
+                書き換えを適用する（<code>Destructive</code>。<code>--allow-write</code>
+                を付けたときだけ登録される）
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        ツールに渡されたパスは、どれも <code>McpContext.ResolvePaths</code> →
+        <code>EnsureUnderRoot</code> で <code>--root</code>
+        の内側にあるかを検査し、外側なら拒否します。パスを省略した場合は root 全体が対象です。
+      </p>
+
+      <h3>Native（<code>NativeExports</code>, NativeAOT）</h3>
+      <pre><code>const char* ag4_version(void);                       // 解放不要
+int  ag4_search(const char* request_json, char** out_json); // 0 = 成功, 1 = エラー JSON, 2 = 引数不正
+void ag4_free(char* buffer);                          // out_json は必ずこれで解放</code></pre>
+      <p>
+        <code>SearchHost.Search</code> がリクエストを検証し（<code>pattern</code> と
+        <code>language</code> は必須、<code>strictness</code> は enum 名）、<code>sources</code>
+        があれば <code>RunPatternOnSources</code>（ディスクを読まない）を、なければ
+        <code>paths</code> の検索を行います。例外はすべて <code>{"error": …}</code> の JSON
+        に変換し、ABI の外に投げません。JSON の (de)serialize は source generator
+        （<code>NativeJsonContext</code>）で行い、AOT でも動くようにしています。ヘッダは
+        <a href="samples/gui/include/ag4_native.h">samples/gui/include/ag4_native.h</a>、使用例は
+        <a href="samples/gui/README.md">samples/gui</a>（WinForms / Swing+JNA /
+        tkinter+ctypes）にあります。
+      </p>
+
+      <!-- ============================================================ -->
+      <h2 id="qa">13. テストと差分テスト</h2>
+      <h3>ユニットテスト（<code>tests/AstGrepAntlr.Tests</code>）</h3>
+      <ul class="tight">
+        <li>
+          言語ごとのパーステスト：<code>JavaParseTests</code>、<code>CppParseTests</code>、<code>CSharpParseTests</code>、<code>PythonParseTests</code>、<code>PlSqlParseTests</code>（ANTLR
+          明示）、<code>TreeSitterJavaTests</code> など tree-sitter
+          専用（kind・オフセット・ERROR/MISSING・並列）
+        </li>
+        <li>
+          <code>RegressionBaselineTests</code>：<code>tests/fixtures/cases/&lt;lang&gt;/*.yml</code>
+          のマッチケースを <code>CaseFileRunner</code> で読み込み、
+          <code>Matrix</code> の組み合わせで xUnit の Theory として実行（kind
+          非依存ケースは両バックエンド）
+        </li>
+        <li>
+          オラクル：<code>GitIgnoreOracleTests</code>（<code>TempGitRepo</code> で実際の git
+          と判定を比べる）、<code>KindOracle</code>（ANTLR の木から期待される kind
+          チェーンを計算）、<code>PatchOracle</code>（unified diff
+          を元のテキストに適用して、書き換え後のテキストを再構成）
+        </li>
+        <li>
+          <code>EncodingTests</code
+          >、<code>AntlrOffsetTests</code>、<code>RewriteTests</code>、<code>RelationalRuleTests</code>、<code>CliTests</code>、<code
+            >McpSmokeTests</code
+          >
+          など
+        </li>
+        <li>
+          乱数を使うテストは <code>TestSeed</code> でシードを固定（<code>AG4_TEST_SEED</code>
+          で上書き可能）
+        </li>
+      </ul>
+
+      <h3>差分テスト（<code>tools/AstGrepAntlr.DiffTest</code>）</h3>
+      <figure>
+        <svg
+          class="dg"
+          viewBox="0 0 760 230"
+          role="img"
+          aria-label="固定 SHA のコーパスを clone し、ast-grep と ag4 に同じパターンを流して結果を分類し、既知の差分を除いてレポートにする"
+        >
+          <defs>
+            <marker
+              id="m13"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+            </marker>
+          </defs>
+          <rect class="box" x="10" y="85" width="120" height="56" rx="4" />
+          <text class="t" x="70" y="109" text-anchor="middle">corpus.yml</text>
+          <text class="s" x="70" y="128" text-anchor="middle">ref + 固定 SHA</text>
+          <rect class="box" x="150" y="85" width="150" height="56" rx="4" />
+          <text class="t" x="225" y="109" text-anchor="middle">CorpusProvisioner</text>
+          <text class="s" x="225" y="128" text-anchor="middle">clone → .difftest/</text>
+          <rect class="box" x="330" y="30" width="160" height="56" rx="4" />
+          <text class="t" x="410" y="54" text-anchor="middle">ast-grep 0.51.0</text>
+          <text class="s" x="410" y="73" text-anchor="middle">npm @ast-grep/cli</text>
+          <rect class="box accent" x="330" y="140" width="160" height="56" rx="4" />
+          <text class="t" x="410" y="164" text-anchor="middle">ag4 (Release)</text>
+          <text class="s" x="410" y="183" text-anchor="middle">同じ patterns/*.yml</text>
+          <rect class="box" x="515" y="85" width="110" height="56" rx="4" />
+          <text class="t" x="570" y="109" text-anchor="middle" style="font-size: 12px">
+            MatchComparer
+          </text>
+          <text class="s" x="570" y="128" text-anchor="middle">Same / Only / Diff</text>
+          <rect class="box" x="640" y="85" width="110" height="56" rx="4" />
+          <text class="t" x="695" y="109" text-anchor="middle">既知差分</text>
+          <text class="s" x="695" y="128" text-anchor="middle">known-differences</text>
+          <rect class="box" x="640" y="170" width="110" height="46" rx="4" />
+          <text class="t" x="695" y="198" text-anchor="middle">REPORT.md</text>
+          <line class="edge" x1="130" y1="113" x2="148" y2="113" marker-end="url(#m13)" />
+          <line class="edge" x1="300" y1="100" x2="328" y2="60" marker-end="url(#m13)" />
+          <line class="edge" x1="300" y1="126" x2="328" y2="166" marker-end="url(#m13)" />
+          <line class="edge" x1="490" y1="58" x2="514" y2="98" marker-end="url(#m13)" />
+          <line class="edge" x1="490" y1="168" x2="514" y2="128" marker-end="url(#m13)" />
+          <text class="lbl" x="500" y="22">--json → 正規化</text>
+          <line class="edge" x1="625" y1="113" x2="638" y2="113" marker-end="url(#m13)" />
+          <line class="edge" x1="695" y1="141" x2="695" y2="168" marker-end="url(#m13)" />
+          <text class="lbl" x="703" y="160">未説明 0 件</text>
+        </svg>
+        <figcaption>
+          両方のツールの JSON を <code>JsonMatchParser</code> で
+          <code>NormalizedMatch</code> に変換し、<code>MatchComparer</code> が Same / Only ast-grep
+          / Only ag4 / Range diff / Metavar diff に分類します。<code>known-differences.yml</code>
+          で説明のつかない差分が残ると失敗します（<code>--no-fail</code>
+          で無効化できます）。書き換えについては、適用後のバイト列も比較します。
+        </figcaption>
+      </figure>
+      <p>
+        ハーネスは <code>--backend tree-sitter|antlr</code> を受け付け、<code
+          >known-differences.yml</code
+        >
+        は任意の <code>backend:</code> でエントリを分けられます。最新の結果は
+        <a href="difftest/REPORT.md">difftest/REPORT.md</a> にあります（ANTLR ベースライン: Java
+        tree-sitter: Java 79.84%、C++ 76.77%、Python 83.74%；ANTLR: Java 57.39%、C++ 15.40%、Python
+        59.46%；C# 49.19%。いずれも known-differences 適用後の unexplained は 0）。内訳計測は
+        <code>tools/AstGrepAntlr.Bench</code>。解説は
+        <a href="ast-grep-vs-ag4.html">ast-grep-vs-ag4.html</a> を参照してください。release
+        のスモークテストには <code>-l java</code>（tree-sitter 既定）が含まれます。
+      </p>
+
+      <h3>CI（<code>.github/workflows</code>）</h3>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>ワークフロー</th>
+              <th>内容</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>ci.yml</code></td>
+              <td>
+                Windows / Ubuntu / macOS で locked-mode restore → build → test、<code
+                  >dotnet format style/analyzers</code
+                >
+              </td>
+            </tr>
+            <tr>
+              <td><code>format.yml</code></td>
+              <td>CSharpier、Prettier、actionlint</td>
+            </tr>
+            <tr>
+              <td><code>difftest.yml</code></td>
+              <td>差分テスト（手動実行 + 週次）</td>
+            </tr>
+            <tr>
+              <td><code>release.yml</code></td>
+              <td>
+                NativeAOT バイナリ（win-x64 / linux-x64 / osx-arm64）、NuGet パッケージ、GitHub
+                Release
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============================================================ -->
+      <h2 id="extend">14. 拡張ポイント</h2>
+      <h3>tree-sitter の文法で言語を追加する</h3>
+      <ol class="tight">
+        <li>
+          TreeSitter.DotNet
+          に対象文法のネイティブライブラリが入っていることを確認する（無い場合は別途ビルド・同梱が必要）。
+        </li>
+        <li>
+          <code>TsNative</code> に <code>tree_sitter_&lt;lang&gt;</code> の
+          <code>LibraryImport</code> を追加し、<code>TreeSitterBuiltins</code>
+          に定義（拡張子・ルート kind・PatternContexts・supertype 別名）を足す。
+        </li>
+        <li>
+          <code>BuiltinLanguages</code> で登録し、<code>ApplyBackend</code>
+          の切替対象にするかどうかを決める。
+        </li>
+        <li>
+          使わない文法のネイティブを出力から除くフィルタを更新し、テストと
+          <code>THIRD-PARTY-NOTICES.md</code> を更新する。
+        </li>
+      </ol>
+      <h3>ANTLR の組み込み言語を追加する</h3>
+      <ol class="tight">
+        <li>
+          <code>grammars/&lt;lang&gt;/</code> に grammars-v4 の <code>.g4</code> と、必要なら
+          <code>CSharp/*Base.cs</code> と LICENSE を置く。
+        </li>
+        <li>
+          <code>AstGrepAntlr.Languages.csproj</code> に <code>&lt;Antlr4 Include=…&gt;</code>（<code
+            >Package</code
+          >
+          を指定）と、Base クラスの <code>&lt;Compile Include … Link&gt;</code> を追加する。
+        </li>
+        <li>
+          <code>IAntlrLanguage</code>
+          を実装する：<code>StartRule</code>、<code>PatternRules</code>（式・文を先に、開始ルールは最後に並べる）、<code>MetaVarVariants</code>、<code
+            >InvokeRule</code
+          >
+          の switch、<code>IsNamedToken</code>。
+        </li>
+        <li><code>BuiltinLanguages.CreateRegistry()</code> で登録し、必要なら別名も登録する。</li>
+        <li>
+          <code>tests/*ParseTests.cs</code>、<code>tests/fixtures/cases/&lt;lang&gt;/</code>、<code
+            >difftest/patterns/&lt;lang&gt;.yml</code
+          >
+          を追加し、<code>THIRD-PARTY-NOTICES.md</code> を更新する。
+        </li>
+      </ol>
+      <p>
+        ANTLR 以外のパーサを使う場合は、CSharp と同じように
+        <code>ILanguage</code> を直接実装し、<code>SyntaxTreeAssembler</code>
+        でアリーナ木を組み立てます。
+      </p>
+      <h3>ビルドせずに追加する／埋め込む</h3>
+      <ul class="tight">
+        <li>
+          <code>sgconfig.yml</code> の <code>customLanguages</code>（<a href="samples/dsl/"
+            >samples/dsl</a
+          >）。
+        </li>
+        <li>
+          .NET からは <code>AstGrepAntlr.Core</code> と
+          <code>AstGrepAntlr.Languages</code> を参照して
+          <code>Searcher</code> を直接呼べます。それ以外の言語からは <code>ag4_native</code> を FFI
+          で呼びます。
+        </li>
+      </ul>
+
+      <!-- ============================================================ -->
+      <h2 id="limits">15. 既知の制約</h2>
+      <ul class="tight">
+        <li>
+          <strong>速度</strong>：tree-sitter 既定では本家比おおよそ 4〜5×（Java / C++ /
+          Python）。ANTLR 選択時は 20〜60× 程度まで遅くなることがあります（詳細は
+          <a href="difftest/REPORT.md">REPORT.md</a>）。アリーナ変換と照合のコストは残るため、内訳は
+          <code>tools/AstGrepAntlr.Bench</code> で計測できます。
+        </li>
+        <li>
+          <strong>C++（ANTLR 選択時）</strong>：CPP14 文法なので、C++17
+          以降の構文やマクロを多用するコードは解析できないことがあります。tree-sitter 既定では
+          tree-sitter-cpp を使います。
+        </li>
+        <li>
+          <strong>文法による違い</strong>：kind 名はバックエンドで異なります（tree-sitter
+          既定は本家に近い）。ANTLR 選択時は grammars-v4 の名前です（C# / Roslyn
+          は別名で一部を吸収）。
+        </li>
+        <li>
+          <strong>ネイティブ RID</strong>：tree-sitter 同梱は TreeSitter.DotNet が提供する
+          win/linux/osx の RID に依存します。読めない環境では ANTLR にフォールバックします。
+        </li>
+        <li>
+          <strong>.interp 言語</strong
+          >：アクションと述語を実行しないので、述語に頼る文法は正しく解析できません。
+        </li>
+        <li>その他の既知の問題と修正状況は <a href="issue.md">issue.md</a> を参照してください。</li>
+      </ul>
+
+      <footer>
+        <p>
+          関連資料：<a href="README.md">README.md</a> ·
+          <a href="ast-grep-vs-ag4.html">ast-grep-vs-ag4.html</a> ·
+          <a href="difftest/REPORT.md">difftest/REPORT.md</a> ·
+          <a href="grammars/README.md">grammars/README.md</a>
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
