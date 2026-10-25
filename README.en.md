@@ -163,7 +163,7 @@ dotnet csharpier check .
 npx prettier --check .
 ```
 
-Needs JDK (Antlr4BuildTasks) and .NET SDK 10. tree-sitter natives come prebuilt from NuGet (TreeSitter.DotNet) — **no C toolchain required**. See [issue.md](issue.md).
+Needs JDK (Antlr4BuildTasks) and .NET SDK 10. tree-sitter natives come prebuilt from NuGet (TreeSitter.DotNet) — **no C toolchain required**.
 
 ## License
 

@@ -149,7 +149,7 @@ Not compared: upstream `@ast-grep/cli` has no built-in PL/SQL language.
 ## Notes (this run)
 
 - Match counts equal the pre-speedup baseline (tree-sitter / antlr / roslyn). Wall times improved modestly on TS paths.
-- **Bench** (`tools/AstGrepAntlr.Bench`): parse-phase timings + LL fallback rate. Java ANTLR **67%** LL fallback on commons-lang; C++ ANTLR **75%** on leveldb sample. See [speedupissue.md](../speedupissue.md) and [ast-grep-vs-ag4.html](../ast-grep-vs-ag4.html) §2.2.
+- **Bench** (`tools/AstGrepAntlr.Bench`): parse-phase timings + LL fallback rate. Java ANTLR **2%** LL fallback on commons-lang (67% before the `classType` grammar fix); C++ ANTLR **73%** on leveldb. See [ast-grep-vs-ag4.html](../ast-grep-vs-ag4.html) §4.
 - Speedups landed: tree-sitter cursor / LibraryImport / `has_error` prune; ANTLR Build-once + cancelable timeout; lazy language registration; matcher undo-log / MaxResults early stop.
 - Residuals remain catalogued in `known-differences.yml`; unexplained **0**.
 

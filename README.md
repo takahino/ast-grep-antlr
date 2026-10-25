@@ -210,7 +210,7 @@ dotnet csharpier check .
 npx prettier --check .
 ```
 
-JDK（Antlr4BuildTasks 用）と .NET SDK 10（`global.json` を参照）が必要です。tree-sitter ネイティブは NuGet（TreeSitter.DotNet）のビルド済みバイナリを使うため、**C コンパイラは不要**です。既知の問題と修正状況は [issue.md](issue.md) にあります。
+JDK（Antlr4BuildTasks 用）と .NET SDK 10（`global.json` を参照）が必要です。tree-sitter ネイティブは NuGet（TreeSitter.DotNet）のビルド済みバイナリを使うため、**C コンパイラは不要**です。
 
 ## ライセンス
 
