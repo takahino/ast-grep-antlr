@@ -12,6 +12,18 @@
 
 内部構造（パイプライン・パース・照合・ルールエンジン・ホスト層）は [architecture.html](architecture.html) にまとめています。
 
+## ast-grep との違い
+
+本家の使い勝手（パターン・YAML ルール・CLI・JSON 出力・終了コード）を保ったまま、tree-sitter だけでは届かない言語や環境に構造検索を持ち込むことを狙っています。
+
+- **パーサを言語ごとに選べる** — tree-sitter / ANTLR4 / Roslyn を同じパターン・ルールで切り替えられる
+- **`.g4` で言語を足せる** — 本家に無い PL/SQL・SQLite を同梱し、社内 DSL なども `customLanguages` に文法を書くだけで対象にできる
+- **.NET / ネイティブへの組み込み** — `Searcher` による in-process 呼び出しと、NativeAOT 共有ライブラリ `ag4_native`（C ABI）を提供
+- **レガシーな文字コードを扱える** — Shift_JIS / EUC-JP などを読み、rewrite 時も元の文字コードを保持
+- **本家との差分を継続的に検証** — 実 OSS コーパスで本家と差分テストを行い、残差は理由付きで `known-differences.yml` に管理
+
+一方で、実行速度は本家より遅く、ヒット集合を本家と完全に一致させることも目標にしていません。数値は [ast-grep-vs-ag4.html](ast-grep-vs-ag4.html) を参照してください。
+
 ## 特長
 
 - メタ変数パターン：`$A`、`$_`、`$$$ARGS`、型付き `${A:expression}`（supertype / ルール名）

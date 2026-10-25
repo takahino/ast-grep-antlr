@@ -12,6 +12,18 @@ This project is **not** affiliated with the official ast-grep project.
 
 Internals (pipeline, parsing, matching, rule engine, hosts): [architecture.html](architecture.html) (Japanese).
 
+## How it differs from ast-grep
+
+ag4 keeps ast-grep's workflow (patterns, YAML rules, CLI, JSON output, exit codes) and aims to bring structural search to languages and environments that tree-sitter alone does not reach.
+
+- **Per-language parser choice** — switch between tree-sitter / ANTLR4 / Roslyn with the same patterns and rules
+- **Add languages with `.g4`** — ships PL/SQL and SQLite (not available upstream); in-house DSLs work by adding a grammar to `customLanguages`
+- **Embeddable in .NET / native code** — in-process `Searcher` and the NativeAOT shared library `ag4_native` (C ABI)
+- **Legacy encodings** — reads Shift_JIS / EUC-JP and more, and preserves the original encoding on rewrite
+- **Continuously diffed against ast-grep** — differential tests on real OSS corpora; remaining differences are documented with reasons in `known-differences.yml`
+
+On the other hand, ag4 is slower than ast-grep and does not aim for hit sets identical to upstream. See [ast-grep-vs-ag4.en.html](ast-grep-vs-ag4.en.html) for numbers.
+
 ## Features
 
 - Metavariable patterns: `$A`, `$_`, `$$$ARGS`, typed `${A:expression}` (supertype / rule name)
