@@ -104,7 +104,17 @@ public sealed class PatternMatcher
                 return false;
             }
 
-            return string.Equals(pattern.Text(pIndex), target.Text(tIndex), StringComparison.Ordinal);
+            var pText = pattern.Text(pIndex);
+            var tText = target.Text(tIndex);
+            // Grammars that keep whitespace as parser tokens (VB6 WS/NEWLINE): any run of
+            // whitespace matches any other, like the whitespace between tokens elsewhere.
+            return string.Equals(pText, tText, StringComparison.Ordinal)
+                || (
+                    pText.Length > 0
+                    && tText.Length > 0
+                    && string.IsNullOrWhiteSpace(pText)
+                    && string.IsNullOrWhiteSpace(tText)
+                );
         }
 
         // Rule node: kind must match along chain for smart/ast.

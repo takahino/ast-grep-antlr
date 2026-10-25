@@ -8,13 +8,18 @@
 
 ## grammars-v4 (vendored)
 
-| Path               | License      | Notes                         |
-| ------------------ | ------------ | ----------------------------- |
-| `grammars/java/`   | BSD-3-Clause | See `grammars/java/LICENSE`   |
-| `grammars/sqlite/` | MIT          | See `grammars/sqlite/LICENSE` |
-| `grammars/cpp/`    | MIT          | See `grammars/cpp/LICENSE`    |
-| `grammars/python/` | MIT          | See `grammars/python/LICENSE` |
-| `grammars/plsql/`  | Apache-2.0   | See `grammars/plsql/LICENSE`  |
+| Path                   | License                 | Notes                                             |
+| ---------------------- | ----------------------- | ------------------------------------------------- |
+| `grammars/java/`       | BSD-3-Clause            | See `grammars/java/LICENSE`                       |
+| `grammars/sqlite/`     | MIT                     | See `grammars/sqlite/LICENSE`                     |
+| `grammars/cpp/`        | MIT                     | See `grammars/cpp/LICENSE`                        |
+| `grammars/python/`     | MIT                     | See `grammars/python/LICENSE`                     |
+| `grammars/plsql/`      | Apache-2.0              | See `grammars/plsql/LICENSE`                      |
+| `grammars/cobol/`      | MIT                     | See `grammars/cobol/LICENSE`                      |
+| `grammars/vb6/`        | MIT                     | See `grammars/vb6/LICENSE`                        |
+| `grammars/tsql/`       | MIT                     | See `grammars/tsql/LICENSE`                       |
+| `grammars/postgresql/` | MIT, PostgreSQL License | See `grammars/postgresql/LICENSE` and `COPYRIGHT` |
+| `grammars/mysql/`      | MIT                     | See `grammars/mysql/LICENSE`                      |
 
 Source: https://github.com/antlr/grammars-v4
 

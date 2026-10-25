@@ -6,7 +6,8 @@
     <PackageId>AstGrepAntlr.Languages</PackageId>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591;CS3021</NoWarn>
+    <!-- CS0108: generated T-SQL / MySQL parsers have an EMPTY token accessor that hides ParserRuleContext.EMPTY. -->
+    <NoWarn>$(NoWarn);CS1591;CS3021;CS0108</NoWarn>
     <Antlr4UseCSharpGenerator>true</Antlr4UseCSharpGenerator>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -108,5 +109,60 @@
     </Antlr4>
     <Compile Include="..\..\grammars\plsql\CSharp\PlSqlLexerBase.cs" Link="PlSql\PlSqlLexerBase.cs" />
     <Compile Include="..\..\grammars\plsql\CSharp\PlSqlParserBase.cs" Link="PlSql\PlSqlParserBase.cs" />
+    <Antlr4 Include="..\..\grammars\cobol\Cobol85.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.Cobol</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\vb6\VisualBasic6Lexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.Vb6</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\vb6\VisualBasic6Parser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.Vb6</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\tsql\TSqlLexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.TSql</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\tsql\TSqlParser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.TSql</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\postgresql\PostgreSQLLexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.PostgreSql</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\postgresql\PostgreSQLParser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.PostgreSql</Package>
+    </Antlr4>
+    <Compile Include="..\..\grammars\postgresql\CSharp\*.cs" LinkBase="PostgreSql" />
+    <Antlr4 Include="..\..\grammars\mysql\MySqlLexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.MySql</Package>
+    </Antlr4>
+    <Antlr4 Include="..\..\grammars\mysql\MySqlParser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>AstGrepAntlr.Languages.MySql</Package>
+    </Antlr4>
   </ItemGroup>
 </Project>

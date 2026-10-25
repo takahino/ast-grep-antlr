@@ -1,11 +1,13 @@
-# postgresql grammar
+# PostgreSQL grammar (grammars-v4)
 
-Not compiled into the default build (size / base-class complexity).
+Vendored from [antlr/grammars-v4](https://github.com/antlr/grammars-v4) `sql/postgresql/` directory.
 
-Use `customLanguages` in `sgconfig.yml` with grammars from
-https://github.com/antlr/grammars-v4 and either:
+- **Commit:** `f02beda6df6a209440cc70b2630482851d610ca2`
+- **License:** MIT — see [LICENSE](./LICENSE) and file headers; the grammar derives from PostgreSQL sources, see [COPYRIGHT](./COPYRIGHT) (PostgreSQL License)
 
-1. Point `grammar` at `.g4` files (requires Java + `tools/antlr-4.13.2-complete.jar`), or
-2. Point `grammar` at prebuilt `.interp` files.
+Files:
 
-Built-in generated support may be added in a later release.
+- `PostgreSQLLexer.g4`, `PostgreSQLParser.g4` — ANTLR grammars (unmodified, large)
+- `CSharp/*.cs` — C# lexer/parser bases and error listeners (namespace adjusted, `#nullable disable` added)
+
+Built-in language id: `postgresql` (aliases `postgres`, `pgsql`). Extension: `.sql` (shared with other SQL dialects; choose with `-l`).

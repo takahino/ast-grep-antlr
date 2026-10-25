@@ -6,7 +6,7 @@ English | [日本語](README.md)
 
 - **Java / C++ / Python / C#** — [tree-sitter](https://tree-sitter.github.io/) (default) for speed and upstream-compatible kind names
 - **JavaScript / TypeScript / Go / Rust / C / Ruby / PHP and more** — tree-sitter only (see [Language ids](#language-ids))
-- **PL/SQL / SQLite / custom DSLs** — [ANTLR4](https://www.antlr.org/) (`.g4` / `.interp`)
+- **COBOL / VB6 / PL/SQL / T-SQL / PostgreSQL / MySQL / SQLite / custom DSLs** — [ANTLR4](https://www.antlr.org/) (`.g4` / `.interp`)
 - **C# (optional)** — [Roslyn](https://github.com/dotnet/roslyn) (`--backend roslyn`)
 
 This project is **not** affiliated with the official ast-grep project.
@@ -18,7 +18,7 @@ Internals (pipeline, parsing, matching, rule engine, hosts): [architecture.html]
 ag4 keeps ast-grep's workflow (patterns, YAML rules, CLI, JSON output, exit codes) and aims to bring structural search to languages and environments that tree-sitter alone does not reach.
 
 - **Per-language parser choice** — switch between tree-sitter / ANTLR4 / Roslyn with the same patterns and rules
-- **Add languages with `.g4`** — ships PL/SQL and SQLite (not available upstream); in-house DSLs work by adding a grammar to `customLanguages`
+- **Add languages with `.g4`** — ships COBOL, VB6, PL/SQL, T-SQL, PostgreSQL, MySQL and SQLite (not available upstream); in-house DSLs work by adding a grammar to `customLanguages`
 - **Embeddable in .NET / native code** — in-process `Searcher` and the NativeAOT shared library `ag4_native` (C ABI)
 - **Legacy encodings** — reads Shift_JIS / EUC-JP and more, and preserves the original encoding on rewrite
 - **Continuously diffed against ast-grep** — differential tests on real OSS corpora; remaining differences are documented with reasons in `known-differences.yml`
@@ -36,7 +36,7 @@ On the other hand, ag4 is slower than ast-grep and does not aim for hit sets ide
 - Encoding preservation (UTF-8/BOM, UTF-16/32, Shift_JIS, EUC-JP) via `--encoding` / `sgconfig.yml`
 - Custom DSLs via `.g4` / `.interp` (`sgconfig.yml` → `customLanguages`, lazy-loaded)
 - MCP server: `ag4 mcp` (stdio) for AI agents
-- Built-in languages: **Java**, **C++**, **C#** (tree-sitter default / Roslyn opt-in), **Python** 3, **PL/SQL**, **SQLite**, plus tree-sitter-only **JavaScript / TypeScript / TSX / Go / Rust / C / Ruby / PHP / Bash / HTML / CSS / JSON / Scala / Haskell / Julia / OCaml / TOML / Verilog** (more via custom grammars)
+- Built-in languages: **Java**, **C++**, **C#** (tree-sitter default / Roslyn opt-in), **Python** 3, ANTLR-based **COBOL / VB6 / PL/SQL / T-SQL / PostgreSQL / MySQL / SQLite**, plus tree-sitter-only **JavaScript / TypeScript / TSX / Go / Rust / C / Ruby / PHP / Bash / HTML / CSS / JSON / Scala / Haskell / Julia / OCaml / TOML / Verilog** (more via custom grammars)
 
 ## Install
 
@@ -82,36 +82,49 @@ stderr lines are prefixed with `ag4:`. Stack traces require `--debug`.
 
 ### Language ids
 
-| Id           | Aliases            | Extensions                     | Default backend | Switch                    |
-| ------------ | ------------------ | ------------------------------ | --------------- | ------------------------- |
-| `java`       |                    | `.java`                        | tree-sitter     | `--backend antlr`         |
-| `cpp`        | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, …               | tree-sitter     | `--backend antlr` (CPP14) |
-| `csharp`     | `cs`, `c#`         | `.cs`                          | tree-sitter     | `--backend roslyn`        |
-| `python`     | `py`               | `.py`                          | tree-sitter     | `--backend antlr`         |
-| `plsql`      | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql` | ANTLR           | —                         |
-| `sqlite`     |                    | `.sql`, `.sqlite`              | ANTLR           | —                         |
-| `javascript` | `js`, `jsx`        | `.js`, `.mjs`, `.cjs`, `.jsx`  | tree-sitter     | —                         |
-| `typescript` | `ts`               | `.ts`, `.mts`, `.cts`          | tree-sitter     | —                         |
-| `tsx`        |                    | `.tsx`                         | tree-sitter     | —                         |
-| `go`         | `golang`           | `.go`                          | tree-sitter     | —                         |
-| `rust`       | `rs`               | `.rs`                          | tree-sitter     | —                         |
-| `c`          |                    | `.c` (`.h` stays `cpp`)        | tree-sitter     | —                         |
-| `ruby`       | `rb`               | `.rb`, `.rake`, `.gemspec`     | tree-sitter     | —                         |
-| `php`        |                    | `.php`                         | tree-sitter     | —                         |
-| `bash`       | `sh`               | `.sh`, `.bash`                 | tree-sitter     | —                         |
-| `html`       |                    | `.html`, `.htm`                | tree-sitter     | —                         |
-| `css`        |                    | `.css`                         | tree-sitter     | —                         |
-| `json`       |                    | `.json`                        | tree-sitter     | —                         |
-| `scala`      |                    | `.scala`, `.sc`                | tree-sitter     | —                         |
-| `haskell`    | `hs`               | `.hs`                          | tree-sitter     | —                         |
-| `julia`      | `jl`               | `.jl`                          | tree-sitter     | —                         |
-| `ocaml`      | `ml`               | `.ml`                          | tree-sitter     | —                         |
-| `toml`       |                    | `.toml`                        | tree-sitter     | —                         |
-| `verilog`    | `v`                | `.v`, `.sv`                    | tree-sitter     | —                         |
+| Id           | Aliases              | Extensions                     | Default backend | Switch                    |
+| ------------ | -------------------- | ------------------------------ | --------------- | ------------------------- |
+| `java`       |                      | `.java`                        | tree-sitter     | `--backend antlr`         |
+| `cpp`        | `c++`, `cc`, `cxx`   | `.cpp`, `.cc`, …               | tree-sitter     | `--backend antlr` (CPP14) |
+| `csharp`     | `cs`, `c#`           | `.cs`                          | tree-sitter     | `--backend roslyn`        |
+| `python`     | `py`                 | `.py`                          | tree-sitter     | `--backend antlr`         |
+| `plsql`      | `pl/sql`             | `.pls`, `.pkb`, `.pks`, `.sql` | ANTLR           | —                         |
+| `sqlite`     |                      | `.sql`, `.sqlite`              | ANTLR           | —                         |
+| `tsql`       | `mssql`, `sqlserver` | `.sql`                         | ANTLR           | —                         |
+| `postgresql` | `postgres`, `pgsql`  | `.sql`                         | ANTLR           | —                         |
+| `mysql`      |                      | `.sql`                         | ANTLR           | —                         |
+| `cobol`      | `cobol85`            | `.cbl`, `.cob`, `.cpy`         | ANTLR           | —                         |
+| `vb6`        |                      | `.bas`, `.cls`, `.frm`, `.ctl` | ANTLR           | —                         |
+| `javascript` | `js`, `jsx`          | `.js`, `.mjs`, `.cjs`, `.jsx`  | tree-sitter     | —                         |
+| `typescript` | `ts`                 | `.ts`, `.mts`, `.cts`          | tree-sitter     | —                         |
+| `tsx`        |                      | `.tsx`                         | tree-sitter     | —                         |
+| `go`         | `golang`             | `.go`                          | tree-sitter     | —                         |
+| `rust`       | `rs`                 | `.rs`                          | tree-sitter     | —                         |
+| `c`          |                      | `.c` (`.h` stays `cpp`)        | tree-sitter     | —                         |
+| `ruby`       | `rb`                 | `.rb`, `.rake`, `.gemspec`     | tree-sitter     | —                         |
+| `php`        |                      | `.php`                         | tree-sitter     | —                         |
+| `bash`       | `sh`                 | `.sh`, `.bash`                 | tree-sitter     | —                         |
+| `html`       |                      | `.html`, `.htm`                | tree-sitter     | —                         |
+| `css`        |                      | `.css`                         | tree-sitter     | —                         |
+| `json`       |                      | `.json`                        | tree-sitter     | —                         |
+| `scala`      |                      | `.scala`, `.sc`                | tree-sitter     | —                         |
+| `haskell`    | `hs`                 | `.hs`                          | tree-sitter     | —                         |
+| `julia`      | `jl`                 | `.jl`                          | tree-sitter     | —                         |
+| `ocaml`      | `ml`                 | `.ml`                          | tree-sitter     | —                         |
+| `toml`       |                      | `.toml`                        | tree-sitter     | —                         |
+| `verilog`    | `v`                  | `.v`, `.sv`                    | tree-sitter     | —                         |
 
 Languages from `javascript` down are tree-sitter only, with no ANTLR fallback. Their grammar natives come from TreeSitter.DotNet, so `toml` is Windows-only and `ocaml` is unavailable on macOS (selecting them elsewhere fails with a "not available on this platform" error). Identifiers starting with `$`, such as Verilog's `$display`, collide with metavariables and cannot be written in patterns.
 
 With tree-sitter, kind names match upstream ast-grep (`method_invocation`, `class_declaration`, …). With `--backend antlr`, kinds follow grammars-v4 (`methodCall`, `compilationunit`, …).
+
+`.sql` is claimed by several dialects (`plsql`, `sqlite`, `tsql`, `postgresql`, `mysql`); pick one with `-l`. T-SQL / PostgreSQL / MySQL use grammars-v4 **sql/tsql**, **sql/postgresql** and **sql/mysql/Positive-Technologies** (all MIT).
+
+COBOL uses grammars-v4 **cobol85** (MIT). Reference (fixed) format is detected automatically: the sequence area (columns 1–6), indicator (column 7) and columns 73+ are ignored, and match positions stay those of the original file. Wide characters count as two columns to line up with Shift_JIS byte columns. `COPY` / `REPLACE` are not expanded and continuation lines (`-` in column 7) are not joined. Write patterns in free format (e.g. `MOVE $A TO $B`).
+
+VB6 uses grammars-v4 **vb6** (MIT). VBA modules exported as `.bas` / `.cls` usually parse as well.
+
+The grammars-v4 Fortran and VBA 7.1 grammars are GPL-licensed or carry no license, so they are not bundled. Supply a grammar yourself and register it under `customLanguages` ([docs/custom-languages.md](docs/custom-languages.md)).
 
 ## Choosing a backend
 

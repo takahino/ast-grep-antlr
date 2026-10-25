@@ -1,11 +1,13 @@
-# mysql grammar
+# MySQL grammar (grammars-v4)
 
-Not compiled into the default build (size / base-class complexity).
+Vendored from [antlr/grammars-v4](https://github.com/antlr/grammars-v4) `sql/mysql/Positive-Technologies/` directory
+(the variant without target-specific base classes).
 
-Use `customLanguages` in `sgconfig.yml` with grammars from
-https://github.com/antlr/grammars-v4 and either:
+- **Commit:** `f02beda6df6a209440cc70b2630482851d610ca2`
+- **License:** MIT — see [LICENSE](./LICENSE) and file headers in `MySqlLexer.g4` / `MySqlParser.g4`
 
-1. Point `grammar` at `.g4` files (requires Java + `tools/antlr-4.13.2-complete.jar`), or
-2. Point `grammar` at prebuilt `.interp` files.
+Files:
 
-Built-in generated support may be added in a later release.
+- `MySqlLexer.g4`, `MySqlParser.g4` — ANTLR grammars (unmodified, large)
+
+Built-in language id: `mysql`. Extension: `.sql` (shared with other SQL dialects; choose with `-l`).

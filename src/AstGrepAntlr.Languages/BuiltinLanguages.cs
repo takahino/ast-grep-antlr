@@ -186,6 +186,16 @@ public static class BuiltinLanguages
         registry.RegisterLazy("sqlite", static () => new SqliteLanguage());
         registry.RegisterLazy("plsql", static () => new PlSqlLanguage());
         registry.RegisterAlias("pl/sql", "plsql");
+        registry.RegisterLazy("cobol", static () => new CobolLanguage());
+        registry.RegisterAlias("cobol85", "cobol");
+        registry.RegisterLazy("vb6", static () => new Vb6Language());
+        registry.RegisterLazy("tsql", static () => new TSqlLanguage());
+        registry.RegisterAlias("mssql", "tsql");
+        registry.RegisterAlias("sqlserver", "tsql");
+        registry.RegisterLazy("postgresql", static () => new PostgreSqlLanguage());
+        registry.RegisterAlias("postgres", "postgresql");
+        registry.RegisterAlias("pgsql", "postgresql");
+        registry.RegisterLazy("mysql", static () => new MySqlLanguage());
 
         foreach (var (id, factory, aliases) in s_treeSitterOnly)
         {
