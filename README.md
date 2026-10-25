@@ -211,6 +211,20 @@ Java と `tools/antlr-4.13.2-complete.jar` が必要です（探索順：`--antl
 - ブロックやクラス本体の中の複数メタ変数は、言語の `metaVarVariants`（`{0}`、`{0};`、`int {0};` など）で解析されます。
 - 型付きメタ変数 `${A:expression}` は、照合時に `KindMatches` で検査されます。
 
+## デスクトップ GUI（ag4-gui）
+
+Core / Languages を直接参照する Avalonia 製 GUI です（Windows / Linux / macOS）。
+
+```bash
+dotnet run --project src/AstGrepAntlr.Gui
+```
+
+- 検索モード: AST パターン（言語 Auto 判定可）/ YAML ルール（sgconfig.yml・単一ファイル・インライン）/ テキスト / 正規表現
+- glob・除外ディレクトリ・文字コード・前後の行数・最大件数・インクリメンタル検索
+- コードビュー（マッチ強調）/ テーブルビュー、ダブルクリックでプレビュー（構文ハイライト）、Ctrl+F で検索
+- 置換: テンプレート（またはルールの `fix`）→ diff プレビュー → ファイル単位で適用
+- TXT / JSON / Markdown / HTML / CSV エクスポート、パターン履歴、設定の保存（`%APPDATA%/ag4-gui/settings.json` など）、日英切替
+
 ## 埋め込み / サンプル GUI
 
 他の言語からは、小さな C ABI を持つ NativeAOT 共有ライブラリ（`ag4_native`）を使います（`ag4_search` は JSON を受けて JSON を返し、ファイルシステムの `paths` とメモリ上の `sources` のどちらでも検索できます。任意で `backend` を指定できます）。CLI ではなく **DLL を読み込む**サンプル GUI があります。

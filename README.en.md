@@ -181,6 +181,11 @@ customLanguages:
 
 Requires a JDK and `tools/antlr-4.13.2-complete.jar` (or `--antlr-jar` / `ANTLR_JAR`). See [samples/dsl](samples/dsl). Custom languages are registered lazily. A step-by-step guide (grammar preparation, config keys, rules, troubleshooting) is in [docs/custom-languages.md](docs/custom-languages.md) (Japanese).
 
+## Desktop GUI (ag4-gui)
+
+An Avalonia GUI that references Core / Languages directly (Windows / Linux / macOS): `dotnet run --project src/AstGrepAntlr.Gui`.
+AST pattern (auto language), YAML rules (sgconfig / file / inline), text and regex search; code and table views with preview; rewrite with diff preview; TXT / JSON / Markdown / HTML / CSV export; history, saved settings and a Japanese / English UI.
+
 ## Embedding / sample GUIs
 
 NativeAOT shared library `ag4_native` exposes a small C ABI (`ag4_search` JSON in/out; optional `backend`). Samples: [samples/gui/README.md](samples/gui/README.md) (place tree-sitter natives next to `ag4_native`). Header: [samples/gui/include/ag4_native.h](samples/gui/include/ag4_native.h).
