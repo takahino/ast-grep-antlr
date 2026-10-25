@@ -155,3 +155,63 @@ ReadyToRun は JIT より速いが AOT には劣る。リリース binary は既
 - ANTLR の LL フォールバック 67%（commons-lang / Java）が最大ボトルネック。文法・予測モード側の改善が次の主戦場。
 - tree-sitter の build（arena 変換）はまだ native parse と同オーダー。さらなる削減はバッチ取得や arena 直書きが候補。
 - `dotnet tool` への R2R / RID 別配布は配布方針の判断が必要（今回は未採用）。
+
+## 対応結果 2: ANTLR の LL フォールバック削減（Java）
+
+### 診断モード
+
+Bench に `--antlr-diagnose` と `--tree-hashes` を追加した（`tools/AstGrepAntlr.Bench/AntlrDiagnostics.cs`）。
+`IAntlrLanguage` を直接使うので、組み込みの全 ANTLR 言語と自作 `.g4`（`InterpretedLanguage`）で動く。
+
+```sh
+# SLL の中断箇所、LL でもエラーか、判断ごとの予測時間 / LL_Fallback / LL_MaxLook
+dotnet run -c Release --project tools/AstGrepAntlr.Bench -- -l java --backend antlr --antlr-diagnose --top 15 --max-files 2000 .difftest/corpus/commons-lang/src/main/java
+# ファイルごとの木のハッシュ（文法・TreeBuilder 変更の前後で突き合わせる）
+dotnet run -c Release --project tools/AstGrepAntlr.Bench -- -l java --backend antlr --tree-hashes before.tsv --max-files 100000 .difftest/corpus
+```
+
+### 原因と修正
+
+- SLL の中断 177 件はすべて `identifier`（`=` / `;` / `(` の手前）で起きていた。`classType` の `( ... )+` が
+  `String s` の `s` まで型として読むため。LL 側でも `classType` の判断（d69）が予測時間の 1 位だった。
+- `classType` の `+` を外した（`grammars/java/README.md` に記録）。`.difftest/corpus` の Java 1387 ファイルで
+  木のハッシュは修正前と全件一致。
+- 残り 4 件は interface の default メソッド内のラムダ（`->`）で SLL が中断するもの。件数が少ないため見送り。
+  残る LL_Fallback の上位は `expression` / `interfaceBodyDeclaration`（左再帰と曖昧さ由来）。
+
+### ツリー変換
+
+- `TreeBuilder`: トークン種別ごとに型名と `IsNamed` を言語単位でキャッシュ（全言語の `IsNamedToken` が `token.Type`
+  だけで決まることを確認済み。公開インターフェースは不変）。
+- `SyntaxTreeAssembler`: 別名も子ルールも持たないノードは、種類名ごとに共有する 1 要素配列を使う。`AddUnique` の LINQ を削除。
+- HEAD のビルドと木のハッシュを突き合わせ、Java 1387 ファイルで全件一致。
+
+### Bench（Release、commons-lang 264 files、5 回の最小値）
+
+| 対象                | 項目     |        変更前 |     変更後 |
+| ------------------- | -------- | ------------: | ---------: |
+| Java / ANTLR        | parse_ms |          3710 |       2053 |
+| Java / ANTLR        | ll_ms    |         ~2500 |      30–70 |
+| Java / ANTLR        | LL 率    | 177/264 (67%) | 4/264 (2%) |
+| Java / ANTLR        | build_ms |           501 |        418 |
+| Java / tree-sitter  | build_ms |           237 |        224 |
+| C# / Roslyn（1587） | build_ms |          1259 |       1069 |
+
+SLL が最後まで進むようになった分、Java / ANTLR の SLL 時間は ~80ms → ~1000–1300ms に増えた（初回の DFA 構築）。
+それでも LL の ~2500ms が消えた分、解析全体では約 45% 短くなった。
+
+### difftest（Java / ANTLR）
+
+集計は変更前と完全に一致（same 30317 / only-sg 4705 / only-ag4 11162 / range 0 / meta 4715）。
+ag4 の合計時間は 381.7s → 209.6s（ast-grep 比 19.7x → 9.8x）。
+
+### 他の ANTLR 言語（診断のみ、文法は未修正）
+
+| 言語（コーパス、最大 300 files） |  SLL 失敗 | うち LL でエラーなし | LL_Fallback 上位                                                                  |
+| -------------------------------- | --------: | -------------------: | --------------------------------------------------------------------------------- |
+| Python（209）                    |    6 (3%) |                    0 | `atom_expr`（66）                                                                 |
+| PL/SQL（68）                     |  26 (38%) |                    9 | `general_element` / `type_spec` / `concatenation`                                 |
+| SQLite（68、PL/SQL の .sql）     |  66 (97%) |                    0 | 方言違いの入力で構文エラーになるため参考値                                        |
+| C++（300）                       | 243 (81%) |                  124 | `theTypeName`（20144）/ `statement` / `nestedNameSpecifier` / `postfixExpression` |
+
+C++ は LL 時間（プロファイル込み約 99s）の大半が `statement` / `postfixExpression` / `theTypeName` の判断に集中しており、次の候補。

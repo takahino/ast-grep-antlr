@@ -381,7 +381,7 @@
           </tr>
           <tr>
             <td>速度比 (ag4 ÷ 本家)</td>
-            <td class="num">4.15× / 19.74×</td>
+            <td class="num">4.15× / 9.82×</td>
             <td class="num">4.21× / 117.9×</td>
             <td class="num">5.35× / 6.13×</td>
             <td class="num">4.63× / 37.19×</td>
@@ -459,8 +459,8 @@
             {
               key: "java-antlr",
               label: "Java · ANTLR",
-              sg: 19.338,
-              ag4: 381.659,
+              sg: 21.34,
+              ag4: 209.591,
             },
             {
               key: "cpp-ts",
@@ -510,9 +510,9 @@
             },
             {
               label: "Java · ANTLR",
-              parse: 3347,
-              match: 46,
-              us: 5.21,
+              parse: 1427,
+              match: 49,
+              us: 2.22,
               files: 264,
               nodes: 642825,
             },
@@ -610,44 +610,44 @@
             ],
             "java-antlr": [
               {
-                id: "commons-lang/method-ref",
-                sg: 115,
-                ag4: 5994,
-              },
-              {
-                id: "commons-lang/call-any",
-                sg: 156,
-                ag4: 5174,
-              },
-              {
-                id: "commons-lang/throw-not-npe",
-                sg: 158,
-                ag4: 5151,
-              },
-              {
-                id: "commons-lang/equals-or-hashcode",
-                sg: 303,
-                ag4: 5018,
+                id: "commons-lang/equals-call",
+                sg: 163,
+                ag4: 3177,
               },
               {
                 id: "commons-lang/qualified-call",
-                sg: 138,
-                ag4: 4967,
+                sg: 174,
+                ag4: 2992,
+              },
+              {
+                id: "commons-lang/if-block",
+                sg: 201,
+                ag4: 2795,
+              },
+              {
+                id: "commons-lang/string-format",
+                sg: 316,
+                ag4: 2674,
+              },
+              {
+                id: "commons-lang/call-any",
+                sg: 194,
+                ag4: 2629,
               },
               {
                 id: "commons-lang/for-loop",
-                sg: 130,
-                ag4: 4920,
+                sg: 161,
+                ag4: 2587,
               },
               {
-                id: "commons-lang/new-has-string-arg",
-                sg: 166,
-                ag4: 4861,
+                id: "commons-lang/enhanced-for",
+                sg: 188,
+                ag4: 2539,
               },
               {
-                id: "commons-lang/private-field",
-                sg: 143,
-                ag4: 4845,
+                id: "commons-lang/chained-call",
+                sg: 193,
+                ag4: 2532,
               },
             ],
             "cpp-ts": [
@@ -1115,8 +1115,8 @@
           </tr>
           <tr>
             <td>Java · ANTLR（同）</td>
-            <td class="num">~3.3s</td>
-            <td><strong>LL フォールバック 67%</strong>（177/264）。SLL 失敗後の全文 LL やり直し</td>
+            <td class="num">~1.4s</td>
+            <td>LL フォールバック 2%（4/264）。<code>classType</code> の文法修正で 67% から削減</td>
           </tr>
           <tr>
             <td>C# · tree-sitter（corpus 1587）</td>

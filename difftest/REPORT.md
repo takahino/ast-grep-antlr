@@ -46,9 +46,9 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | Metavar diff                              |   4715 |
 | Match rate                                | 59.56% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  19338 |
-| ag4 time (ms)                             | 381659 |
-| Speed ratio (ag4 / ast-grep)              | 19.74x |
+| ast-grep time (ms)                        |  21340 |
+| ag4 time (ms)                             | 209591 |
+| Speed ratio (ag4 / ast-grep)              |  9.82x |
 
 ### C++ — tree-sitter (default)
 
