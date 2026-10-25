@@ -110,7 +110,7 @@ jobs:
           else
             shasum -a 256 ag4-${VER}-${{ matrix.rid }}.* > ag4-${VER}-${{ matrix.rid }}.sha256
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bin-${{ matrix.rid }}
           path: artifacts/ag4-*
@@ -132,7 +132,7 @@ jobs:
           dotnet pack AstGrepAntlr.slnx -c Release
           -p:Version=${{ needs.version.outputs.version }}
           -o artifacts/nupkg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nupkg
           path: artifacts/nupkg/*.nupkg
