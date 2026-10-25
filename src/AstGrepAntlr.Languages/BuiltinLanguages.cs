@@ -158,11 +158,60 @@ public static class BuiltinLanguages
         }
     }
 
+    /// <summary>tree-sitter-only languages (no backend switching): id, factory, aliases.</summary>
+    private static readonly (string Id, Func<ILanguage> Factory, string[] Aliases)[] s_treeSitterOnly =
+    [
+        ("javascript", TreeSitterBuiltins.JavaScript, ["js", "jsx"]),
+        ("typescript", TreeSitterBuiltins.TypeScript, ["ts"]),
+        ("tsx", TreeSitterBuiltins.Tsx, []),
+        ("go", TreeSitterBuiltins.Go, ["golang"]),
+        ("rust", TreeSitterBuiltins.Rust, ["rs"]),
+        ("c", TreeSitterBuiltins.C, []),
+        ("ruby", TreeSitterBuiltins.Ruby, ["rb"]),
+        ("php", TreeSitterBuiltins.Php, []),
+        ("bash", TreeSitterBuiltins.Bash, ["sh"]),
+        ("html", TreeSitterBuiltins.Html, []),
+        ("css", TreeSitterBuiltins.Css, []),
+        ("json", TreeSitterBuiltins.Json, []),
+        ("scala", TreeSitterBuiltins.Scala, []),
+        ("haskell", TreeSitterBuiltins.Haskell, ["hs"]),
+        ("julia", TreeSitterBuiltins.Julia, ["jl"]),
+        ("ocaml", TreeSitterBuiltins.OCaml, ["ml"]),
+        ("toml", TreeSitterBuiltins.Toml, []),
+        ("verilog", TreeSitterBuiltins.Verilog, ["v"]),
+    ];
+
     private static void RegisterFixed(LanguageRegistry registry)
     {
         registry.RegisterLazy("sqlite", static () => new SqliteLanguage());
         registry.RegisterLazy("plsql", static () => new PlSqlLanguage());
         registry.RegisterAlias("pl/sql", "plsql");
+
+        foreach (var (id, factory, aliases) in s_treeSitterOnly)
+        {
+            registry.RegisterLazy(id, () => CreateTreeSitterOnly(id, factory));
+            foreach (var alias in aliases)
+            {
+                registry.RegisterAlias(alias, id);
+            }
+        }
+    }
+
+    private static ILanguage CreateTreeSitterOnly(string id, Func<ILanguage> factory)
+    {
+        try
+        {
+            return factory();
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            // No ANTLR fallback exists for these; some grammars (e.g. toml, ocaml) ship only for some RIDs.
+            // (tree-sitter-swift in TreeSitter.DotNet 1.3.0 is ABI 10, below the core's minimum of 13, so it is not offered.)
+            throw new PlatformNotSupportedException(
+                $"Language '{id}' is not available on this platform ({System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier}): {ex.Message}",
+                ex
+            );
+        }
     }
 
     private static ILanguage CreateLanguage(string id, LanguageBackend backend) =>

@@ -23,10 +23,10 @@
     />
     <ProjectReference Include="..\AstGrepAntlr.Core\AstGrepAntlr.Core.csproj" />
   </ItemGroup>
-  <!-- Drop unused grammar natives from output/publish; keep core + java/cpp/python/c-sharp. -->
+  <!-- Drop unused grammar natives from output/publish; keep core + the built-in tree-sitter languages. -->
   <Target Name="FilterTreeSitterNatives" AfterTargets="ResolvePackageAssets">
     <PropertyGroup>
-      <_TsKeep>;tree-sitter;libtree-sitter;tree-sitter-java;libtree-sitter-java;tree-sitter-cpp;libtree-sitter-cpp;tree-sitter-python;libtree-sitter-python;tree-sitter-c-sharp;libtree-sitter-c-sharp;</_TsKeep>
+      <_TsKeep>;tree-sitter;libtree-sitter;tree-sitter-java;libtree-sitter-java;tree-sitter-cpp;libtree-sitter-cpp;tree-sitter-python;libtree-sitter-python;tree-sitter-c-sharp;libtree-sitter-c-sharp;tree-sitter-javascript;libtree-sitter-javascript;tree-sitter-typescript;libtree-sitter-typescript;tree-sitter-tsx;libtree-sitter-tsx;tree-sitter-go;libtree-sitter-go;tree-sitter-rust;libtree-sitter-rust;tree-sitter-c;libtree-sitter-c;tree-sitter-ruby;libtree-sitter-ruby;tree-sitter-php;libtree-sitter-php;tree-sitter-bash;libtree-sitter-bash;tree-sitter-html;libtree-sitter-html;tree-sitter-css;libtree-sitter-css;tree-sitter-json;libtree-sitter-json;tree-sitter-scala;libtree-sitter-scala;tree-sitter-haskell;libtree-sitter-haskell;tree-sitter-julia;libtree-sitter-julia;tree-sitter-ocaml;libtree-sitter-ocaml;tree-sitter-toml;libtree-sitter-toml;tree-sitter-verilog;libtree-sitter-verilog;</_TsKeep>
     </PropertyGroup>
     <ItemGroup>
       <_TsDrop

@@ -97,7 +97,14 @@ public sealed class LanguageRegistry
 
             foreach (var id in pending)
             {
-                Get(id);
+                try
+                {
+                    Get(id);
+                }
+                catch (PlatformNotSupportedException)
+                {
+                    // Built-in grammar without a native for this RID; omit it rather than fail the whole listing.
+                }
             }
 
             lock (_gate)

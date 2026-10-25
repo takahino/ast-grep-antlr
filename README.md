@@ -5,6 +5,7 @@
 [ast-grep](https://ast-grep.github.io/) に着想を得た**非公式**の構造検索ツールです。パーサは言語ごとに使い分けます。
 
 - **Java / C++ / Python / C#** — [tree-sitter](https://tree-sitter.github.io/)（既定）。速度と本家互換の kind 名を優先
+- **JavaScript / TypeScript / Go / Rust / C / Ruby / PHP ほか** — tree-sitter のみ（[言語 id](#言語-id) 参照）
 - **PL/SQL / SQLite / 独自 DSL** — [ANTLR4](https://www.antlr.org/)（`.g4` / `.interp`）
 - **C#（任意）** — [Roslyn](https://github.com/dotnet/roslyn)（`--backend roslyn`）
 
@@ -35,7 +36,7 @@
 - 文字コードを保持（UTF-8/BOM、UTF-16/32、Shift_JIS、EUC-JP）。`--encoding` / `sgconfig.yml` で指定可能
 - `.g4` / `.interp` による独自 DSL（`sgconfig.yml` → `customLanguages`、遅延読み込み）
 - AI エージェント向け MCP サーバ：`ag4 mcp`（stdio）
-- 組み込み言語：**Java**、**C++**、**C#**（tree-sitter 既定 / Roslyn 任意）、**Python** 3、**PL/SQL**、**SQLite**（独自文法で追加可能）
+- 組み込み言語：**Java**、**C++**、**C#**（tree-sitter 既定 / Roslyn 任意）、**Python** 3、**PL/SQL**、**SQLite**、tree-sitter のみの **JavaScript / TypeScript / TSX / Go / Rust / C / Ruby / PHP / Bash / HTML / CSS / JSON / Scala / Haskell / Julia / OCaml / TOML / Verilog**（独自文法で追加可能）
 
 ## インストール
 
@@ -89,14 +90,34 @@ stderr のメッセージには `ag4:` が付きます。スタックトレー�
 
 ### 言語 id
 
-| Id       | 別名               | 拡張子                                                     | 既定バックエンド | 切り替え                   |
-| -------- | ------------------ | ---------------------------------------------------------- | ---------------- | -------------------------- |
-| `java`   |                    | `.java`                                                    | tree-sitter      | `--backend antlr`          |
-| `cpp`    | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, `.cxx`, `.c++`, `.hpp`, `.hh`, `.hxx`, `.h` | tree-sitter      | `--backend antlr`（CPP14） |
-| `csharp` | `cs`, `c#`         | `.cs`                                                      | tree-sitter      | `--backend roslyn`         |
-| `python` | `py`               | `.py`                                                      | tree-sitter      | `--backend antlr`          |
-| `plsql`  | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql`                             | ANTLR            | —                          |
-| `sqlite` |                    | `.sql`, `.sqlite`                                          | ANTLR            | —                          |
+| Id           | 別名               | 拡張子                                                     | 既定バックエンド | 切り替え                   |
+| ------------ | ------------------ | ---------------------------------------------------------- | ---------------- | -------------------------- |
+| `java`       |                    | `.java`                                                    | tree-sitter      | `--backend antlr`          |
+| `cpp`        | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, `.cxx`, `.c++`, `.hpp`, `.hh`, `.hxx`, `.h` | tree-sitter      | `--backend antlr`（CPP14） |
+| `csharp`     | `cs`, `c#`         | `.cs`                                                      | tree-sitter      | `--backend roslyn`         |
+| `python`     | `py`               | `.py`                                                      | tree-sitter      | `--backend antlr`          |
+| `plsql`      | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql`                             | ANTLR            | —                          |
+| `sqlite`     |                    | `.sql`, `.sqlite`                                          | ANTLR            | —                          |
+| `javascript` | `js`, `jsx`        | `.js`, `.mjs`, `.cjs`, `.jsx`                              | tree-sitter      | —                          |
+| `typescript` | `ts`               | `.ts`, `.mts`, `.cts`                                      | tree-sitter      | —                          |
+| `tsx`        |                    | `.tsx`                                                     | tree-sitter      | —                          |
+| `go`         | `golang`           | `.go`                                                      | tree-sitter      | —                          |
+| `rust`       | `rs`               | `.rs`                                                      | tree-sitter      | —                          |
+| `c`          |                    | `.c`（`.h` は `cpp`）                                      | tree-sitter      | —                          |
+| `ruby`       | `rb`               | `.rb`, `.rake`, `.gemspec`                                 | tree-sitter      | —                          |
+| `php`        |                    | `.php`                                                     | tree-sitter      | —                          |
+| `bash`       | `sh`               | `.sh`, `.bash`                                             | tree-sitter      | —                          |
+| `html`       |                    | `.html`, `.htm`                                            | tree-sitter      | —                          |
+| `css`        |                    | `.css`                                                     | tree-sitter      | —                          |
+| `json`       |                    | `.json`                                                    | tree-sitter      | —                          |
+| `scala`      |                    | `.scala`, `.sc`                                            | tree-sitter      | —                          |
+| `haskell`    | `hs`               | `.hs`                                                      | tree-sitter      | —                          |
+| `julia`      | `jl`               | `.jl`                                                      | tree-sitter      | —                          |
+| `ocaml`      | `ml`               | `.ml`                                                      | tree-sitter      | —                          |
+| `toml`       |                    | `.toml`                                                    | tree-sitter      | —                          |
+| `verilog`    | `v`                | `.v`, `.sv`                                                | tree-sitter      | —                          |
+
+`javascript` 以下の言語は tree-sitter のみで、ANTLR フォールバックはありません。文法ネイティブは TreeSitter.DotNet 同梱のものを使うため、`toml` は Windows のみ、`ocaml` は macOS 以外で利用できます（未対応の環境で指定すると「このプラットフォームでは利用できません」というエラーになります）。Verilog の `$display` のように `$` で始まる識別子はメタ変数と衝突するため、パターンには書けません。
 
 tree-sitter 既定時の kind 名は本家 ast-grep と同じ（例: `method_invocation`、`class_declaration`）。`--backend antlr` では grammars-v4 のルール名（例: `methodCall`、`compilationunit`）になります。
 

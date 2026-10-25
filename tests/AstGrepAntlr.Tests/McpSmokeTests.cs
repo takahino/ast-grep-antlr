@@ -16,6 +16,8 @@ public class McpSmokeTests
         Assert.Contains("sqlite", json, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("python", json, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("plsql", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"javascript\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"rust\"", json, StringComparison.Ordinal);
     }
 
     [Fact]
