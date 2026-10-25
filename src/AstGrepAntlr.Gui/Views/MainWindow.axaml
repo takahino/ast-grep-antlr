@@ -1,0 +1,243 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AstGrepAntlr.Gui.ViewModels"
+        xmlns:m="using:AstGrepAntlr.Gui.Models"
+        xmlns:ae="using:AvaloniaEdit"
+        x:Class="AstGrepAntlr.Gui.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="ag4 GUI"
+        Width="1280" Height="840" MinWidth="820" MinHeight="520">
+  <Window.KeyBindings>
+    <KeyBinding Gesture="F5" Command="{Binding SearchCommand}" />
+    <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
+  </Window.KeyBindings>
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="TextBox.mono">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <!-- Status bar -->
+    <Border DockPanel.Dock="Bottom" Padding="10,4"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding WarningSummary}" Foreground="DarkOrange"
+                   Margin="12,0,0,0" VerticalAlignment="Center"
+                   ToolTip.Tip="{Binding WarningDetails}" />
+      </Grid>
+    </Border>
+
+    <!-- Search conditions -->
+    <StackPanel DockPanel.Dock="Top" Margin="10,10,10,6" Spacing="6">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
+        <TextBlock Classes="label" Text="{Binding T.Root}" ToolTip.Tip="{Binding T.RootTip}" />
+        <TextBox Grid.Column="1" Text="{Binding Root}" ToolTip.Tip="{Binding T.RootTip}" />
+        <Button Grid.Column="2" Margin="4,0,0,0" Content="{Binding T.Browse}" Click="OnBrowseRoot" />
+        <Button Grid.Column="3" Margin="4,0,0,0" Content="{Binding T.BrowseFile}" Click="OnBrowseRootFile" />
+        <TextBlock Grid.Column="4" Classes="label" Margin="16,0,6,0" Text="{Binding T.Mode}"
+                   ToolTip.Tip="{Binding T.ModeTip}" />
+        <ComboBox Grid.Column="5" MinWidth="140" ItemsSource="{Binding ModeLabels}"
+                  SelectedIndex="{Binding ModeIndex}" ToolTip.Tip="{Binding T.ModeTip}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:LabelItem">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Grid.Column="6" Margin="12,0,0,0" Content="{Binding T.SwitchLanguage}"
+                Command="{Binding ToggleUiLanguageCommand}" />
+      </Grid>
+
+      <WrapPanel Orientation="Horizontal">
+        <StackPanel Orientation="Horizontal" Margin="0,0,16,4" IsVisible="{Binding IsAstMode}">
+          <TextBlock Classes="label" Text="{Binding T.Language}" ToolTip.Tip="{Binding T.LanguageTip}" />
+          <ComboBox MinWidth="130" ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}"
+                    ToolTip.Tip="{Binding T.LanguageTip}" />
+          <TextBlock Classes="label" Margin="12,0,6,0" Text="{Binding T.Strictness}"
+                     ToolTip.Tip="{Binding T.StrictnessTip}" />
+          <ComboBox MinWidth="100" ItemsSource="{Binding StrictnessOptions}" SelectedItem="{Binding Strictness}"
+                    ToolTip.Tip="{Binding T.StrictnessTip}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,16,4" IsVisible="{Binding IsStructuralMode}">
+          <TextBlock Classes="label" Text="{Binding T.Backend}" ToolTip.Tip="{Binding T.BackendTip}" />
+          <ComboBox MinWidth="110" ItemsSource="{Binding BackendOptions}" SelectedItem="{Binding Backend}"
+                    ToolTip.Tip="{Binding T.BackendTip}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,16,4" IsVisible="{Binding IsTextMode}">
+          <CheckBox Content="{Binding T.CaseSensitive}" IsChecked="{Binding CaseSensitive}"
+                    ToolTip.Tip="{Binding T.CaseSensitiveTip}" />
+          <CheckBox Margin="12,0,0,0" Content="{Binding T.WholeWord}" IsChecked="{Binding WholeWord}"
+                    IsVisible="{Binding IsPlainTextMode}" ToolTip.Tip="{Binding T.WholeWordTip}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,16,4" IsVisible="{Binding IsRuleMode}">
+          <TextBlock Classes="label" Text="{Binding T.RuleSource}" ToolTip.Tip="{Binding T.RuleSourceTip}" />
+          <ComboBox MinWidth="130" ItemsSource="{Binding RuleSourceLabels}" SelectedIndex="{Binding RuleSourceIndex}"
+                    ToolTip.Tip="{Binding T.RuleSourceTip}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:LabelItem">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding IsRulePathVisible}">
+            <TextBlock Classes="label" Margin="12,0,6,0" Text="{Binding T.RulePath}"
+                       ToolTip.Tip="{Binding T.RulePathTip}" />
+            <TextBox Width="340" Text="{Binding RulePath}" Watermark="{Binding RulePathHint}"
+                     ToolTip.Tip="{Binding T.RulePathTip}" />
+            <Button Margin="4,0,0,0" Content="{Binding T.BrowseFile}" Click="OnBrowseRule" />
+          </StackPanel>
+          <TextBlock Classes="label" Margin="12,0,6,0" Text="{Binding T.RuleIdFilter}"
+                     ToolTip.Tip="{Binding T.RuleIdFilterTip}" />
+          <TextBox Width="160" Text="{Binding RuleIdFilter}" ToolTip.Tip="{Binding T.RuleIdFilterTip}" />
+        </StackPanel>
+      </WrapPanel>
+
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Classes="label" VerticalAlignment="Top" Margin="0,6,6,0" Text="{Binding T.Pattern}"
+                   ToolTip.Tip="{Binding T.PatternTip}" />
+        <TextBox Grid.Column="1" Classes="mono" Text="{Binding Pattern}" Watermark="{Binding PatternHint}"
+                 AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="34" MaxHeight="220" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="4,0,0,0" Spacing="4">
+          <Button Name="HistoryButton" Content="{Binding T.History}" Click="OnShowHistory" />
+          <Button Name="PresetButton" Content="{Binding T.Presets}" Click="OnShowPresets" />
+          <Button Content="{Binding T.Help}" Click="OnShowHelp" />
+        </StackPanel>
+      </Grid>
+
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding IsStructuralMode}">
+        <TextBlock Classes="label" Text="{Binding T.Rewrite}" ToolTip.Tip="{Binding T.RewriteTip}" />
+        <TextBox Grid.Column="1" Classes="mono" Text="{Binding Rewrite}" Watermark="{Binding T.RewriteHint}" />
+      </Grid>
+
+      <Expander Header="{Binding T.Advanced}" HorizontalAlignment="Stretch">
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" >
+          <TextBlock Classes="label" Text="{Binding T.Globs}" ToolTip.Tip="{Binding T.GlobsTip}" />
+          <TextBox Grid.Column="1" Text="{Binding Globs}" Watermark="{Binding T.GlobsHint}" Margin="0,0,16,4"
+                   ToolTip.Tip="{Binding T.GlobsTip}" />
+          <TextBlock Grid.Column="2" Classes="label" Text="{Binding T.ExcludeDirs}"
+                     ToolTip.Tip="{Binding T.ExcludeDirsTip}" />
+          <TextBox Grid.Column="3" Text="{Binding ExcludeDirs}" Watermark="{Binding T.ExcludeDirsHint}" Margin="0,0,0,4"
+                   ToolTip.Tip="{Binding T.ExcludeDirsTip}" />
+
+          <TextBlock Grid.Row="1" Classes="label" Text="{Binding T.Encoding}" ToolTip.Tip="{Binding T.EncodingTip}" />
+          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,0,0,4">
+            <ComboBox MinWidth="120" ItemsSource="{Binding EncodingOptions}" SelectedItem="{Binding Encoding}"
+                      ToolTip.Tip="{Binding T.EncodingTip}" />
+            <TextBlock Classes="label" Margin="16,0,6,0" Text="{Binding T.ContextLines}"
+                       ToolTip.Tip="{Binding T.ContextLinesTip}" />
+            <NumericUpDown Width="110" Minimum="0" Maximum="50" Increment="1" FormatString="0"
+                           Value="{Binding ContextLines}" ToolTip.Tip="{Binding T.ContextLinesTip}" />
+            <TextBlock Classes="label" Margin="16,0,6,0" Text="{Binding T.MaxResults}"
+                       ToolTip.Tip="{Binding T.MaxResultsTip}" />
+            <NumericUpDown Width="150" Minimum="1" Maximum="10000000" Increment="1000" FormatString="0"
+                           Value="{Binding MaxResults}" ToolTip.Tip="{Binding T.MaxResultsTip}" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="2" Grid.ColumnSpan="4" Orientation="Horizontal" Spacing="16">
+            <CheckBox Content="{Binding T.NoIgnore}" IsChecked="{Binding NoIgnore}"
+                      ToolTip.Tip="{Binding T.NoIgnoreTip}" />
+            <CheckBox Content="{Binding T.IncludeHidden}" IsChecked="{Binding IncludeHidden}"
+                      ToolTip.Tip="{Binding T.IncludeHiddenTip}" />
+            <CheckBox Content="{Binding T.Incremental}" IsChecked="{Binding Incremental}"
+                      ToolTip.Tip="{Binding T.IncrementalTip}" />
+          </StackPanel>
+        </Grid>
+      </Expander>
+
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Button Classes="accent" MinWidth="110" Content="{Binding T.Search}" Command="{Binding SearchCommand}" />
+        <Button MinWidth="90" Content="{Binding T.Cancel}" Command="{Binding CancelCommand}" />
+        <Button Content="{Binding T.RewritePreview}" Click="OnRewritePreview"
+                IsVisible="{Binding IsStructuralMode}" IsEnabled="{Binding HasHits}" />
+        <Button Name="ExportButton" Content="{Binding T.Export}" Click="OnExport" IsEnabled="{Binding HasHits}" />
+        <Button Content="{Binding T.Copy}" Click="OnCopyResults" IsEnabled="{Binding HasHits}" />
+        <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" Margin="8,0,0,0"
+                     IsVisible="{Binding IsSearching}" />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Results -->
+    <Grid ColumnDefinitions="280,4,*" Margin="10,0,10,8">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,4" Text="{Binding T.Files}" />
+        <ListBox Name="FileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
+                 DoubleTapped="OnFileDoubleTapped">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:FileGroup">
+              <Grid ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding File}">
+                <TextBlock Text="{Binding DisplayPath}" TextTrimming="LeadingCharacterEllipsis" />
+                <TextBlock Grid.Column="1" Margin="8,0,0,0" Opacity="0.7" Text="{Binding Count}" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+          <ListBox.ContextMenu>
+            <ContextMenu>
+              <MenuItem Header="{Binding T.Preview}" Click="OnFilePreview" />
+              <MenuItem Header="{Binding T.OpenInApp}" Click="OnFileOpenInApp" />
+              <MenuItem Header="{Binding T.CopyPath}" Click="OnFileCopyPath" />
+            </ContextMenu>
+          </ListBox.ContextMenu>
+        </ListBox>
+      </DockPanel>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+
+      <TabControl Name="ResultTabs" Grid.Column="2" Padding="0">
+        <TabItem Header="{Binding T.CodeView}">
+          <ae:TextEditor Name="CodeEditor" IsReadOnly="True" ShowLineNumbers="False"
+                         FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                         DoubleTapped="OnCodeDoubleTapped">
+            <ae:TextEditor.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="{Binding T.Preview}" Click="OnCodePreview" />
+                <MenuItem Header="{Binding T.OpenInApp}" Click="OnCodeOpenInApp" />
+                <MenuItem Header="{Binding T.CopyPath}" Click="OnCodeCopyPath" />
+              </ContextMenu>
+            </ae:TextEditor.ContextMenu>
+          </ae:TextEditor>
+        </TabItem>
+        <TabItem Header="{Binding T.TableView}">
+          <DockPanel>
+            <StackPanel Name="TableFindBar" DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6"
+                        Margin="0,4" IsVisible="False">
+              <TextBlock Classes="label" Text="{Binding T.Find}" />
+              <TextBox Name="TableFindBox" Width="260" KeyDown="OnTableFindKeyDown" />
+              <CheckBox Name="TableFindCase" Content="{Binding T.CaseSensitive}" />
+              <Button Content="{Binding T.FindPrev}" Click="OnTableFindPrev" />
+              <Button Content="{Binding T.FindNext}" Click="OnTableFindNext" />
+              <Button Content="✕" Click="OnTableFindClose" />
+            </StackPanel>
+            <DataGrid Name="ResultGrid" ItemsSource="{Binding VisibleHits}" IsReadOnly="True"
+                      CanUserSortColumns="True" CanUserResizeColumns="True" GridLinesVisibility="Horizontal"
+                      SelectionMode="Single" DoubleTapped="OnGridDoubleTapped">
+              <DataGrid.Columns>
+                <DataGridTextColumn x:DataType="m:SearchHit" Binding="{Binding DisplayPath}" Width="2*" />
+                <DataGridTextColumn x:DataType="m:SearchHit" Binding="{Binding StartLine}" Width="70" />
+                <DataGridTextColumn x:DataType="m:SearchHit" Binding="{Binding StartColumn}" Width="75" />
+                <DataGridTextColumn x:DataType="m:SearchHit" Binding="{Binding TextOneLine}" Width="3*"
+                                    FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+                <DataGridTextColumn x:DataType="m:SearchHit" Binding="{Binding MetaSummary}" Width="2*" />
+                <DataGridTextColumn x:DataType="m:SearchHit" Binding="{Binding RuleId}" Width="*" />
+                <DataGridTextColumn x:DataType="m:SearchHit" Binding="{Binding Message}" Width="2*" />
+              </DataGrid.Columns>
+              <DataGrid.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="{Binding T.Preview}" Click="OnGridPreview" />
+                  <MenuItem Header="{Binding T.OpenInApp}" Click="OnGridOpenInApp" />
+                  <MenuItem Header="{Binding T.CopyPath}" Click="OnGridCopyPath" />
+                </ContextMenu>
+              </DataGrid.ContextMenu>
+            </DataGrid>
+          </DockPanel>
+        </TabItem>
+      </TabControl>
+    </Grid>
+  </DockPanel>
+</Window>

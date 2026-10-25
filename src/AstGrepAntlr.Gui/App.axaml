@@ -1,0 +1,14 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AstGrepAntlr.Gui.App"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+    <!-- Option help tooltips are multi-line; the Fluent default width wraps them too aggressively. -->
+    <Style Selector="ToolTip">
+      <Setter Property="MaxWidth" Value="560" />
+    </Style>
+  </Application.Styles>
+</Application>

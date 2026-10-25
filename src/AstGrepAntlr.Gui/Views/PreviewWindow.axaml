@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ae="using:AvaloniaEdit"
+        x:Class="AstGrepAntlr.Gui.Views.PreviewWindow"
+        Width="1000" Height="720" MinWidth="500" MinHeight="300">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Padding="8,6"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Name="PathText" VerticalAlignment="Center" TextTrimming="LeadingCharacterEllipsis" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <TextBlock Name="PositionText" VerticalAlignment="Center" Margin="16,0,8,0" />
+          <Button Name="PrevButton" Click="OnPrev" />
+          <Button Name="NextButton" Click="OnNext" />
+          <Button Name="OpenButton" Click="OnOpenInApp" />
+        </StackPanel>
+      </Grid>
+    </Border>
+    <ae:TextEditor Name="Editor" IsReadOnly="True" ShowLineNumbers="True"
+                   FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                   HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+  </DockPanel>
+</Window>

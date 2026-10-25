@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ae="using:AvaloniaEdit"
+        x:Class="AstGrepAntlr.Gui.Views.HelpWindow"
+        Width="900" Height="720" MinWidth="400" MinHeight="300">
+  <TabControl Margin="4">
+    <TabItem Name="PatternTab">
+      <ae:TextEditor Name="PatternEditor" IsReadOnly="True" WordWrap="True"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+    </TabItem>
+    <TabItem Name="RuleTab">
+      <ae:TextEditor Name="RuleEditor" IsReadOnly="True" WordWrap="True"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+    </TabItem>
+  </TabControl>
+</Window>

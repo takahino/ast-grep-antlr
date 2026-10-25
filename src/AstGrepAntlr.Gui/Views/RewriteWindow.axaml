@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AstGrepAntlr.Gui.ViewModels"
+        xmlns:ae="using:AvaloniaEdit"
+        x:Class="AstGrepAntlr.Gui.Views.RewriteWindow"
+        x:DataType="vm:RewriteViewModel"
+        Title="{Binding T.RewriteTitle}"
+        Width="1100" Height="720" MinWidth="600" MinHeight="300">
+  <DockPanel Margin="8">
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+      <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+        <Button Content="{Binding T.SelectAll}" Command="{Binding SelectAllCommand}" />
+        <Button Content="{Binding T.SelectNone}" Command="{Binding SelectNoneCommand}" />
+        <Button Classes="accent" Content="{Binding T.Apply}" Command="{Binding ApplyCommand}" />
+        <Button Content="{Binding T.Close}" Click="OnClose" />
+      </StackPanel>
+    </Grid>
+    <Grid ColumnDefinitions="320,4,*">
+      <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:RewriteItem">
+            <StackPanel>
+              <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding CanSelect}">
+                <TextBlock Text="{Binding Label}" TextTrimming="LeadingCharacterEllipsis" />
+              </CheckBox>
+              <TextBlock Text="{Binding Result}" IsVisible="{Binding HasResult}" Margin="28,0,0,0"
+                         Opacity="0.8" TextWrapping="Wrap" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <ae:TextEditor Name="DiffEditor" Grid.Column="2" IsReadOnly="True" ShowLineNumbers="False"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+    </Grid>
+  </DockPanel>
+</Window>

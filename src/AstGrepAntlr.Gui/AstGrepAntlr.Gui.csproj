@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AstGrepAntlr.Gui</RootNamespace>
+    <AssemblyName>ag4-gui</AssemblyName>
+    <Description>Desktop GUI for ag4 structural search (Avalonia).</Description>
+    <IsPackable>false</IsPackable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" />
+    <PackageReference Include="AvaloniaEdit.TextMate" />
+    <PackageReference Include="TextMateSharp.Grammars" />
+    <ProjectReference Include="..\AstGrepAntlr.Core\AstGrepAntlr.Core.csproj" />
+    <ProjectReference Include="..\AstGrepAntlr.Languages\AstGrepAntlr.Languages.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Pattern syntax help shown in the Help window; single source shared with the MCP server. -->
+    <EmbeddedResource
+      Include="..\AstGrepAntlr.Mcp\Docs\pattern-syntax.md"
+      LogicalName="AstGrepAntlr.Gui.pattern-syntax.md"
+    />
+    <EmbeddedResource Include="..\AstGrepAntlr.Mcp\Docs\rule-yaml.md" LogicalName="AstGrepAntlr.Gui.rule-yaml.md" />
+  </ItemGroup>
+</Project>

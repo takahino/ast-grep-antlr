@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/AstGrepAntlr.Cli/AstGrepAntlr.Cli.csproj" />
     <Project Path="src/AstGrepAntlr.Core/AstGrepAntlr.Core.csproj" />
+    <Project Path="src/AstGrepAntlr.Gui/AstGrepAntlr.Gui.csproj" />
     <Project Path="src/AstGrepAntlr.Languages/AstGrepAntlr.Languages.csproj" />
     <Project Path="src/AstGrepAntlr.Mcp/AstGrepAntlr.Mcp.csproj" />
     <Project Path="src/AstGrepAntlr.Native/AstGrepAntlr.Native.csproj" />
