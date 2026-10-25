@@ -145,7 +145,7 @@ customLanguages:
     metaVarVariants: ["{0}", "{0};"]
 ```
 
-Requires a JDK and `tools/antlr-4.13.2-complete.jar` (or `--antlr-jar` / `ANTLR_JAR`). See [samples/dsl](samples/dsl). Custom languages are registered lazily.
+Requires a JDK and `tools/antlr-4.13.2-complete.jar` (or `--antlr-jar` / `ANTLR_JAR`). See [samples/dsl](samples/dsl). Custom languages are registered lazily. A step-by-step guide (grammar preparation, config keys, rules, troubleshooting) is in [docs/custom-languages.md](docs/custom-languages.md) (Japanese).
 
 ## Embedding / sample GUIs
 

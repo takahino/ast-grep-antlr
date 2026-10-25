@@ -167,7 +167,7 @@ customLanguages:
     metaVarVariants: ["{0}", "{0};"]
 ```
 
-Java と `tools/antlr-4.13.2-complete.jar` が必要です（探索順：`--antlr-jar`、`ANTLR_JAR`、sgconfig のあるディレクトリ／カレントディレクトリとその祖先の `tools/`、最後に `BaseDirectory`）。生成済みの `.interp` ファイルを指定することもできます。[samples/dsl](samples/dsl) を参照してください。
+Java と `tools/antlr-4.13.2-complete.jar` が必要です（探索順：`--antlr-jar`、`ANTLR_JAR`、sgconfig のあるディレクトリ／カレントディレクトリとその祖先の `tools/`、最後に `BaseDirectory`）。生成済みの `.interp` ファイルを指定することもできます。[samples/dsl](samples/dsl) を参照してください。文法の用意から設定項目・ルールの書き方・トラブルシューティングまでの詳しい手順は [docs/custom-languages.md](docs/custom-languages.md) にまとめています。
 
 `run` / `debug` / `scan` は `-c/--config` を受け付けます。独自言語は遅延登録されるので、`run -l java` で無関係な文法がコンパイルされることはありません。
 
