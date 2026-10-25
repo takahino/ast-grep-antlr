@@ -13,7 +13,7 @@ internal sealed class SearchRequest
     public string? Strictness { get; set; }
     public int? MaxResults { get; set; }
 
-    /// <summary>Optional parser backend: tree-sitter or antlr (switchable languages only).</summary>
+    /// <summary>Optional parser backend: tree-sitter, antlr, or roslyn (switchable languages only).</summary>
     public string? Backend { get; set; }
 }
 
@@ -72,7 +72,7 @@ internal sealed class MetaVariablesDto
 internal sealed class MetaEntryDto
 {
     public required string Text { get; set; }
-    public required OffsetPairDto CharOffset { get; set; }
+    public required RangeDto Range { get; set; }
 }
 
 [JsonSourceGenerationOptions(

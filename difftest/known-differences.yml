@@ -346,6 +346,7 @@ differences:
   # --- C# (Roslyn vs tree-sitter-c-sharp) ---
   - id: csharp-cast-paren
     language: csharp
+    backend: roslyn
     pattern_id: cast-expr
     category: grammar-boundary
     reason: >
@@ -355,6 +356,7 @@ differences:
 
   - id: csharp-block-brace-shape
     language: csharp
+    backend: roslyn
     category: grammar-boundary
     reason: >
       Block / statement patterns with braces (if/while/for/foreach/using/lock/public method)
@@ -363,6 +365,7 @@ differences:
 
   - id: csharp-identifier-granularity
     language: csharp
+    backend: roslyn
     pattern_id: kind-identifier
     category: grammar-boundary
     reason: >
@@ -372,6 +375,7 @@ differences:
 
   - id: csharp-identifier-range
     language: csharp
+    backend: roslyn
     pattern_id: kind-identifier
     category: grammar-boundary
     reason: Occasional range-diff on identifier spans between Roslyn and tree-sitter.
@@ -379,6 +383,7 @@ differences:
 
   - id: csharp-call-metavar
     language: csharp
+    backend: roslyn
     category: grammar-boundary
     reason: >
       Invocation / member-access CST shape differs (argument lists, generic type args,
@@ -387,6 +392,7 @@ differences:
 
   - id: csharp-residual-only-ast-grep
     language: csharp
+    backend: roslyn
     category: grammar-boundary
     reason: >
       Residual only-ast-grep after Roslyn kind aliases; attributed to tree-sitter-c-sharp
@@ -395,6 +401,7 @@ differences:
 
   - id: csharp-residual-only-ag4
     language: csharp
+    backend: roslyn
     category: grammar-boundary
     reason: >
       Residual only-ag4 from Roslyn shapes that tree-sitter does not surface the same way
@@ -403,12 +410,14 @@ differences:
 
   - id: csharp-residual-metavar
     language: csharp
+    backend: roslyn
     category: grammar-boundary
     reason: Residual metavar-diff from Roslyn vs tree-sitter-c-sharp capture extents.
     bucket: MetaVarDiff
 
   - id: csharp-residual-range
     language: csharp
+    backend: roslyn
     category: grammar-boundary
     reason: Residual range-diff from Roslyn vs tree-sitter-c-sharp node extents.
     bucket: RangeDiff
@@ -476,28 +485,17 @@ differences:
     backend: tree-sitter
     category: matcher
     reason: >
-      With tree-sitter-java on both sides, metavar capture spans still differ due to ag4
-      MetaVarVariants, single-child unwrap, and modifier/extra skipping vs upstream.
+      After emitting $$$ as per-node multi arrays (ast-grep shape), residual metavar-diff
+      remains on try-catch / a few block bodies where child partitioning still differs.
     bucket: MetaVarDiff
-
-  - id: ts-java-if-block-only-sg
-    language: java
-    backend: tree-sitter
-    pattern_id: if-block
-    category: matcher
-    reason: >
-      After expression-context fixes, residual only-ast-grep on if ($COND) { $$$BODY }
-      (commons-lang ~328) remains MetaVar/body-shape sensitive; not collapsed as a clear
-      compile bug — leave as known matcher residual.
-    bucket: OnlyAstGrep
 
   - id: ts-java-only-ast-grep-matcher
     language: java
     backend: tree-sitter
     category: matcher
     reason: >
-      Residual only-ast-grep after Only* bugfixes (statement-first contexts, exact-span);
-      mostly if-block / try shapes and other strict pattern-root gaps vs upstream.
+      Residual only-ast-grep after Smart trailing-skip and multi-JSON alignment
+      (switch-block pattern roots, try-catch edges) vs upstream.
     bucket: OnlyAstGrep
 
   - id: ts-java-only-ag4-matcher
@@ -505,8 +503,8 @@ differences:
     backend: tree-sitter
     category: matcher
     reason: >
-      Residual only-ag4 from ag4-broader matching (enhanced-for variants, lambda/import
-      edges, explicit this/super after constructor_body wrap).
+      Residual only-ag4 from intentional broader matching (enhanced-for, lambda-arrow /
+      lambda-block, static import, static-init) vs upstream.
     bucket: OnlyAg4
 
   - id: ts-java-range-matcher
@@ -574,4 +572,37 @@ differences:
     backend: tree-sitter
     category: matcher
     reason: Occasional range-diff residuals under tree-sitter-python.
+    bucket: RangeDiff
+
+  - id: ts-csharp-metavar-matcher
+    language: csharp
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      Residual metavar-diff under tree-sitter-c-sharp vs upstream (casts, lambdas,
+      is-patterns, argument lists) after multi-JSON alignment.
+    bucket: MetaVarDiff
+
+  - id: ts-csharp-only-ast-grep-matcher
+    language: csharp
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      Residual only-ast-grep when ag4 tree-sitter-c-sharp pattern roots miss hits that
+      upstream finds (parenthesized casts, using-directives, switch expressions).
+    bucket: OnlyAstGrep
+
+  - id: ts-csharp-only-ag4-matcher
+    language: csharp
+    backend: tree-sitter
+    category: matcher
+    reason: >
+      Residual only-ag4 from ag4-broader matching under tree-sitter-c-sharp vs upstream.
+    bucket: OnlyAg4
+
+  - id: ts-csharp-range-matcher
+    language: csharp
+    backend: tree-sitter
+    category: matcher
+    reason: Occasional range-diff residuals under tree-sitter-c-sharp.
     bucket: RangeDiff

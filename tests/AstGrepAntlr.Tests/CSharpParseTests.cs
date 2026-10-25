@@ -1,4 +1,5 @@
 using AstGrepAntlr.Languages;
+using AstGrepAntlr.Languages.TreeSitter;
 using AstGrepAntlr.Matching;
 using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Pattern;
@@ -36,6 +37,13 @@ public class CSharpParseTests
     public void Registry_resolves_csharp_aliases()
     {
         var registry = BuiltinLanguages.CreateRegistry();
+        foreach (var alias in new[] { "csharp", "cs", "c#" })
+        {
+            // Default backend for C# is tree-sitter; Roslyn remains available via --backend roslyn.
+            Assert.IsType<TreeSitterLanguage>(registry.Get(alias));
+        }
+
+        BuiltinLanguages.ApplyBackend(registry, "csharp", LanguageBackend.Roslyn);
         foreach (var alias in new[] { "csharp", "cs", "c#" })
         {
             Assert.IsType<CSharpLanguage>(registry.Get(alias));

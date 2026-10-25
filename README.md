@@ -4,9 +4,9 @@
 
 [ast-grep](https://ast-grep.github.io/) に着想を得た**非公式**の構造検索ツールです。パーサは言語ごとに使い分けます。
 
-- **Java / C++ / Python** — [tree-sitter](https://tree-sitter.github.io/)（既定）。速度と本家互換の kind 名を優先
+- **Java / C++ / Python / C#** — [tree-sitter](https://tree-sitter.github.io/)（既定）。速度と本家互換の kind 名を優先
 - **PL/SQL / SQLite / 独自 DSL** — [ANTLR4](https://www.antlr.org/)（`.g4` / `.interp`）
-- **C#** — [Roslyn](https://github.com/dotnet/roslyn)（`Microsoft.CodeAnalysis.CSharp`）
+- **C#（任意）** — [Roslyn](https://github.com/dotnet/roslyn)（`--backend roslyn`）
 
 公式の ast-grep プロジェクトとは**関係ありません**。
 
@@ -17,13 +17,13 @@
 - メタ変数パターン：`$A`、`$_`、`$$$ARGS`、型付き `${A:expression}`（supertype / ルール名）
 - YAML ルール：`pattern`、`kind`、`inside`、`has`、`precedes`、`follows`、`all`/`any`/`not`、`constraints`、`matches`、`fix`、`files`/`ignores`
 - `stopBy`：`neighbor`（既定、ast-grep 互換）、`end`、または kind 名
-- バックエンド切り替え：`--backend tree-sitter|antlr`、`sgconfig.yml` の `languageBackends`
+- バックエンド切り替え：`--backend tree-sitter|antlr|roslyn`、`sgconfig.yml` の `languageBackends`
 - 構文エラーがあっても解析を続行（tree-sitter の ERROR/MISSING、ANTLR の SLL → LL + エラー回復）
 - リテラルによるプレフィルタ、gitignore、`--globs` に対応した並列ファイル探索
 - 文字コードを保持（UTF-8/BOM、UTF-16/32、Shift_JIS、EUC-JP）。`--encoding` / `sgconfig.yml` で指定可能
 - `.g4` / `.interp` による独自 DSL（`sgconfig.yml` → `customLanguages`、遅延読み込み）
 - AI エージェント向け MCP サーバ：`ag4 mcp`（stdio）
-- 組み込み言語：**Java**、**C++**、**C#**（Roslyn）、**Python** 3、**PL/SQL**、**SQLite**（独自文法で追加可能）
+- 組み込み言語：**Java**、**C++**、**C#**（tree-sitter 既定 / Roslyn 任意）、**Python** 3、**PL/SQL**、**SQLite**（独自文法で追加可能）
 
 ## インストール
 
@@ -42,6 +42,7 @@ NativeAOT バイナリは GitHub Releases で配布しています（`win-x64` /
 ```bash
 ag4 run -p 'System.out.println($A)' -l java path/to/src
 ag4 run -p 'System.out.println($A)' -l java --backend antlr path/to/src   # ANTLR に切替
+ag4 run -p 'Console.WriteLine($A)' -l csharp --backend roslyn path/to/src # C# を Roslyn に
 ag4 run -p 'System.out.println($A)' -l java --json path/to/src
 ag4 run -p 'foo($A)' -l java --strictness smart --max-results 20 --globs '**/*.java' src/
 ag4 run -p 'foo($A)' -l java --rewrite 'bar($A)' --apply src/
@@ -80,7 +81,7 @@ stderr のメッセージには `ag4:` が付きます。スタックトレー�
 | -------- | ------------------ | ---------------------------------------------------------- | ---------------- | -------------------------- |
 | `java`   |                    | `.java`                                                    | tree-sitter      | `--backend antlr`          |
 | `cpp`    | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, `.cxx`, `.c++`, `.hpp`, `.hh`, `.hxx`, `.h` | tree-sitter      | `--backend antlr`（CPP14） |
-| `csharp` | `cs`, `c#`         | `.cs`                                                      | Roslyn           | —                          |
+| `csharp` | `cs`, `c#`         | `.cs`                                                      | tree-sitter      | `--backend roslyn`         |
 | `python` | `py`               | `.py`                                                      | tree-sitter      | `--backend antlr`          |
 | `plsql`  | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql`                             | ANTLR            | —                          |
 | `sqlite` |                    | `.sql`, `.sqlite`                                          | ANTLR            | —                          |
@@ -93,24 +94,26 @@ Python を ANTLR にすると grammars-v4 の **python3**（MIT）になりま�
 
 PL/SQL は grammars-v4 の **sql/plsql**（Apache-2.0）です。`.sql` は SQLite にも割り当てられているので、方言は `-l` で選んでください。
 
-C# は **Roslyn**（MIT）です。ノードの kind は Roslyn の `SyntaxKind` を snake_case にした名前で、tree-sitter-c-sharp と名前が異なるものには別名を付けています。
+C# の既定は **tree-sitter-c-sharp**（本家と同じ kind 名）です。`--backend roslyn` では Roslyn（MIT）の `SyntaxKind` snake_case（一部に tree-sitter 別名）になります。
 
 ## バックエンドの選択
 
 ```bash
-# CLI（java / cpp / python のみ）
+# CLI（切替可能な言語のみ。グローバル指定は対応言語にだけ効く）
 ag4 run -l java --backend tree-sitter -p '$F($$$ARGS)' src/
 ag4 run -l java --backend antlr -p '$F($$$ARGS)' src/
+ag4 run -l csharp --backend roslyn -p '$F($$$ARGS)' src/
 ```
 
 ```yaml
 # sgconfig.yml
 languageBackends:
   java: antlr # このリポジトリだけ ANTLR kind の既存ルールを維持
+  csharp: roslyn
   python: tree-sitter
 ```
 
-CLI の `--backend` は sgconfig より優先し、切替可能な全言語に適用されます。tree-sitter のネイティブライブラリが読めない環境では stderr に警告を出して ANTLR に自動フォールバックします。
+CLI の `--backend` は sgconfig より優先し、そのバックエンドを使える言語にだけ適用します（例: `--backend antlr` は java/cpp/python、csharp は tree-sitter のまま）。tree-sitter のネイティブが読めない環境では stderr に警告を出し、csharp は Roslyn・それ以外は ANTLR にフォールバックします。
 
 ### kind 名の移行（ANTLR → tree-sitter）
 
@@ -182,11 +185,12 @@ Java と `tools/antlr-4.13.2-complete.jar` が必要です（探索順：`--antl
 実在の Java / C++ / C# / Python コーパスで、バージョンを固定した `@ast-grep/cli@0.51.0` と ag4 の結果を比較します。
 
 ```bash
-# 既定: ag4 は tree-sitter（java/cpp/python）
+# 既定: ag4 は tree-sitter（java/cpp/python/csharp）
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus difftest/corpus.yml
 
-# ANTLR バックエンドで比較
+# ANTLR / Roslyn で比較
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus difftest/corpus.yml --backend antlr
+dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus difftest/corpus.yml --backend roslyn --language csharp
 ```
 
 clone 先は `.difftest/`（gitignore 済み）です。結果の要約は [difftest/REPORT.md](difftest/REPORT.md)、差異の解説は [ast-grep-vs-ag4.html](ast-grep-vs-ag4.html) にあります。CI：`.github/workflows/difftest.yml`（手動実行 + 週次）。

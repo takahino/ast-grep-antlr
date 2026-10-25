@@ -348,6 +348,7 @@ internal static class DiffTestRunner
         var counts = new DiffSummary();
         var unexplained = new DiffSummary();
         var samples = new List<ClassifiedMatchReport>();
+        var samplesPerBucket = new Dictionary<MatchBucket, int>();
         foreach (var item in classified)
         {
             counts.Add(item);
@@ -364,8 +365,15 @@ internal static class DiffTestRunner
                 unexplained.Add(item);
             }
 
-            if (item.Bucket != MatchBucket.Same && samples.Count < ctx.SampleLimit)
+            if (item.Bucket == MatchBucket.Same)
             {
+                continue;
+            }
+
+            samplesPerBucket.TryGetValue(item.Bucket, out var taken);
+            if (taken < ctx.SampleLimit)
+            {
+                samplesPerBucket[item.Bucket] = taken + 1;
                 samples.Add(
                     new ClassifiedMatchReport
                     {
@@ -518,7 +526,7 @@ internal static class DiffTestRunner
         }
     }
 
-    /// <summary>Only java/cpp/python accept --backend; csharp/plsql ignore it.</summary>
+    /// <summary>java/cpp/python accept tree-sitter|antlr; csharp accepts tree-sitter|roslyn.</summary>
     private static string? BackendForLanguage(string language, string? backend)
     {
         if (string.IsNullOrWhiteSpace(backend))
@@ -529,6 +537,9 @@ internal static class DiffTestRunner
         return language.ToLowerInvariant() switch
         {
             "java" or "cpp" or "python" or "c++" or "py" => backend,
+            "csharp" or "cs" or "c#" => backend is "tree-sitter" or "roslyn" or "ts" or "treesitter"
+                ? (backend is "ts" or "treesitter" ? "tree-sitter" : backend)
+                : null,
             _ => null,
         };
     }

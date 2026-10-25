@@ -19,6 +19,13 @@ repos:
       - factory-method
       - singleton
       - strategy
+  - id: google-java-format
+    language: java
+    remote: https://github.com/google/google-java-format.git
+    ref: v1.25.2
+    sha: 27412e545b49264a1f29ff490063477aba6aa556
+    paths:
+      - core/src/main/java
   # C++
   - id: leveldb
     language: cpp
@@ -27,6 +34,9 @@ repos:
     sha: 99b3c03b3284f5886f9ef9a4ef703d57373e61be
     paths:
       - include
+      - db
+      - util
+      - table
   - id: cereal
     language: cpp
     remote: https://github.com/USCiLab/cereal.git
@@ -44,6 +54,7 @@ repos:
     paths:
       - include/fmt/core.h
       - include/fmt/format.h
+      - src
   # C#
   - id: newtonsoft-json
     language: csharp
@@ -60,6 +71,13 @@ repos:
     sha: 3ebc38de585fc641a04b0e78ed69468453b0f8a1
     paths:
       - src/Humanizer
+  - id: serilog
+    language: csharp
+    remote: https://github.com/serilog/serilog.git
+    ref: v4.2.0
+    sha: 0e316b7cb072ee660b97976098b1bbdb20ac6da0
+    paths:
+      - src/Serilog
   # Python
   - id: click
     language: python
@@ -75,3 +93,10 @@ repos:
     sha: 9e443b18527dc96b194e92805fa751cbf8434ba9
     paths:
       - src
+  - id: flask
+    language: python
+    remote: https://github.com/pallets/flask.git
+    ref: 3.1.0
+    sha: 2efaec117637fa51c6c53588899002def7eee37a
+    paths:
+      - src/flask

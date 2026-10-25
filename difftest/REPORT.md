@@ -1,20 +1,22 @@
 # Difftest report (ast-grep vs ag4)
 
-Generated (UTC): `2026-10-24T18:10Z` (Java/C++/Python tree-sitter, Only\* bugfixes) / `2026-10-24T16:21–16:57Z` (ANTLR) / `2026-10-24T16:17Z` (C#)  
+Generated (UTC): `2026-10-25T01:23–02:35Z` (expanded corpus + MetaVar / Smart / C# tree-sitter)  
 Baseline tool: `@ast-grep/cli@0.51.0`  
 Mode: `comparative`
 
 ```bash
-# tree-sitter (default for java/cpp/python)
+# tree-sitter (default for java/cpp/python/csharp)
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
   --corpus difftest/corpus.yml --backend tree-sitter --skip-clone --skip-npm --skip-rewrite --timeout-seconds 90
 
-# ANTLR (opt-in)
+# ANTLR (java/cpp/python)
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
-  --corpus difftest/corpus.yml --backend antlr --skip-clone --skip-npm --skip-rewrite --timeout-seconds 90
-```
+  --corpus difftest/corpus.yml --backend antlr --skip-clone --skip-npm --skip-rewrite --timeout-seconds 180
 
-C# is always Roslyn (no `--backend` effect).
+# Roslyn (csharp only)
+dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
+  --corpus difftest/corpus.yml --backend roslyn --language csharp --skip-clone --skip-npm --skip-rewrite
+```
 
 ## Summary
 
@@ -22,130 +24,141 @@ C# is always Roslyn (no `--backend` effect).
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
-| Same                                      |  24088 |
-| Only ast-grep                             |    346 |
-| Only ag4                                  |    157 |
+| Same                                      |  39521 |
+| Only ast-grep                             |     68 |
+| Only ag4                                  |    326 |
 | Range diff                                |      0 |
-| Metavar diff                              |   5580 |
-| Match rate                                | 79.84% |
+| Metavar diff                              |    148 |
+| Match rate                                | 98.65% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  10745 |
-| ag4 time (ms)                             |  48992 |
-| Speed ratio (ag4 / ast-grep)              |  4.56x |
+| ast-grep time (ms)                        |  21849 |
+| ag4 time (ms)                             |  95757 |
+| Speed ratio (ag4 / ast-grep)              |  4.38x |
 
 ### Java — ANTLR
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
-| Same                                      |  21393 |
-| Only ast-grep                             |   3950 |
-| Only ag4                                  |   7261 |
+| Same                                      |  30317 |
+| Only ast-grep                             |   4705 |
+| Only ag4                                  |  11162 |
 | Range diff                                |      0 |
-| Metavar diff                              |   4671 |
-| Match rate                                | 57.39% |
+| Metavar diff                              |   4715 |
+| Match rate                                | 59.56% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  10792 |
-| ag4 time (ms)                             | 216441 |
-| Speed ratio (ag4 / ast-grep)              | 20.06x |
+| ast-grep time (ms)                        |  17690 |
+| ag4 time (ms)                             | 368114 |
+| Speed ratio (ag4 / ast-grep)              | 20.81x |
 
 ### C++ — tree-sitter (default)
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
-| Same                                      |   2729 |
-| Only ast-grep                             |     56 |
-| Only ag4                                  |    227 |
+| Same                                      |  20459 |
+| Only ast-grep                             |    162 |
+| Only ag4                                  |    938 |
 | Range diff                                |      0 |
-| Metavar diff                              |    543 |
-| Match rate                                | 76.77% |
+| Metavar diff                              |    129 |
+| Match rate                                | 94.33% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  10831 |
-| ag4 time (ms)                             |  49636 |
-| Speed ratio (ag4 / ast-grep)              |  4.58x |
+| ast-grep time (ms)                        |  17415 |
+| ag4 time (ms)                             |  77588 |
+| Speed ratio (ag4 / ast-grep)              |  4.46x |
 
 ### C++ — ANTLR
 
+| Metric                                    |   Value |
+| ----------------------------------------- | ------: |
+| Same                                      |    9396 |
+| Only ast-grep                             |    9048 |
+| Only ag4                                  |     819 |
+| Range diff                                |       1 |
+| Metavar diff                              |    2305 |
+| Match rate                                |  43.56% |
+| Unexplained (after known-differences.yml) |       0 |
+| ast-grep time (ms)                        |   16340 |
+| ag4 time (ms)                             | 2611307 |
+| Speed ratio (ag4 / ast-grep)              | 159.81x |
+
+Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CPP14 limits**.
+
+### C# — tree-sitter (default)
+
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
-| Same                                      |    520 |
-| Only ast-grep                             |   2724 |
-| Only ag4                                  |     49 |
-| Range diff                                |      1 |
-| Metavar diff                              |     83 |
-| Match rate                                | 15.40% |
+| Same                                      | 101934 |
+| Only ast-grep                             |  10936 |
+| Only ag4                                  |   3200 |
+| Range diff                                |      0 |
+| Metavar diff                              |   8740 |
+| Match rate                                | 81.67% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  13117 |
-| ag4 time (ms)                             | 831937 |
-| Speed ratio (ag4 / ast-grep)              | 63.42x |
+| ast-grep time (ms)                        |  17856 |
+| ag4 time (ms)                             |  98115 |
+| Speed ratio (ag4 / ast-grep)              |  5.49x |
 
-Low ANTLR match rate is mostly **CPP14 grammar limits** (C++17+, macros).
-
-### C# (Roslyn)
+### C# — Roslyn (`--backend roslyn`)
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
-| Same                                      |  50540 |
-| Only ast-grep                             |  39042 |
-| Only ag4                                  |   3736 |
-| Range diff                                |     13 |
-| Metavar diff                              |   9423 |
-| Match rate                                | 49.19% |
+| Same                                      |  67525 |
+| Only ast-grep                             |  47182 |
+| Only ag4                                  |   5141 |
+| Range diff                                |     19 |
+| Metavar diff                              |   6884 |
+| Match rate                                | 53.27% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  12527 |
-| ag4 time (ms)                             |  70577 |
-| Speed ratio (ag4 / ast-grep)              |  5.63x |
+| ast-grep time (ms)                        |  17791 |
+| ag4 time (ms)                             | 118047 |
+| Speed ratio (ag4 / ast-grep)              |  6.63x |
 
 ### Python — tree-sitter (default)
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
-| Same                                      |   9774 |
-| Only ast-grep                             |    283 |
-| Only ag4                                  |     45 |
+| Same                                      |  18010 |
+| Only ast-grep                             |    491 |
+| Only ag4                                  |     64 |
 | Range diff                                |      0 |
-| Metavar diff                              |   1570 |
-| Match rate                                | 83.74% |
+| Metavar diff                              |    282 |
+| Match rate                                | 95.56% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |   7134 |
-| ag4 time (ms)                             |  32285 |
-| Speed ratio (ag4 / ast-grep)              |  4.53x |
+| ast-grep time (ms)                        |  14786 |
+| ag4 time (ms)                             |  73190 |
+| Speed ratio (ag4 / ast-grep)              |  4.95x |
 
 ### Python — ANTLR
 
 | Metric                                    |  Value |
 | ----------------------------------------- | -----: |
-| Same                                      |   6938 |
-| Only ast-grep                             |   3679 |
-| Only ag4                                  |     42 |
+| Same                                      |  10730 |
+| Only ast-grep                             |   6332 |
+| Only ag4                                  |    842 |
 | Range diff                                |      0 |
-| Metavar diff                              |   1010 |
-| Match rate                                | 59.46% |
+| Metavar diff                              |   1721 |
+| Match rate                                | 54.68% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  10122 |
-| ag4 time (ms)                             | 469568 |
-| Speed ratio (ag4 / ast-grep)              | 46.39x |
+| ast-grep time (ms)                        |  14749 |
+| ag4 time (ms)                             | 631639 |
+| Speed ratio (ag4 / ast-grep)              | 42.83x |
 
 ### PL/SQL
 
 Not compared: upstream `@ast-grep/cli` has no built-in PL/SQL language.
 
-## Notes (hybrid backends / Only\* fixes)
+## Notes (this run)
 
-- Default for Java / C++ / Python is **tree-sitter**.
-- Versus ANTLR: match rate **Java 57%→80%**, **C++ 15%→77%**, **Python 59%→84%**; speed ratio **~20×→5×**, **~63×→5×**, **~46×→5×**.
-- Bugfixes that removed large OnlyAstGrep buckets:
-  - Expression-context false accepts for statement fragments (`$VAR = $VAL;`, `break;`, …)
-  - Python `dotted_name` excluded from B6 single-child list guard
-  - C++ `#include <$H>` metavar marking for `<…>` / `"…"` path tokens
-  - DiffTest passes `-p=@Override` as `-p=…` so the dotnet host does not treat `@` as a response file
-- Remaining Only\* are mostly intentional matcher differences (`enhanced-for`, `qualified-call`, residual `if-block`) plus MetaVarDiff; catalogued under `backend: tree-sitter` (`ts-*-matcher`).
-- Parse vs match cost breakdown: `tools/AstGrepAntlr.Bench`.
+- Corpus expanded: google-java-format, leveldb `.cc` paths, fmt `src`, flask, serilog; plus harder pattern shapes.
+- **MetaVar JSON** now emits `$$$` as per-node `multi` arrays (ast-grep shape, including `,` tokens). Java MetaVarDiff **5580→148**.
+- **Smart trailing skip** lets `if ($C) { $$$B }` match if-else (Java if-block OnlySg **328→0**).
+- **C# default is tree-sitter**; Roslyn via `--backend roslyn`. Match rate TS **~82%** vs Roslyn **~53%**.
+- Residuals catalogued under `backend: tree-sitter` (`ts-*-matcher`) / `backend: roslyn` (`csharp-*`); unexplained **0** for all measured backends.
 
 ## Configuration
 
 - Patterns: [patterns/java.yml](patterns/java.yml), [patterns/cpp.yml](patterns/cpp.yml), [patterns/csharp.yml](patterns/csharp.yml), [patterns/python.yml](patterns/python.yml)
 - Corpus: [corpus.yml](corpus.yml)
-- Harness: `tools/AstGrepAntlr.DiffTest` vs `@ast-grep/cli@0.51.0` (`--backend tree-sitter|antlr`)
+- Harness: `tools/AstGrepAntlr.DiffTest` vs `@ast-grep/cli@0.51.0`
 
 ## Artifacts / CI
 

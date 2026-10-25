@@ -103,27 +103,45 @@ public static class JsonPrinter
                 continue;
             }
 
-            var entry = new
+            if (value.IsMulti)
+            {
+                // ast-grep shape: multi[name] is an array of per-node entries (includes commas).
+                var parts = value.Parts is { Count: > 0 }
+                    ? value.Parts.Select(MetaEntryFromSpan).ToArray()
+                    : new[] { MetaEntryFromValue(value) };
+                multi[name] = parts;
+            }
+            else
+            {
+                single[name] = MetaEntryFromValue(value);
+            }
+        }
+
+        static object MetaEntryFromValue(MetaVarValue value) =>
+            new
             {
                 text = value.Text,
                 range = new
                 {
-                    byteOffset = new { start = value.Start, end = value.End }, // filled below if we had byte map; use char for now
-                    start = new { line = m.StartLine0, column = m.StartColumn0 },
-                    end = new { line = m.EndLine0, column = m.EndColumn0 },
+                    byteOffset = new { start = value.ByteStart, end = value.ByteEnd },
+                    start = new { line = value.StartLine0, column = value.StartColumn0 },
+                    end = new { line = value.EndLine0, column = value.EndColumn0 },
                     charOffset = new { start = value.Start, end = value.End },
                 },
             };
-            // Note: metavar line/col are approximate (match-level); charOffset is exact.
-            if (value.IsMulti)
+
+        static object MetaEntryFromSpan(MetaVarSpan span) =>
+            new
             {
-                multi[name] = new[] { entry };
-            }
-            else
-            {
-                single[name] = entry;
-            }
-        }
+                text = span.Text,
+                range = new
+                {
+                    byteOffset = new { start = span.ByteStart, end = span.ByteEnd },
+                    start = new { line = span.StartLine0, column = span.StartColumn0 },
+                    end = new { line = span.EndLine0, column = span.EndColumn0 },
+                    charOffset = new { start = span.Start, end = span.End },
+                },
+            };
 
         return new
         {

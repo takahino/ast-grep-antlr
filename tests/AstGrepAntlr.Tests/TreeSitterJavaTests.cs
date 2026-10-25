@@ -165,4 +165,53 @@ public class TreeSitterJavaTests
         Assert.True(retExpr.Tree.KindMatches(retExpr.Root, "return_statement"));
         Assert.NotEmpty(matcher.MatchAll(tree, retExpr));
     }
+
+    [Fact]
+    public void Smart_if_block_matches_if_else_but_single_arg_does_not_match_multi()
+    {
+        var lang = CreateOrSkip();
+        if (lang is null)
+        {
+            return;
+        }
+
+        var compiler = new PatternCompiler();
+        var matcher = new PatternMatcher();
+        var tree = new TwoStageParser()
+            .Parse(
+                lang,
+                """
+                class A {
+                  void m() {
+                    if (a) {
+                      // leading
+                      foo();
+                    } else {
+                      bar();
+                    }
+                    foo(a, b);
+                    foo(a);
+                  }
+                }
+                """
+            )
+            .Tree;
+
+        var ifBlock = compiler.Compile(lang, new PatternSpec("if ($C) { $$$B }"));
+        var ifHits = matcher.MatchAll(tree, ifBlock).ToList();
+        Assert.NotEmpty(ifHits);
+        Assert.Contains(ifHits[0].Meta["B"].Parts ?? [], p => p.Text.Contains("leading", StringComparison.Ordinal));
+
+        var singleArg = compiler.Compile(lang, new PatternSpec("foo($A)"));
+        var singleHits = matcher.MatchAll(tree, singleArg).ToList();
+        Assert.Contains(singleHits, h => tree.Text(h.NodeIndex) == "foo(a)");
+        Assert.DoesNotContain(singleHits, h => tree.Text(h.NodeIndex).Contains("foo(a, b)", StringComparison.Ordinal));
+
+        var multi = compiler.Compile(lang, new PatternSpec("$F($$$ARGS)"));
+        var multiHits = matcher.MatchAll(tree, multi).Where(h => h.Meta["F"].Text == "foo").ToList();
+        var withTwo = multiHits.First(h => tree.Text(h.NodeIndex).Contains("foo(a, b)", StringComparison.Ordinal));
+        Assert.Contains(withTwo.Meta["ARGS"].Parts!, p => p.Text == ",");
+        // Concat of parts omits inter-node whitespace (ast-grep JSON multi shape).
+        Assert.Equal("a,b", string.Concat(withTwo.Meta["ARGS"].Parts!.Select(p => p.Text)));
+    }
 }

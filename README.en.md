@@ -4,9 +4,9 @@ English | [日本語](README.md)
 
 **Unofficial** structural search tool inspired by [ast-grep](https://ast-grep.github.io/). Parsers are chosen per language:
 
-- **Java / C++ / Python** — [tree-sitter](https://tree-sitter.github.io/) (default) for speed and upstream-compatible kind names
+- **Java / C++ / Python / C#** — [tree-sitter](https://tree-sitter.github.io/) (default) for speed and upstream-compatible kind names
 - **PL/SQL / SQLite / custom DSLs** — [ANTLR4](https://www.antlr.org/) (`.g4` / `.interp`)
-- **C#** — [Roslyn](https://github.com/dotnet/roslyn) (`Microsoft.CodeAnalysis.CSharp`)
+- **C# (optional)** — [Roslyn](https://github.com/dotnet/roslyn) (`--backend roslyn`)
 
 This project is **not** affiliated with the official ast-grep project.
 
@@ -17,13 +17,13 @@ Internals (pipeline, parsing, matching, rule engine, hosts): [architecture.html]
 - Metavariable patterns: `$A`, `$_`, `$$$ARGS`, typed `${A:expression}` (supertype / rule name)
 - YAML rules: `pattern`, `kind`, `inside`, `has`, `precedes`, `follows`, `all`/`any`/`not`, `constraints`, `matches`, `fix`, `files`/`ignores`
 - `stopBy`: `neighbor` (default, ast-grep-compatible), `end`, or a kind name
-- Backend switch: `--backend tree-sitter|antlr`, `languageBackends` in `sgconfig.yml`
+- Backend switch: `--backend tree-sitter|antlr|roslyn`, `languageBackends` in `sgconfig.yml`
 - Continues after syntax errors (tree-sitter ERROR/MISSING; ANTLR SLL → LL + recovery)
 - Parallel file walk with literal prefilter, gitignore, and `--globs`
 - Encoding preservation (UTF-8/BOM, UTF-16/32, Shift_JIS, EUC-JP) via `--encoding` / `sgconfig.yml`
 - Custom DSLs via `.g4` / `.interp` (`sgconfig.yml` → `customLanguages`, lazy-loaded)
 - MCP server: `ag4 mcp` (stdio) for AI agents
-- Built-in languages: **Java**, **C++**, **C#** (Roslyn), **Python** 3, **PL/SQL**, **SQLite** (more via custom grammars)
+- Built-in languages: **Java**, **C++**, **C#** (tree-sitter default / Roslyn opt-in), **Python** 3, **PL/SQL**, **SQLite** (more via custom grammars)
 
 ## Install
 
@@ -73,7 +73,7 @@ stderr lines are prefixed with `ag4:`. Stack traces require `--debug`.
 | -------- | ------------------ | ------------------------------ | --------------- | ------------------------- |
 | `java`   |                    | `.java`                        | tree-sitter     | `--backend antlr`         |
 | `cpp`    | `c++`, `cc`, `cxx` | `.cpp`, `.cc`, …               | tree-sitter     | `--backend antlr` (CPP14) |
-| `csharp` | `cs`, `c#`         | `.cs`                          | Roslyn          | —                         |
+| `csharp` | `cs`, `c#`         | `.cs`                          | tree-sitter     | `--backend roslyn`        |
 | `python` | `py`               | `.py`                          | tree-sitter     | `--backend antlr`         |
 | `plsql`  | `pl/sql`           | `.pls`, `.pkb`, `.pks`, `.sql` | ANTLR           | —                         |
 | `sqlite` |                    | `.sql`, `.sqlite`              | ANTLR           | —                         |
@@ -85,16 +85,18 @@ With tree-sitter, kind names match upstream ast-grep (`method_invocation`, `clas
 ```bash
 ag4 run -l java --backend tree-sitter -p '$F($$$ARGS)' src/
 ag4 run -l java --backend antlr -p '$F($$$ARGS)' src/
+ag4 run -l csharp --backend roslyn -p '$F($$$ARGS)' src/
 ```
 
 ```yaml
 # sgconfig.yml
 languageBackends:
   java: antlr
+  csharp: roslyn
   python: tree-sitter
 ```
 
-CLI `--backend` overrides sgconfig and applies to all switchable languages. If tree-sitter natives cannot be loaded, ag4 warns on stderr and falls back to ANTLR.
+CLI `--backend` overrides sgconfig and applies only to languages that support that backend (e.g. `--backend antlr` leaves csharp on tree-sitter). If tree-sitter natives cannot be loaded, ag4 warns on stderr and falls back to Roslyn for csharp / ANTLR otherwise.
 
 ### Kind migration (ANTLR → tree-sitter)
 

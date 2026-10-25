@@ -363,13 +363,76 @@ public sealed class Searcher
             EndLine = el,
             EndColumn = ec,
             Text = tree.Text(node),
-            MetaVariables = env,
+            MetaVariables = EnrichMeta(env, lines, offsets),
             RuleId = ruleId,
             Message = message,
             Severity = severity,
             Encoding = source.EncodingName,
             FileHash = source.Hash,
             Lines = linesText.TrimEnd('\r', '\n'),
+        };
+    }
+
+    private static Dictionary<string, MetaVarValue> EnrichMeta(
+        Dictionary<string, MetaVarValue> env,
+        LineMap lines,
+        OffsetMap offsets
+    )
+    {
+        var result = new Dictionary<string, MetaVarValue>(env.Count, StringComparer.Ordinal);
+        foreach (var (name, value) in env)
+        {
+            result[name] = EnrichOne(value, lines, offsets);
+        }
+
+        return result;
+    }
+
+    private static MetaVarValue EnrichOne(MetaVarValue value, LineMap lines, OffsetMap offsets)
+    {
+        var (bs, be) = offsets.Utf16RangeToBytes(value.Start, value.End);
+        var (sl, sc) = lines.Locate(value.Start);
+        var (el, ec) = lines.Locate(value.End);
+        IReadOnlyList<MetaVarSpan>? parts = null;
+        if (value.Parts is { Count: > 0 })
+        {
+            var enriched = new List<MetaVarSpan>(value.Parts.Count);
+            foreach (var p in value.Parts)
+            {
+                var (pbs, pbe) = offsets.Utf16RangeToBytes(p.Start, p.End);
+                var (psl, psc) = lines.Locate(p.Start);
+                var (pel, pec) = lines.Locate(p.End);
+                enriched.Add(
+                    new MetaVarSpan(
+                        p.Text,
+                        p.Start,
+                        p.End,
+                        ByteStart: pbs,
+                        ByteEnd: pbe,
+                        StartLine0: Math.Max(0, psl - 1),
+                        StartColumn0: Math.Max(0, psc - 1),
+                        EndLine0: Math.Max(0, pel - 1),
+                        EndColumn0: Math.Max(0, pec - 1)
+                    )
+                );
+            }
+
+            parts = enriched;
+        }
+        else if (value.IsMulti)
+        {
+            parts = value.Parts ?? [];
+        }
+
+        return value with
+        {
+            Parts = parts ?? value.Parts,
+            ByteStart = bs,
+            ByteEnd = be,
+            StartLine0 = Math.Max(0, sl - 1),
+            StartColumn0 = Math.Max(0, sc - 1),
+            EndLine0 = Math.Max(0, el - 1),
+            EndColumn0 = Math.Max(0, ec - 1),
         };
     }
 

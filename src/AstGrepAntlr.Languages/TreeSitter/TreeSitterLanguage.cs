@@ -288,12 +288,21 @@ public sealed class TreeSitterLanguage : ILanguage
                 or "try_statement"
                 or "local_variable_declaration"
                 or "local_variable_declaration_statement"
+                or "local_declaration_statement"
+                or "global_statement"
                 or "declaration"
                 or "function_definition"
                 or "labeled_statement"
                 or "switch_statement"
                 or "do_statement"
-                or "for_range_loop";
+                or "for_range_loop"
+                or "foreach_statement"
+                or "using_statement"
+                or "lock_statement"
+                or "fixed_statement"
+                or "checked_statement"
+                or "unchecked_statement"
+                or "unsafe_statement";
     }
 
     private string SymbolName(TsNative.TSNode node)

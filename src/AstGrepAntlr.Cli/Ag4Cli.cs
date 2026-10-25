@@ -552,7 +552,8 @@ public static class Ag4Cli
     private static Option<string?> CreateBackendOption() =>
         new("--backend")
         {
-            Description = "Parser backend for switchable languages (java/cpp/python): tree-sitter (default) or antlr",
+            Description =
+                "Parser backend for switchable languages: tree-sitter (default), antlr (java/cpp/python), or roslyn (csharp)",
         };
 
     private static Option<bool> CreateNoIgnoreOption() =>
@@ -713,7 +714,9 @@ internal static class CustomLanguageBootstrap
         {
             if (!LanguageBackendNames.TryParse(backendCli, out var parsed))
             {
-                throw new InvalidOperationException($"Unknown backend '{backendCli}'. Use tree-sitter or antlr.");
+                throw new InvalidOperationException(
+                    $"Unknown backend '{backendCli}'. Use tree-sitter, antlr, or roslyn."
+                );
             }
 
             global = parsed;

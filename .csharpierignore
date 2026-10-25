@@ -10,3 +10,7 @@ node_modules/
 **/*.g.cs
 **/Generated/
 .difftest/
+.difftest/**
+**/.difftest/**
+# Cloned corpus repos are nested git checkouts; keep formatters out of them.
+**/corpus/**

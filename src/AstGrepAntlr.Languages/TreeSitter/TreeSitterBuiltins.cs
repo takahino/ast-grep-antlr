@@ -82,4 +82,40 @@ public static class TreeSitterBuiltins
             ],
             metaVarVariants: ["{0}", "{0}\n", "", "pass", "x = {0}", "def {0}():\n    pass\n"]
         );
+
+    public static TreeSitterLanguage CSharp() =>
+        new(
+            id: "csharp",
+            extensions: [".cs"],
+            libraryStem: "tree-sitter-c-sharp",
+            exportName: "tree_sitter_c_sharp",
+            startRule: "compilation_unit",
+            contexts:
+            [
+                // Statement before expression so `$VAR = $VAL;` / `break;` are not mis-accepted
+                // as a bogus local_declaration_statement inside `var __x = …`.
+                new PatternContext("statement", "class __AG4 { void __m() { {0} } }"),
+                new PatternContext("block", "class __AG4 { void __m() { {0} } }"),
+                new PatternContext("local_declaration_statement", "class __AG4 { void __m() { {0} } }"),
+                new PatternContext("expression", "class __AG4 { void __m() { var __x = {0}; } }"),
+                new PatternContext("member_declaration", "class __AG4 { {0} }"),
+                new PatternContext("class_declaration", "{0}"),
+                // Last: bare compilation_unit so top-level statements are not preferred over wraps.
+                new PatternContext("compilation_unit", "{0}"),
+            ],
+            metaVarVariants:
+            [
+                "{0}",
+                "{0};",
+                "",
+                "int {0}",
+                "{0} {0}",
+                "{0} {0};",
+                "int {0};",
+                "void {0}(){}",
+                ";",
+                "int",
+                "string",
+            ]
+        );
 }

@@ -14,3 +14,6 @@ package-lock.json
 *.snupkg
 coverage/
 TestResults/
+.difftest/
+.difftest/**
+**/.difftest/**

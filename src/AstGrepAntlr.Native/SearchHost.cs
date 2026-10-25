@@ -145,22 +145,45 @@ internal static class SearchHost
                 continue;
             }
 
-            var entry = new MetaEntryDto
-            {
-                Text = value.Text,
-                CharOffset = new OffsetPairDto { Start = value.Start, End = value.End },
-            };
             if (value.IsMulti)
             {
                 multi ??= new Dictionary<string, MetaEntryDto[]>(StringComparer.Ordinal);
-                multi[name] = [entry];
+                multi[name] = value.Parts is { Count: > 0 }
+                    ? value.Parts.Select(FromSpan).ToArray()
+                    : [FromValue(value)];
             }
             else
             {
                 single ??= new Dictionary<string, MetaEntryDto>(StringComparer.Ordinal);
-                single[name] = entry;
+                single[name] = FromValue(value);
             }
         }
+
+        static MetaEntryDto FromValue(MetaVarValue value) =>
+            new()
+            {
+                Text = value.Text,
+                Range = new RangeDto
+                {
+                    ByteOffset = new OffsetPairDto { Start = value.ByteStart, End = value.ByteEnd },
+                    CharOffset = new OffsetPairDto { Start = value.Start, End = value.End },
+                    Start = new LineColDto { Line = value.StartLine0, Column = value.StartColumn0 },
+                    End = new LineColDto { Line = value.EndLine0, Column = value.EndColumn0 },
+                },
+            };
+
+        static MetaEntryDto FromSpan(MetaVarSpan span) =>
+            new()
+            {
+                Text = span.Text,
+                Range = new RangeDto
+                {
+                    ByteOffset = new OffsetPairDto { Start = span.ByteStart, End = span.ByteEnd },
+                    CharOffset = new OffsetPairDto { Start = span.Start, End = span.End },
+                    Start = new LineColDto { Line = span.StartLine0, Column = span.StartColumn0 },
+                    End = new LineColDto { Line = span.EndLine0, Column = span.EndColumn0 },
+                },
+            };
 
         return new MatchDto
         {

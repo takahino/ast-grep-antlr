@@ -155,6 +155,36 @@ rules:
   - id: import-as
     rule:
       pattern: import $M as $A
+  - id: decorator
+    rule:
+      pattern: "@$D"
+  - id: decorator-call
+    rule:
+      pattern: "@$D($$$A)"
+  - id: walrus
+    rule:
+      pattern: "$X := $Y"
+  - id: lambda-expr-args
+    rule:
+      pattern: "lambda $$$A: $B"
+  - id: subscript
+    rule:
+      pattern: "$A[$B]"
+  - id: slice-sub
+    rule:
+      pattern: "$A[$B:$C]"
+  - id: list-comp-if
+    rule:
+      pattern: "[$X for $Y in $Z if $C]"
+  - id: assert-msg
+    rule:
+      pattern: "assert $X, $M"
+  - id: yield-expr
+    rule:
+      pattern: "yield $E"
+  - id: del-stmt
+    rule:
+      pattern: "del $X"
 
   # --- composite rules (no kind) ---
   - id: print-inside-def

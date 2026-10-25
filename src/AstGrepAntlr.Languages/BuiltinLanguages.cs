@@ -5,8 +5,8 @@ namespace AstGrepAntlr.Languages;
 
 public static class BuiltinLanguages
 {
-    /// <summary>Languages that can switch between tree-sitter and ANTLR.</summary>
-    public static readonly IReadOnlyList<string> SwitchableIds = ["java", "cpp", "python"];
+    /// <summary>Languages that can switch parser backends.</summary>
+    public static readonly IReadOnlyList<string> SwitchableIds = ["java", "cpp", "python", "csharp"];
 
     public static LanguageRegistry CreateRegistry(LanguageBackend defaultBackend = LanguageBackend.TreeSitter)
     {
@@ -18,7 +18,7 @@ public static class BuiltinLanguages
 
     /// <summary>
     /// Re-register <paramref name="languageId"/> with the chosen backend.
-    /// Aliases (<c>c++</c>, <c>py</c>, …) are refreshed so they point at the new instance.
+    /// Aliases (<c>c++</c>, <c>py</c>, <c>cs</c>, …) are refreshed so they point at the new instance.
     /// </summary>
     public static void ApplyBackend(
         LanguageRegistry registry,
@@ -36,26 +36,34 @@ public static class BuiltinLanguages
             );
         }
 
+        if (!IsBackendAllowed(id, backend))
+        {
+            warn?.WriteLine(
+                $"ag4: warning: backend '{LanguageBackendNames.ToCli(backend)}' is not valid for '{id}'; using default."
+            );
+            backend = DefaultBackendFor(id);
+        }
+
         if (backend == LanguageBackend.TreeSitter && !TreeSitterLanguage.NativesAvailable)
         {
-            warn?.WriteLine($"ag4: warning: tree-sitter natives unavailable; falling back to ANTLR for '{id}'.");
-            backend = LanguageBackend.Antlr;
+            var fallback = FallbackBackend(id);
+            warn?.WriteLine(
+                $"ag4: warning: tree-sitter natives unavailable; falling back to {LanguageBackendNames.ToCli(fallback)} for '{id}'."
+            );
+            backend = fallback;
         }
 
         try
         {
-            ILanguage lang = backend switch
-            {
-                LanguageBackend.TreeSitter => CreateTreeSitter(id),
-                LanguageBackend.Antlr => CreateAntlr(id),
-                _ => throw new ArgumentException($"Backend '{backend}' is not valid for '{id}'."),
-            };
-            registry.Register(lang);
+            registry.Register(CreateLanguage(id, backend));
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
-            warn?.WriteLine($"ag4: warning: {ex.Message}; falling back to ANTLR for '{id}'.");
-            registry.Register(CreateAntlr(id));
+            var fallback = FallbackBackend(id);
+            warn?.WriteLine(
+                $"ag4: warning: {ex.Message}; falling back to {LanguageBackendNames.ToCli(fallback)} for '{id}'."
+            );
+            registry.Register(CreateLanguage(id, fallback));
         }
 
         RebindAliases(registry, id);
@@ -70,40 +78,92 @@ public static class BuiltinLanguages
     {
         foreach (var id in SwitchableIds)
         {
-            var backend = globalOverride ?? LanguageBackend.TreeSitter;
-            if (perLanguage is not null)
-            {
-                foreach (var (key, value) in perLanguage)
-                {
-                    if (string.Equals(CanonicalId(key), id, StringComparison.OrdinalIgnoreCase))
-                    {
-                        backend = value;
-                        break;
-                    }
-                }
-            }
-
+            var backend = ResolveBackend(id, perLanguage, globalOverride, warn);
             ApplyBackend(registry, id, backend, warn);
         }
     }
+
+    private static LanguageBackend ResolveBackend(
+        string id,
+        IReadOnlyDictionary<string, LanguageBackend>? perLanguage,
+        LanguageBackend? globalOverride,
+        TextWriter? warn
+    )
+    {
+        if (perLanguage is not null)
+        {
+            foreach (var (key, value) in perLanguage)
+            {
+                if (!string.Equals(CanonicalId(key), id, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!IsBackendAllowed(id, value))
+                {
+                    warn?.WriteLine(
+                        $"ag4: warning: languageBackends '{id}: {LanguageBackendNames.ToCli(value)}' is not supported; using default."
+                    );
+                    return DefaultBackendFor(id);
+                }
+
+                return value;
+            }
+        }
+
+        if (globalOverride is { } g && IsBackendAllowed(id, g))
+        {
+            return g;
+        }
+
+        return DefaultBackendFor(id);
+    }
+
+    /// <summary>Whether <paramref name="backend"/> is a valid choice for <paramref name="languageId"/>.</summary>
+    public static bool IsBackendAllowed(string languageId, LanguageBackend backend)
+    {
+        var id = CanonicalId(languageId);
+        return id.ToLowerInvariant() switch
+        {
+            "java" or "cpp" or "python" => backend is LanguageBackend.TreeSitter or LanguageBackend.Antlr,
+            "csharp" => backend is LanguageBackend.TreeSitter or LanguageBackend.Roslyn,
+            _ => false,
+        };
+    }
+
+    private static LanguageBackend DefaultBackendFor(string id) => LanguageBackend.TreeSitter;
+
+    private static LanguageBackend FallbackBackend(string id) =>
+        id.ToLowerInvariant() switch
+        {
+            "csharp" => LanguageBackend.Roslyn,
+            _ => LanguageBackend.Antlr,
+        };
 
     private static void ApplyDefaultBackends(LanguageRegistry registry, LanguageBackend defaultBackend)
     {
         foreach (var id in SwitchableIds)
         {
-            ApplyBackend(registry, id, defaultBackend);
+            var backend = IsBackendAllowed(id, defaultBackend) ? defaultBackend : DefaultBackendFor(id);
+            ApplyBackend(registry, id, backend);
         }
     }
 
     private static void RegisterFixed(LanguageRegistry registry)
     {
         registry.Register(new SqliteLanguage());
-        registry.Register(new CSharpLanguage());
-        registry.RegisterAlias("cs", "csharp");
-        registry.RegisterAlias("c#", "csharp");
         registry.Register(new PlSqlLanguage());
         registry.RegisterAlias("pl/sql", "plsql");
     }
+
+    private static ILanguage CreateLanguage(string id, LanguageBackend backend) =>
+        backend switch
+        {
+            LanguageBackend.TreeSitter => CreateTreeSitter(id),
+            LanguageBackend.Antlr => CreateAntlr(id),
+            LanguageBackend.Roslyn => CreateRoslyn(id),
+            _ => throw new ArgumentException($"Backend '{backend}' is not valid for '{id}'."),
+        };
 
     private static ILanguage CreateTreeSitter(string id) =>
         id.ToLowerInvariant() switch
@@ -111,6 +171,7 @@ public static class BuiltinLanguages
             "java" => TreeSitterBuiltins.Java(),
             "cpp" => TreeSitterBuiltins.Cpp(),
             "python" => TreeSitterBuiltins.Python(),
+            "csharp" => TreeSitterBuiltins.CSharp(),
             _ => throw new ArgumentException($"No tree-sitter front-end for '{id}'."),
         };
 
@@ -121,6 +182,13 @@ public static class BuiltinLanguages
             "cpp" => new CppLanguage(),
             "python" => new PythonLanguage(),
             _ => throw new ArgumentException($"No ANTLR front-end for '{id}'."),
+        };
+
+    private static ILanguage CreateRoslyn(string id) =>
+        id.ToLowerInvariant() switch
+        {
+            "csharp" => new CSharpLanguage(),
+            _ => throw new ArgumentException($"No Roslyn front-end for '{id}'."),
         };
 
     private static void RebindAliases(LanguageRegistry registry, string id)
@@ -134,6 +202,10 @@ public static class BuiltinLanguages
                 break;
             case "python":
                 registry.RegisterAlias("py", "python");
+                break;
+            case "csharp":
+                registry.RegisterAlias("cs", "csharp");
+                registry.RegisterAlias("c#", "csharp");
                 break;
         }
     }

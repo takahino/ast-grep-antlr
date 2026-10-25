@@ -397,7 +397,8 @@
         "dependencies": {
           "Antlr4.Runtime.Standard": "[4.13.1, )",
           "AstGrepAntlr.Core": "[0.0.0-dev, )",
-          "Microsoft.CodeAnalysis.CSharp": "[4.14.0, )"
+          "Microsoft.CodeAnalysis.CSharp": "[4.14.0, )",
+          "TreeSitter.DotNet": "[1.3.0, )"
         }
       },
       "astgrepantlr.mcp": {
@@ -480,6 +481,12 @@
         "requested": "[2.0.0, )",
         "resolved": "2.0.0",
         "contentHash": "Bjklzc5NoxqAGFi7BcGlY2TWAdB06Bq3a5sfRr3ubMRU80Mf98eyq3Y2UgR6xRV0TLznZmfe5T7mUjOunRNcdA=="
+      },
+      "TreeSitter.DotNet": {
+        "type": "CentralTransitive",
+        "requested": "[1.3.0, )",
+        "resolved": "1.3.0",
+        "contentHash": "VFl5j5UguKI3BvdQ/bbHDrDP1FG7lkEjv9LZCQ01bPe4NuAiXQVnEfuFRWdJ8TA9NmY/D7qqGkj8CuD3ptiDDw=="
       },
       "YamlDotNet": {
         "type": "CentralTransitive",

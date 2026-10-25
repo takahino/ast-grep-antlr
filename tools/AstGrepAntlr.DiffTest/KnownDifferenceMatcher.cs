@@ -42,7 +42,7 @@ internal static class KnownDifferenceMatcher
                 string.IsNullOrWhiteSpace(entry.Backend)
                 && !string.IsNullOrWhiteSpace(ag4Backend)
                 && ag4Backend.Equals("tree-sitter", StringComparison.OrdinalIgnoreCase)
-                && language is "java" or "cpp" or "python"
+                && language is "java" or "cpp" or "python" or "csharp"
                 && entry.Category is not null
                 && (
                     entry.Category.Contains("grammar-parse", StringComparison.OrdinalIgnoreCase)

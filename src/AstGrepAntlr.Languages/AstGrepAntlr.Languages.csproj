@@ -23,10 +23,10 @@
     />
     <ProjectReference Include="..\AstGrepAntlr.Core\AstGrepAntlr.Core.csproj" />
   </ItemGroup>
-  <!-- Drop unused grammar natives from output/publish; keep core + java/cpp/python. -->
+  <!-- Drop unused grammar natives from output/publish; keep core + java/cpp/python/c-sharp. -->
   <Target Name="FilterTreeSitterNatives" AfterTargets="ResolvePackageAssets">
     <PropertyGroup>
-      <_TsKeep>;tree-sitter;libtree-sitter;tree-sitter-java;libtree-sitter-java;tree-sitter-cpp;libtree-sitter-cpp;tree-sitter-python;libtree-sitter-python;</_TsKeep>
+      <_TsKeep>;tree-sitter;libtree-sitter;tree-sitter-java;libtree-sitter-java;tree-sitter-cpp;libtree-sitter-cpp;tree-sitter-python;libtree-sitter-python;tree-sitter-c-sharp;libtree-sitter-c-sharp;</_TsKeep>
     </PropertyGroup>
     <ItemGroup>
       <_TsDrop

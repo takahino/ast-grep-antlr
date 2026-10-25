@@ -52,7 +52,7 @@ internal static class Program
         };
         var backendOption = new Option<string>("--backend")
         {
-            Description = "ag4 parser backend for java/cpp/python: tree-sitter (default) or antlr",
+            Description = "ag4 parser backend: tree-sitter (default), antlr (java/cpp/python), or roslyn (csharp)",
             DefaultValueFactory = _ => "tree-sitter",
         };
 

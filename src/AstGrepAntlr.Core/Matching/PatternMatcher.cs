@@ -138,18 +138,21 @@ public sealed class PatternMatcher
 
     private static IEnumerable<int> SelectChildren(SyntaxTree tree, int index, Strictness strictness)
     {
-        // Smart (default) and Cst keep unnamed tokens; Smart skips the extras on the target side
-        // later, in MatchSequence. Ast/Relaxed drop them up front. Always skip tree-sitter "extra"
-        // (comments) except under Cst.
-        IEnumerable<int> kids = strictness is Strictness.Ast or Strictness.Relaxed
-            ? tree.NamedChildren(index)
-            : tree.Children(index);
-        if (strictness is Strictness.Cst)
+        // Smart (default) and Cst keep unnamed tokens. Smart also keeps tree-sitter extras
+        // (comments) so $$$ captures match ast-grep's multi array; MatchSequence skips extras
+        // when matching non-multi pattern children. Ast/Relaxed drop unnamed + extras up front.
+        if (strictness is Strictness.Ast or Strictness.Relaxed)
         {
-            return kids;
+            return tree.NamedChildren(index).Where(c => !tree[c].IsExtra);
         }
 
-        return kids.Where(c => !tree[c].IsExtra);
+        if (strictness is Strictness.Cst)
+        {
+            return tree.Children(index);
+        }
+
+        // Smart: keep extras for multi capture; skip them during ordinary matching.
+        return tree.Children(index);
     }
 
     private static bool MatchSequence(
@@ -229,6 +232,13 @@ public sealed class PatternMatcher
                 continue;
             }
 
+            // smart: skip comments (tree-sitter extras) when matching a non-multi pattern child
+            if (strictness == Strictness.Smart && target[tChildren[ti]].IsExtra)
+            {
+                ti++;
+                continue;
+            }
+
             // smart: skip target-only modifiers (final/public/...) before a metavar so
             // `catch ($E $N)` matches `catch (final Exception e)` like ast-grep.
             if (
@@ -261,7 +271,8 @@ public sealed class PatternMatcher
             return false;
         }
 
-        // Trailing unnamed on target OK for smart/ast/relaxed
+        // Trailing children on target: Smart skips unnamed + named (ast-grep Smart),
+        // so `if ($C) { $$$B }` matches if-else / try-catch-finally. Cst rejects any remainder.
         while (ti < tChildren.Count)
         {
             if (strictness == Strictness.Cst)
@@ -269,7 +280,7 @@ public sealed class PatternMatcher
                 return false;
             }
 
-            if (strictness == Strictness.Smart && !target[tChildren[ti]].IsNamed)
+            if (strictness == Strictness.Smart)
             {
                 ti++;
                 continue;
@@ -286,7 +297,9 @@ public sealed class PatternMatcher
         return true;
     }
 
-    /// <summary>Capture $$$ as a contiguous source slice from first to last child (preserves separators).</summary>
+    /// <summary>
+    /// Capture $$$ as a contiguous source slice plus per-node parts (ast-grep multi array).
+    /// </summary>
     private static MetaVarValue CaptureSlice(SyntaxTree target, List<int> tChildren, int from, int to)
     {
         if (from >= to || from >= tChildren.Count)
@@ -296,13 +309,24 @@ public sealed class PatternMatcher
                 from < tChildren.Count ? target[tChildren[from]].Start
                 : to > 0 && to - 1 < tChildren.Count ? target[tChildren[to - 1]].End
                 : 0;
-            return new MetaVarValue(string.Empty, pos, pos, IsMulti: true);
+            return new MetaVarValue(string.Empty, pos, pos, IsMulti: true, Parts: []);
+        }
+
+        var parts = new List<MetaVarSpan>(to - from);
+        for (var i = from; i < to && i < tChildren.Count; i++)
+        {
+            var n = target[tChildren[i]];
+            var piece =
+                n.Start >= 0 && n.End >= n.Start && n.End <= target.Source.Length
+                    ? target.Source[n.Start..n.End]
+                    : string.Empty;
+            parts.Add(new MetaVarSpan(piece, n.Start, n.End));
         }
 
         var start = target[tChildren[from]].Start;
-        var end = target[tChildren[to - 1]].End;
+        var end = target[tChildren[Math.Min(to, tChildren.Count) - 1]].End;
         var text = start >= 0 && end >= start && end <= target.Source.Length ? target.Source[start..end] : string.Empty;
-        return new MetaVarValue(text, start, end, IsMulti: true);
+        return new MetaVarValue(text, start, end, IsMulti: true, Parts: parts);
     }
 
     private static readonly HashSet<string> SkippableModifiers = new(StringComparer.OrdinalIgnoreCase)

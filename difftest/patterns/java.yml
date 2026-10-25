@@ -152,6 +152,39 @@ rules:
   - id: method-ref
     rule:
       pattern: "$T::$M"
+  - id: switch-block
+    rule:
+      pattern: "switch ($X) { $$$C }"
+  - id: yield-stmt
+    rule:
+      pattern: "yield $E;"
+  - id: record-decl
+    rule:
+      pattern: "record $N($$$P) { $$$B }"
+  - id: try-with-resources
+    rule:
+      pattern: "try ($R) { $$$B }"
+  - id: synchronized-block
+    rule:
+      pattern: "synchronized ($L) { $$$B }"
+  - id: do-while
+    rule:
+      pattern: "do { $$$B } while ($C);"
+  - id: var-local
+    rule:
+      pattern: "var $X = $E;"
+  - id: lambda-block
+    rule:
+      pattern: "$A -> { $$$B }"
+  - id: suppress-warnings
+    rule:
+      pattern: "@SuppressWarnings($$$A)"
+  - id: static-init
+    rule:
+      pattern: "static { $$$B }"
+  - id: assert-stmt
+    rule:
+      pattern: "assert $C;"
 
   # --- composite rules (no kind) ---
   - id: println-inside-method

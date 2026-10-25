@@ -32,7 +32,7 @@
         line-height: 1.65;
       }
       main {
-        max-width: 46rem;
+        max-width: 52rem;
         margin: 0 auto;
         padding: 2.5rem 1.25rem 4rem;
       }
@@ -162,6 +162,92 @@
         background: var(--accent-soft);
         color: var(--accent);
       }
+      .charts {
+        margin: 1.25rem 0 1.75rem;
+      }
+      .chart-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 1rem 1.1rem 1.15rem;
+        margin: 1rem 0;
+      }
+      .chart-card h3 {
+        margin-top: 0;
+        border: 0;
+        padding: 0;
+      }
+      .chart-card .caption {
+        color: var(--muted);
+        font-size: 0.88rem;
+        margin: 0.35rem 0 0.85rem;
+      }
+      .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+        font-size: 0.85rem;
+        margin: 0 0 0.75rem;
+        color: var(--muted);
+      }
+      .chart-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .swatch {
+        width: 0.75rem;
+        height: 0.75rem;
+        display: inline-block;
+        border: 1px solid var(--line);
+      }
+      .swatch-sg {
+        background: var(--accent);
+      }
+      .swatch-ag4 {
+        background: var(--warn);
+      }
+      .swatch-parse {
+        background: #2a6f97;
+      }
+      .swatch-match {
+        background: #6b7c3c;
+      }
+      .chart-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        margin: 0 0 0.75rem;
+        font-size: 0.9rem;
+      }
+      .chart-toolbar label {
+        color: var(--muted);
+      }
+      .chart-toolbar select {
+        font: inherit;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        padding: 0.25rem 0.45rem;
+      }
+      .chart-svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .chart-svg text {
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        fill: var(--ink);
+      }
+      .chart-svg .axis {
+        fill: var(--muted);
+        font-size: 11px;
+      }
+      .chart-svg .value {
+        fill: var(--muted);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+      }
       .muted {
         font-weight: 400;
         font-size: 0.75em;
@@ -195,15 +281,15 @@
       <h1>ast-grep vs ag4 differences</h1>
       <p class="lede">
         Summary of comparing upstream <code>@ast-grep/cli@0.51.0</code> (tree-sitter) with ag4
-        (tree-sitter default for Java/C++/Python; optional ANTLR) on real corpora. Remaining gaps
-        are mostly matcher logic and C# (Roslyn), not engine bugs.
+        (tree-sitter default for Java/C++/Python/C#; optional ANTLR or Roslyn) on real corpora.
+        Remaining gaps are mostly matcher logic, not engine bugs.
       </p>
 
       <div class="panel verdict">
         <strong>Policy:</strong> ag4 bugs (encoding, exit codes, byteOffset, pattern compile
         failures, etc.) were fixed. With tree-sitter as the default backend, kind names align with
-        upstream; residual diffs are matcher behaviour and Roslyn vs tree-sitter-c-sharp. ANTLR-mode
-        CST drift is catalogued in
+        upstream; residual diffs are matcher behaviour and Roslyn vs tree-sitter-c-sharp when
+        <code>--backend roslyn</code> is used. ANTLR/Roslyn CST drift is catalogued in
         <a href="difftest/known-differences.yml"><code>difftest/known-differences.yml</code></a>
         (optional <code>backend:</code> field). Matching upstream’s hit set 100% is not a goal.
       </div>
@@ -231,18 +317,17 @@
 
       <div class="panel">
         <strong>ag4 built-in languages (current):</strong>
-        Java / C++ / Python (tree-sitter default, ANTLR optional), C# (Roslyn), PL/SQL &amp; SQLite
-        (ANTLR). Custom DSLs via <code>sgconfig.yml</code> <code>customLanguages</code> (<code
-          >.g4</code
-        >
-        / <code>.interp</code>). Difftest accepts <code>--backend</code> for both.
+        Java / C++ / Python / C# (tree-sitter default); Java / C++ / Python also support ANTLR; C#
+        supports Roslyn; PL/SQL &amp; SQLite are ANTLR. Custom DSLs via <code>sgconfig.yml</code>
+        <code>customLanguages</code> (<code>.g4</code> / <code>.interp</code>). Difftest accepts
+        <code>--backend</code>.
       </div>
 
       <h2>2. Numbers</h2>
       <p>
         Java / C++ / Python show <strong>ag4 (tree-sitter)</strong> /
-        <strong>ag4 (ANTLR)</strong> from <a href="difftest/REPORT.md">REPORT.md</a> (re-run
-        2026-10-24). C# is Roslyn only.
+        <strong>ag4 (ANTLR)</strong>; C# shows <strong>TS / Roslyn</strong> from
+        <a href="difftest/REPORT.md">REPORT.md</a> (re-run 2026-10-25, expanded corpus).
       </p>
       <table>
         <thead>
@@ -250,7 +335,7 @@
             <th>Metric</th>
             <th class="num">Java<br /><span class="muted">TS / ANTLR</span></th>
             <th class="num">C++<br /><span class="muted">TS / ANTLR</span></th>
-            <th class="num">C#<br /><span class="muted">Roslyn</span></th>
+            <th class="num">C#<br /><span class="muted">TS / Roslyn</span></th>
             <th class="num">Python<br /><span class="muted">TS / ANTLR</span></th>
             <th class="num">PL/SQL</th>
           </tr>
@@ -258,79 +343,501 @@
         <tbody>
           <tr>
             <td>Same</td>
-            <td class="num">24 088 / 21 393</td>
-            <td class="num">2 729 / 520</td>
-            <td class="num">50 540</td>
-            <td class="num">9 774 / 6 938</td>
+            <td class="num">39 521 / 30 317</td>
+            <td class="num">20 459 / 9 396</td>
+            <td class="num">101 934 / 67 525</td>
+            <td class="num">18 010 / 10 730</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Only ast-grep</td>
-            <td class="num">346 / 3 950</td>
-            <td class="num">56 / 2 724</td>
-            <td class="num">39 042</td>
-            <td class="num">283 / 3 679</td>
+            <td class="num">68 / 4 705</td>
+            <td class="num">162 / 9 048</td>
+            <td class="num">10 936 / 47 182</td>
+            <td class="num">491 / 6 332</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Only ag4</td>
-            <td class="num">157 / 7 261</td>
-            <td class="num">227 / 49</td>
-            <td class="num">3 736</td>
-            <td class="num">45 / 42</td>
+            <td class="num">326 / 11 162</td>
+            <td class="num">938 / 819</td>
+            <td class="num">3 200 / 5 141</td>
+            <td class="num">64 / 842</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Range diff</td>
             <td class="num">0 / 0</td>
             <td class="num">0 / 1</td>
-            <td class="num">13</td>
+            <td class="num">0 / 19</td>
             <td class="num">0 / 0</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Metavar diff</td>
-            <td class="num">5 580 / 4 671</td>
-            <td class="num">543 / 83</td>
-            <td class="num">9 423</td>
-            <td class="num">1 570 / 1 010</td>
+            <td class="num">148 / 4 715</td>
+            <td class="num">129 / 2 305</td>
+            <td class="num">8 740 / 6 884</td>
+            <td class="num">282 / 1 721</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Match rate</td>
-            <td class="num">~80% / ~57%</td>
-            <td class="num">~77% / ~15%</td>
-            <td class="num">~49%</td>
-            <td class="num">~84% / ~59%</td>
+            <td class="num">~99% / ~60%</td>
+            <td class="num">~94% / ~44%</td>
+            <td class="num">~82% / ~53%</td>
+            <td class="num">~96% / ~55%</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Speed (ag4 ÷ ast-grep)</td>
-            <td class="num">~5× / ~20×</td>
-            <td class="num">~5× / ~63×</td>
-            <td class="num">~6×</td>
-            <td class="num">~5× / ~46×</td>
+            <td class="num">~4× / ~21×</td>
+            <td class="num">~4× / ~160×</td>
+            <td class="num">~5× / ~7×</td>
+            <td class="num">~5× / ~43×</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Unexplained (after known-differences)</td>
             <td class="num">0 / 0</td>
             <td class="num">0 / 0</td>
-            <td class="num">0</td>
+            <td class="num">0 / 0</td>
             <td class="num">0 / 0</td>
             <td class="num">—</td>
           </tr>
         </tbody>
       </table>
       <p>
-        “—” in PL/SQL means <strong>no upstream language</strong>. tree-sitter default lifts match
-        rate and speed (esp. C++ 15%→77%, ~63×→~5×; Java OnlyAstGrep 2888→346 after context /
-        harness fixes). Residuals are catalogued under <code>backend: tree-sitter</code>
-        (<code>ts-*-matcher</code>, intentional <code>enhanced-for</code>, residual
-        <code>if-block</code>, etc.) so unexplained is 0. Low ANTLR C++ rate is
-        <strong>CPP14 limits</strong>. C# remains <strong>Roslyn</strong>
-        (<code>csharp-*</code>).
+        “—” in PL/SQL means <strong>no upstream language</strong>. Aligning $$$ multi JSON to
+        ast-grep’s per-node arrays and Smart trailing-skip cut Java MetaVarDiff 5580→148 and
+        if-block OnlySg 328→0 (TS rates ~99% / 94% / 96% for Java/C++/Python). C# defaults to
+        <strong>tree-sitter</strong> (Roslyn via <code>--backend roslyn</code>). Residuals live
+        under <code>ts-*-matcher</code> / <code>csharp-*</code> (<code>backend: roslyn</code>).
+        Slow ANTLR C++ is expanded <code>.cc</code> corpus plus <strong>CPP14 limits</strong>.
       </p>
+
+      <h2>2.1 Timing charts</h2>
+      <p>
+        Wall-clock totals from difftest, per-pattern case times, and parse/match breakdown from
+        <code>tools/AstGrepAntlr.Bench</code> (2026-10-25). PL/SQL is ag4 (ANTLR) only — upstream
+        has no PL/SQL language. Corpus: <code>oracle/oracle-db-examples</code> <code>plsql/</code>
+        (66 files).
+      </p>
+
+      <div class="charts">
+        <div class="chart-card">
+          <h3>Total time by language × backend</h3>
+          <p class="caption">
+            Sum of all difftest patterns (seconds). PL/SQL is the sum of 18 Bench patterns. Bars use
+            a horizontal log scale (ANTLR C++ is orders of magnitude slower). Rows without an
+            ast-grep bar are not comparable upstream.
+          </p>
+          <div class="chart-legend" aria-hidden="true">
+            <span><i class="swatch swatch-sg"></i>ast-grep</span>
+            <span><i class="swatch swatch-ag4"></i>ag4</span>
+          </div>
+          <div id="chart-totals" role="img" aria-label="Total time by language and backend"></div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Per-node work (parse / match)</h3>
+          <p class="caption">
+            Micro-bench on the same corpus slice with pattern <code>$F($$$ARGS)</code> (same for
+            PL/SQL). Bars are total ms; annotations are µs/node (parse). Read time is omitted
+            (negligible).
+          </p>
+          <div class="chart-legend" aria-hidden="true">
+            <span><i class="swatch swatch-parse"></i>parse</span>
+            <span><i class="swatch swatch-match"></i>match</span>
+          </div>
+          <div id="chart-nodes" role="img" aria-label="Parse vs match time breakdown"></div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Slowest patterns (cases)</h3>
+          <p class="caption">
+            Top 8 patterns by ag4 time (ms) for the selected language/backend. Near-timeout C++ ANTLR
+            cases (~180s) are excluded. PL/SQL shows ag4 only (parse-dominated; little spread).
+          </p>
+          <div class="chart-toolbar">
+            <label for="case-lang">Target</label>
+            <select id="case-lang" aria-controls="chart-cases"></select>
+          </div>
+          <div class="chart-legend" aria-hidden="true">
+            <span><i class="swatch swatch-sg"></i>ast-grep</span>
+            <span><i class="swatch swatch-ag4"></i>ag4</span>
+          </div>
+          <div id="chart-cases" role="img" aria-label="Per-pattern timing"></div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const TOTALS = [
+            { key: "java-ts", label: "Java · tree-sitter", sg: 21.849, ag4: 95.757 },
+            { key: "java-antlr", label: "Java · ANTLR", sg: 17.69, ag4: 368.114 },
+            { key: "cpp-ts", label: "C++ · tree-sitter", sg: 17.415, ag4: 77.588 },
+            { key: "cpp-antlr", label: "C++ · ANTLR", sg: 16.34, ag4: 2611.307 },
+            { key: "csharp-ts", label: "C# · tree-sitter", sg: 17.856, ag4: 98.115 },
+            { key: "csharp-roslyn", label: "C# · Roslyn", sg: 17.791, ag4: 118.047 },
+            { key: "python-ts", label: "Python · tree-sitter", sg: 14.786, ag4: 73.19 },
+            { key: "python-antlr", label: "Python · ANTLR", sg: 14.749, ag4: 631.639 },
+            { key: "plsql-antlr", label: "PL/SQL · ANTLR", sg: null, ag4: 100.875 },
+          ];
+
+          const NODES = [
+            { label: "Java · TS", parse: 263, match: 17, us: 1.31, files: 80, nodes: 201419 },
+            { label: "Java · ANTLR", parse: 1870, match: 49, us: 5.37, files: 80, nodes: 347983 },
+            { label: "C++ · TS", parse: 306, match: 27, us: 2.35, files: 58, nodes: 130436 },
+            { label: "C++ · ANTLR", parse: 11028, match: 205, us: 31.6, files: 40, nodes: 348588 },
+            { label: "C# · TS", parse: 215, match: 10, us: 3.18, files: 48, nodes: 67562 },
+            { label: "C# · Roslyn", parse: 300, match: 23, us: 4.96, files: 48, nodes: 60445 },
+            { label: "Python · TS", parse: 167, match: 10, us: 2.55, files: 16, nodes: 65474 },
+            { label: "Python · ANTLR", parse: 2605, match: 185, us: 13.6, files: 16, nodes: 191587 },
+            { label: "PL/SQL · ANTLR", parse: 5665, match: 36, us: 47.0, files: 66, nodes: 120410 },
+          ];
+
+          const CASES = {
+            "java-ts": [
+              { id: "commons-lang/qualified-call", sg: 160, ag4: 1048 },
+              { id: "commons-lang/call-any", sg: 164, ag4: 902 },
+              { id: "commons-lang/public-method", sg: 151, ag4: 873 },
+              { id: "google-java-format/enhanced-for", sg: 261, ag4: 844 },
+              { id: "commons-lang/record-decl", sg: 180, ag4: 808 },
+              { id: "commons-lang/if-block", sg: 150, ag4: 794 },
+              { id: "commons-lang/return-expr", sg: 140, ag4: 782 },
+              { id: "commons-lang/new-array", sg: 193, ag4: 758 },
+            ],
+            "java-antlr": [
+              { id: "commons-lang/qualified-call", sg: 189, ag4: 7656 },
+              { id: "commons-lang/equals-or-hashcode", sg: 153, ag4: 5854 },
+              { id: "commons-lang/new-has-string-arg", sg: 198, ag4: 5111 },
+              { id: "commons-lang/call-any", sg: 125, ag4: 5074 },
+              { id: "commons-lang/this-call", sg: 139, ag4: 4928 },
+              { id: "commons-lang/if-block", sg: 130, ag4: 4847 },
+              { id: "commons-lang/throw-not-npe", sg: 159, ag4: 4723 },
+              { id: "commons-lang/ternary", sg: 123, ag4: 4608 },
+            ],
+            "cpp-ts": [
+              { id: "leveldb/call-any", sg: 160, ag4: 945 },
+              { id: "leveldb/qualified-call", sg: 106, ag4: 739 },
+              { id: "leveldb/member-call", sg: 138, ag4: 669 },
+              { id: "leveldb/new-expr", sg: 169, ag4: 662 },
+              { id: "leveldb/using-ns", sg: 104, ag4: 620 },
+              { id: "leveldb/reinterpret-cast", sg: 103, ag4: 608 },
+              { id: "fmt/return-precedes-throw", sg: 109, ag4: 595 },
+              { id: "leveldb/ptr-call", sg: 113, ag4: 583 },
+            ],
+            "cpp-antlr": [
+              { id: "leveldb/std-move", sg: 90, ag4: 139756 },
+              { id: "leveldb/rewrite-move", sg: 79, ag4: 135713 },
+              { id: "leveldb/qualified-call", sg: 86, ag4: 57951 },
+              { id: "leveldb/return-void", sg: 124, ag4: 25842 },
+              { id: "leveldb/for-loop", sg: 93, ag4: 25176 },
+              { id: "leveldb/return-expr", sg: 103, ag4: 25105 },
+              { id: "fmt/rewrite-move", sg: 216, ag4: 22680 },
+              { id: "leveldb/range-for", sg: 95, ag4: 21167 },
+            ],
+            "csharp-ts": [
+              { id: "humanizer/try-catch", sg: 99, ag4: 6190 },
+              { id: "serilog/try-catch", sg: 75, ag4: 5813 },
+              { id: "newtonsoft-json/try-catch", sg: 93, ag4: 5768 },
+              { id: "humanizer/call-inside-method", sg: 154, ag4: 1878 },
+              { id: "newtonsoft-json/call-inside-method", sg: 167, ag4: 1726 },
+              { id: "humanizer/new-inside-method", sg: 227, ag4: 1508 },
+              { id: "newtonsoft-json/kind-identifier", sg: 169, ag4: 1131 },
+              { id: "newtonsoft-json/call-any", sg: 236, ag4: 1036 },
+            ],
+            "csharp-roslyn": [
+              { id: "newtonsoft-json/call-inside-method", sg: 143, ag4: 1608 },
+              { id: "humanizer/new-inside-method", sg: 119, ag4: 1389 },
+              { id: "newtonsoft-json/if-else", sg: 119, ag4: 1187 },
+              { id: "newtonsoft-json/kind-identifier", sg: 209, ag4: 1112 },
+              { id: "humanizer/call-inside-method", sg: 125, ag4: 1111 },
+              { id: "humanizer/kind-identifier", sg: 174, ag4: 1085 },
+              { id: "humanizer/call-any", sg: 101, ag4: 1078 },
+              { id: "newtonsoft-json/new-inside-method", sg: 140, ag4: 1064 },
+            ],
+            "python-ts": [
+              { id: "click/import-from-as", sg: 107, ag4: 739 },
+              { id: "click/return-precedes-raise", sg: 120, ag4: 732 },
+              { id: "click/raise-not-valueerror", sg: 232, ag4: 705 },
+              { id: "click/len-or-isinstance", sg: 114, ag4: 692 },
+              { id: "click/call-has-none", sg: 106, ag4: 648 },
+              { id: "click/len-call", sg: 102, ag4: 645 },
+              { id: "click/rewrite-is-none", sg: 98, ag4: 628 },
+              { id: "click/print-call", sg: 75, ag4: 581 },
+            ],
+            "python-antlr": [
+              { id: "click/call-any", sg: 132, ag4: 6587 },
+              { id: "click/isinstance-call", sg: 90, ag4: 6422 },
+              { id: "click/len-or-isinstance", sg: 84, ag4: 5937 },
+              { id: "flask/len-or-isinstance", sg: 137, ag4: 5876 },
+              { id: "click/ternary", sg: 123, ag4: 5525 },
+              { id: "click/list-comp", sg: 105, ag4: 5499 },
+              { id: "click/attribute-call", sg: 110, ag4: 5346 },
+              { id: "click/not-expr", sg: 76, ag4: 5287 },
+            ],
+            "plsql-antlr": [
+              { id: "COUNT($$$A)", sg: null, ag4: 6103 },
+              { id: "NVL($A, $B)", sg: null, ag4: 5978 },
+              { id: "COMMIT", sg: null, ag4: 5959 },
+              { id: "TO_CHAR($A)", sg: null, ag4: 5901 },
+              { id: "BEGIN $$$B END", sg: null, ag4: 5871 },
+              { id: "DBMS_OUTPUT.PUT_LINE($M)", sg: null, ag4: 5801 },
+              { id: "$F($$$ARGS)", sg: null, ag4: 5701 },
+              { id: "DELETE FROM $T", sg: null, ag4: 5671 },
+            ],
+          };
+
+          const CASE_LABELS = {
+            "java-ts": "Java · tree-sitter",
+            "java-antlr": "Java · ANTLR",
+            "cpp-ts": "C++ · tree-sitter",
+            "cpp-antlr": "C++ · ANTLR",
+            "csharp-ts": "C# · tree-sitter",
+            "csharp-roslyn": "C# · Roslyn",
+            "python-ts": "Python · tree-sitter",
+            "python-antlr": "Python · ANTLR",
+            "plsql-antlr": "PL/SQL · ANTLR",
+          };
+
+          function esc(s) {
+            return String(s)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+          }
+
+          function fmtSec(v) {
+            if (v >= 100) return v.toFixed(0) + "s";
+            if (v >= 10) return v.toFixed(1) + "s";
+            return v.toFixed(2) + "s";
+          }
+
+          function fmtMs(v) {
+            if (v >= 10000) return (v / 1000).toFixed(0) + "s";
+            if (v >= 1000) return (v / 1000).toFixed(1) + "s";
+            return v + "ms";
+          }
+
+          function renderTotals(el) {
+            const W = 720;
+            const labelW = 148;
+            const rowH = 36;
+            const padR = 72;
+            const H = 28 + TOTALS.length * rowH;
+            const barW = W - labelW - padR;
+            const minLog = Math.log10(10);
+            const maxLog = Math.log10(
+              Math.max(...TOTALS.map((d) => Math.max(d.sg == null ? 0 : d.sg, d.ag4)))
+            );
+            const x = (v) => labelW + ((Math.log10(Math.max(v, 10)) - minLog) / (maxLog - minLog)) * barW;
+            let svg =
+              '<svg class="chart-svg" viewBox="0 0 ' +
+              W +
+              " " +
+              H +
+              '" xmlns="http://www.w3.org/2000/svg">';
+            TOTALS.forEach((d, i) => {
+              const y = 16 + i * rowH;
+              svg +=
+                '<text class="axis" x="0" y="' +
+                (y + 14) +
+                '">' +
+                esc(d.label) +
+                "</text>";
+              const ag4W = Math.max(2, x(d.ag4) - labelW);
+              if (d.sg != null) {
+                const sgW = Math.max(2, x(d.sg) - labelW);
+                svg +=
+                  '<rect x="' +
+                  labelW +
+                  '" y="' +
+                  y +
+                  '" width="' +
+                  sgW +
+                  '" height="10" fill="#0d6b5c"/>';
+                svg +=
+                  '<text class="value" x="' +
+                  (labelW + sgW + 4) +
+                  '" y="' +
+                  (y + 9) +
+                  '">' +
+                  fmtSec(d.sg) +
+                  "</text>";
+              } else {
+                svg +=
+                  '<text class="value" x="' +
+                  labelW +
+                  '" y="' +
+                  (y + 9) +
+                  '">—</text>';
+              }
+              svg +=
+                '<rect x="' +
+                labelW +
+                '" y="' +
+                (y + 13) +
+                '" width="' +
+                ag4W +
+                '" height="10" fill="#8a4b12"/>';
+              svg +=
+                '<text class="value" x="' +
+                (labelW + ag4W + 4) +
+                '" y="' +
+                (y + 22) +
+                '">' +
+                fmtSec(d.ag4) +
+                "</text>";
+            });
+            svg += "</svg>";
+            el.innerHTML = svg;
+          }
+
+          function renderNodes(el) {
+            const W = 720;
+            const labelW = 118;
+            const rowH = 34;
+            const padR = 88;
+            const H = 20 + NODES.length * rowH;
+            const barW = W - labelW - padR;
+            const max = Math.max(...NODES.map((d) => d.parse + d.match));
+            let svg =
+              '<svg class="chart-svg" viewBox="0 0 ' +
+              W +
+              " " +
+              H +
+              '" xmlns="http://www.w3.org/2000/svg">';
+            NODES.forEach((d, i) => {
+              const y = 12 + i * rowH;
+              const pW = ((d.parse / max) * barW) | 0;
+              const mW = Math.max(2, ((d.match / max) * barW) | 0);
+              svg +=
+                '<text class="axis" x="0" y="' +
+                (y + 14) +
+                '">' +
+                esc(d.label) +
+                "</text>";
+              svg +=
+                '<rect x="' +
+                labelW +
+                '" y="' +
+                (y + 4) +
+                '" width="' +
+                pW +
+                '" height="14" fill="#2a6f97"/>';
+              svg +=
+                '<rect x="' +
+                (labelW + pW) +
+                '" y="' +
+                (y + 4) +
+                '" width="' +
+                mW +
+                '" height="14" fill="#6b7c3c"/>';
+              svg +=
+                '<text class="value" x="' +
+                (labelW + pW + mW + 6) +
+                '" y="' +
+                (y + 14) +
+                '">' +
+                fmtMs(d.parse + d.match) +
+                " · " +
+                d.us +
+                "µs/n</text>";
+            });
+            svg += "</svg>";
+            el.innerHTML = svg;
+          }
+
+          function renderCases(el, key) {
+            const rows = CASES[key] || [];
+            const W = 720;
+            const labelW = 220;
+            const rowH = 34;
+            const padR = 64;
+            const H = 16 + rows.length * rowH;
+            const barW = W - labelW - padR;
+            const max = Math.max(
+              ...rows.map((d) => Math.max(d.sg == null ? 0 : d.sg, d.ag4)),
+              1
+            );
+            let svg =
+              '<svg class="chart-svg" viewBox="0 0 ' +
+              W +
+              " " +
+              H +
+              '" xmlns="http://www.w3.org/2000/svg">';
+            rows.forEach((d, i) => {
+              const y = 10 + i * rowH;
+              const short = d.id.length > 34 ? d.id.slice(0, 32) + "…" : d.id;
+              svg +=
+                '<text class="axis" x="0" y="' +
+                (y + 14) +
+                '">' +
+                esc(short) +
+                "</text>";
+              const ag4W = Math.max(2, ((d.ag4 / max) * barW) | 0);
+              if (d.sg != null) {
+                const sgW = Math.max(2, ((d.sg / max) * barW) | 0);
+                svg +=
+                  '<rect x="' +
+                  labelW +
+                  '" y="' +
+                  y +
+                  '" width="' +
+                  sgW +
+                  '" height="10" fill="#0d6b5c"/>';
+                svg +=
+                  '<text class="value" x="' +
+                  (labelW + sgW + 4) +
+                  '" y="' +
+                  (y + 9) +
+                  '">' +
+                  fmtMs(d.sg) +
+                  "</text>";
+              }
+              svg +=
+                '<rect x="' +
+                labelW +
+                '" y="' +
+                (d.sg != null ? y + 13 : y + 4) +
+                '" width="' +
+                ag4W +
+                '" height="10" fill="#8a4b12"/>';
+              svg +=
+                '<text class="value" x="' +
+                (labelW + ag4W + 4) +
+                '" y="' +
+                (d.sg != null ? y + 22 : y + 13) +
+                '">' +
+                fmtMs(d.ag4) +
+                "</text>";
+            });
+            svg += "</svg>";
+            el.innerHTML = svg;
+          }
+
+          renderTotals(document.getElementById("chart-totals"));
+          renderNodes(document.getElementById("chart-nodes"));
+
+          const sel = document.getElementById("case-lang");
+          Object.keys(CASE_LABELS).forEach((k) => {
+            const o = document.createElement("option");
+            o.value = k;
+            o.textContent = CASE_LABELS[k];
+            sel.appendChild(o);
+          });
+          const casesEl = document.getElementById("chart-cases");
+          function refreshCases() {
+            renderCases(casesEl, sel.value);
+          }
+          sel.addEventListener("change", refreshCases);
+          sel.value = "java-ts";
+          refreshCases();
+        })();
+      </script>
 
       <h2>3. How to read “accuracy”</h2>
       <p>

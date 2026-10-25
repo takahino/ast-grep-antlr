@@ -137,6 +137,27 @@ rules:
   - id: async-method
     rule:
       pattern: "async Task $N($$$P) { $$$ }"
+  - id: switch-expr
+    rule:
+      pattern: "$X switch { $$$A }"
+  - id: property-pattern
+    rule:
+      pattern: "$X is { $$$P }"
+  - id: coalesce-assign
+    rule:
+      pattern: "$X ??= $Y"
+  - id: using-var
+    rule:
+      pattern: "using var $X = $E;"
+  - id: record-decl
+    rule:
+      pattern: "record $N($$$P);"
+  - id: null-conditional-call
+    rule:
+      pattern: "$X?.$Y($$$A)"
+  - id: foreach-var
+    rule:
+      pattern: "foreach (var $X in $C) { $$$B }"
 
   # --- kind rules (Roslyn snake_case + tree-sitter aliases) ---
   - id: kind-invocation

@@ -159,6 +159,27 @@ rules:
   - id: sizeof-type
     rule:
       pattern: sizeof($T)
+  - id: range-for-ref
+    rule:
+      pattern: "for (auto& $X : $C) { $$$B }"
+  - id: switch-block
+    rule:
+      pattern: "switch ($X) { $$$C }"
+  - id: lambda-capture
+    rule:
+      pattern: "[$$$C]($$$P) { $$$B }"
+  - id: static-assert
+    rule:
+      pattern: "static_assert($$$A)"
+  - id: using-alias
+    rule:
+      pattern: "using $A = $B;"
+  - id: define-macro
+    rule:
+      pattern: "#define $N $V"
+  - id: if-constexpr
+    rule:
+      pattern: "if constexpr ($C) { $$$B }"
 
   # --- composite rules (no kind) ---
   - id: cout-inside-fn
