@@ -215,3 +215,44 @@ ag4 の合計時間は 381.7s → 209.6s（ast-grep 比 19.7x → 9.8x）。
 | C++（300）                       | 243 (81%) |                  124 | `theTypeName`（20144）/ `statement` / `nestedNameSpecifier` / `postfixExpression` |
 
 C++ は LL 時間（プロファイル込み約 99s）の大半が `statement` / `postfixExpression` / `theTypeName` の判断に集中しており、次の候補。
+
+## 対応結果 3: ANTLR の LL フォールバック削減（C++）
+
+### 修正
+
+`CPP14Parser.g4` から、曖昧なときに必ず負けていた選択肢を外した（詳細は `grammars/cpp/README.md`）。
+
+- `theTypeName` の `enumName` / `typedefName` / `simpleTemplateId`（すべて `className` と同じ入力）
+- `nestedNameSpecifier` の `namespaceName`、`namespaceName` の `namespaceAlias`
+- `templateArgument` の `idExpression`（同じ範囲を `constantExpression` が読める）
+
+`.difftest/corpus` の C++ 377 ファイルで木のハッシュは全件一致。
+
+### 効果
+
+| 指標                                          | 変更前 | 変更後  |
+| --------------------------------------------- | ------ | ------- |
+| Bench leveldb（131 files）parse_ms            | ~13000 | ~7000   |
+| 同 ll_ms                                      | ~11600 | ~6000   |
+| LL フォールバック率                           | 95/131 | 95/131  |
+| 診断（300 files）LL 時間（プロファイル込み）  | 99.4s  | ~31–35s |
+| `--tree-hashes` 377 files（≒ 全件パース時間） | 110s   | ~50s    |
+
+SLL が失敗するファイル数は変わらず、LL 1 回あたりが軽くなった形。
+
+### difftest（C++ / ANTLR）
+
+ag4 の合計時間は 2104.6s → 1692.8s（ast-grep 比 117.9x → 115.0x）。120s のタイムアウトに当たるパターンが 8 つ残っており
+（`std-move` / `std-forward` など）、合計時間の半分以上を占めるため比率はあまり動かない。
+
+集計は only-ag4 が 775 → 797 に増えた以外は一致（same 9396 / only-sg 9048 / range 1 / meta 2305）。パターン単位で
+突き合わせると差は `leveldb/rewrite-move`（0 → 22）だけで、以前は 120s でタイムアウトしていたものが 106s で
+完走するようになったため。過去の実行（`by-backend/antlr-cpp-expand`）と tree-sitter（23 件）でも同程度のヒットがある。
+
+### 残っているもの
+
+- `statement`（宣言か式か）と `postfixExpression`（関数呼び出しか関数形式キャストか）は C++ 本来の曖昧さで、
+  どちらの選択肢も入力によって勝つため、選択肢を外す方法は使えない。LL 時間の過半はここ。
+- SLL の失敗（237〜243/300）は、文脈を見ない予測で `class A {` を `class A` と読むなど、
+  並べ替えや左括り出しでないと直らない。どちらも木の形が変わる可能性があり、今回は見送った。
+- Bench では C++ / ANTLR の match_ms が ~8.5s と parse に匹敵する。別途調査の余地がある。
