@@ -9,3 +9,4 @@ bench/fixtures/
 node_modules/
 **/*.g.cs
 **/Generated/
+.difftest/
