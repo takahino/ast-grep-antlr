@@ -10,6 +10,7 @@ public sealed class SyntaxTreeAssembler
     private readonly Dictionary<string, List<int>> _kindIndex = new(StringComparer.Ordinal);
     private readonly List<string[]> _extraKinds = [];
     private readonly List<string[]> _chainKinds = [];
+    private readonly Dictionary<string, string[]> _singleKinds = new(StringComparer.Ordinal);
     private readonly bool _collapseChains;
 
     /// <param name="collapseChains">
@@ -71,6 +72,12 @@ public sealed class SyntaxTreeAssembler
             // Still seed chainKinds with each node's own TypeName (+ aliases) so KindMatches works.
             for (var i = 0; i < _nodes.Count; i++)
             {
+                if (_extraKinds[i].Length == 0)
+                {
+                    _chainKinds[i] = SingleKind(_nodes[i].TypeName);
+                    continue;
+                }
+
                 var parts = new List<string>();
                 AddUnique(parts, _nodes[i].TypeName);
                 foreach (var alias in _extraKinds[i])
@@ -105,6 +112,13 @@ public sealed class SyntaxTreeAssembler
                 continue;
             }
 
+            // Most heads have no alias and no rule child to absorb; they need no list of their own.
+            if (_extraKinds[i].Length == 0 && !ContinuesChain(i))
+            {
+                _chainKinds[i] = SingleKind(_nodes[i].TypeName);
+                continue;
+            }
+
             var parts = new List<string>();
             AddUnique(parts, _nodes[i].TypeName);
             foreach (var alias in _extraKinds[i])
@@ -113,14 +127,9 @@ public sealed class SyntaxTreeAssembler
             }
 
             var current = i;
-            while (_nodes[current].ChildCount == 1 && _nodes[current].FirstChild >= 0)
+            while (ContinuesChain(current))
             {
                 var child = _nodes[current].FirstChild;
-                if (_nodes[child].Kind != SyntaxNodeKind.Rule)
-                {
-                    break;
-                }
-
                 AddUnique(parts, _nodes[child].TypeName);
                 foreach (var alias in _extraKinds[child])
                 {
@@ -138,9 +147,31 @@ public sealed class SyntaxTreeAssembler
         }
     }
 
+    private bool ContinuesChain(int index)
+    {
+        var n = _nodes[index];
+        return n.ChildCount == 1 && n.FirstChild >= 0 && _nodes[n.FirstChild].Kind == SyntaxNodeKind.Rule;
+    }
+
+    /// <summary>
+    /// One shared array per kind name within this tree; chain kinds are read-only after
+    /// <see cref="Build"/>, so heads of the same kind can share it.
+    /// </summary>
+    private string[] SingleKind(string typeName)
+    {
+        if (!_singleKinds.TryGetValue(typeName, out var arr))
+        {
+            arr = [typeName];
+            _singleKinds[typeName] = arr;
+        }
+
+        return arr;
+    }
+
+    // List<string>.Contains compares with the default (ordinal) string equality, without LINQ.
     private static void AddUnique(List<string> parts, string name)
     {
-        if (!parts.Contains(name, StringComparer.Ordinal))
+        if (!parts.Contains(name))
         {
             parts.Add(name);
         }

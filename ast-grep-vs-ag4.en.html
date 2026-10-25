@@ -372,15 +372,15 @@
           <tr>
             <td>Match rate</td>
             <td class="num">98.65% / 59.56%</td>
-            <td class="num">94.33% / 43.65%</td>
+            <td class="num">94.33% / 43.61%</td>
             <td class="num">81.67% / 53.27%</td>
             <td class="num">95.56% / 54.68%</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>Speed (ag4 ÷ upstream)</td>
-            <td class="num">4.15× / 19.74×</td>
-            <td class="num">4.21× / 117.9×</td>
+            <td class="num">4.15× / 9.82×</td>
+            <td class="num">4.21× / 115.0×</td>
             <td class="num">5.35× / 6.13×</td>
             <td class="num">4.63× / 37.19×</td>
             <td class="num">—</td>
@@ -461,8 +461,8 @@
             {
               key: "java-antlr",
               label: "Java · ANTLR",
-              sg: 19.338,
-              ag4: 381.659,
+              sg: 21.34,
+              ag4: 209.591,
             },
             {
               key: "cpp-ts",
@@ -473,8 +473,8 @@
             {
               key: "cpp-antlr",
               label: "C++ · ANTLR",
-              sg: 17.851,
-              ag4: 2104.623,
+              sg: 14.723,
+              ag4: 1692.784,
             },
             {
               key: "csharp-ts",
@@ -512,9 +512,9 @@
             },
             {
               label: "Java · ANTLR",
-              parse: 3347,
-              match: 46,
-              us: 5.21,
+              parse: 1427,
+              match: 49,
+              us: 2.22,
               files: 264,
               nodes: 642825,
             },
@@ -528,11 +528,11 @@
             },
             {
               label: "C++ · ANTLR",
-              parse: 13023,
-              match: 8308,
-              us: 21.8,
-              files: 80,
-              nodes: 597072,
+              parse: 7100,
+              match: 8576,
+              us: 8.95,
+              files: 131,
+              nodes: 793427,
             },
             {
               label: "C# · TS",
@@ -612,44 +612,44 @@
             ],
             "java-antlr": [
               {
-                id: "commons-lang/method-ref",
-                sg: 115,
-                ag4: 5994,
-              },
-              {
-                id: "commons-lang/call-any",
-                sg: 156,
-                ag4: 5174,
-              },
-              {
-                id: "commons-lang/throw-not-npe",
-                sg: 158,
-                ag4: 5151,
-              },
-              {
-                id: "commons-lang/equals-or-hashcode",
-                sg: 303,
-                ag4: 5018,
+                id: "commons-lang/equals-call",
+                sg: 163,
+                ag4: 3177,
               },
               {
                 id: "commons-lang/qualified-call",
-                sg: 138,
-                ag4: 4967,
+                sg: 174,
+                ag4: 2992,
+              },
+              {
+                id: "commons-lang/if-block",
+                sg: 201,
+                ag4: 2795,
+              },
+              {
+                id: "commons-lang/string-format",
+                sg: 316,
+                ag4: 2674,
+              },
+              {
+                id: "commons-lang/call-any",
+                sg: 194,
+                ag4: 2629,
               },
               {
                 id: "commons-lang/for-loop",
-                sg: 130,
-                ag4: 4920,
+                sg: 161,
+                ag4: 2587,
               },
               {
-                id: "commons-lang/new-has-string-arg",
-                sg: 166,
-                ag4: 4861,
+                id: "commons-lang/enhanced-for",
+                sg: 188,
+                ag4: 2539,
               },
               {
-                id: "commons-lang/private-field",
-                sg: 143,
-                ag4: 4845,
+                id: "commons-lang/chained-call",
+                sg: 193,
+                ag4: 2532,
               },
             ],
             "cpp-ts": [
@@ -697,43 +697,43 @@
             "cpp-antlr": [
               {
                 id: "leveldb/qualified-call",
-                sg: 152,
-                ag4: 54246,
+                sg: 149,
+                ag4: 59548,
               },
               {
                 id: "leveldb/call-any",
-                sg: 320,
-                ag4: 24593,
-              },
-              {
-                id: "leveldb/member-call",
-                sg: 114,
-                ag4: 19260,
-              },
-              {
-                id: "fmt/rewrite-move",
-                sg: 94,
-                ag4: 19011,
-              },
-              {
-                id: "leveldb/namespace-body",
-                sg: 109,
-                ag4: 18487,
+                sg: 240,
+                ag4: 16276,
               },
               {
                 id: "fmt/std-move",
-                sg: 116,
-                ag4: 18390,
+                sg: 81,
+                ag4: 16164,
+              },
+              {
+                id: "leveldb/member-call",
+                sg: 140,
+                ag4: 15576,
               },
               {
                 id: "leveldb/ptr-call",
-                sg: 106,
-                ag4: 18268,
+                sg: 168,
+                ag4: 14715,
               },
               {
-                id: "leveldb/for-loop",
-                sg: 101,
-                ag4: 18196,
+                id: "fmt/rewrite-move",
+                sg: 93,
+                ag4: 13200,
+              },
+              {
+                id: "leveldb/call-foo",
+                sg: 196,
+                ag4: 11936,
+              },
+              {
+                id: "leveldb/ternary",
+                sg: 104,
+                ag4: 9775,
               },
             ],
             "csharp-ts": [
@@ -1117,8 +1117,10 @@
           </tr>
           <tr>
             <td>Java · ANTLR (same)</td>
-            <td class="num">~3.3s</td>
-            <td><strong>67% LL fallback</strong> (177/264); full LL retry after SLL bail</td>
+            <td class="num">~1.4s</td>
+            <td>
+              2% LL fallback (4/264), down from 67% after the <code>classType</code> grammar fix
+            </td>
           </tr>
           <tr>
             <td>C# · tree-sitter (corpus 1587)</td>
@@ -1126,9 +1128,12 @@
             <td>cursor walk + cheaper P/Invoke; match is a few percent</td>
           </tr>
           <tr>
-            <td>C++ · ANTLR (leveldb 80)</td>
-            <td class="num">~13s</td>
-            <td>75% LL fallback; main reason difftest is so slow</td>
+            <td>C++ · ANTLR (leveldb 131)</td>
+            <td class="num">~7s</td>
+            <td>
+              73% LL fallback; grammar fix halves each LL pass (~13s → ~7s). Main reason difftest is
+              so slow
+            </td>
           </tr>
         </tbody>
       </table>

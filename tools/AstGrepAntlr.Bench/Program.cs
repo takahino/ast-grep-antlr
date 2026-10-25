@@ -22,11 +22,23 @@ internal static class Program
         var patternOpt = new Option<string>("--pattern", "-p") { DefaultValueFactory = _ => "foo($$$ARGS)" };
         var pathsArg = new Argument<string[]>("paths") { Arity = ArgumentArity.OneOrMore };
         var maxFilesOpt = new Option<int>("--max-files") { DefaultValueFactory = _ => 200 };
+        var diagnoseOpt = new Option<bool>("--antlr-diagnose")
+        {
+            Description = "Report SLL bail sites and per-decision LL cost instead of timing (ANTLR backends only)",
+        };
+        var topOpt = new Option<int>("--top") { DefaultValueFactory = _ => 15 };
+        var treeHashesOpt = new Option<string>("--tree-hashes")
+        {
+            Description = "Write one tree hash per file to this path (compare before/after grammar changes)",
+        };
         var root = new RootCommand("ag4 parse/match micro-benchmark (read / parse / match breakdown)");
         root.Options.Add(langOpt);
         root.Options.Add(backendOpt);
         root.Options.Add(patternOpt);
         root.Options.Add(maxFilesOpt);
+        root.Options.Add(diagnoseOpt);
+        root.Options.Add(topOpt);
+        root.Options.Add(treeHashesOpt);
         root.Arguments.Add(pathsArg);
         root.SetAction(pr =>
         {
@@ -65,6 +77,32 @@ internal static class Program
             {
                 Console.Error.WriteLine("ag4-bench: no files matched");
                 return 2;
+            }
+
+            var treeHashesPath = pr.GetValue(treeHashesOpt);
+            if (!string.IsNullOrWhiteSpace(treeHashesPath))
+            {
+                AntlrDiagnostics.WriteTreeHashes(language, files, treeHashesPath);
+                Console.Error.WriteLine($"ag4-bench: wrote tree hashes for {files.Count} files to {treeHashesPath}");
+            }
+
+            if (pr.GetValue(diagnoseOpt))
+            {
+                if (language is not IAntlrLanguage antlr)
+                {
+                    Console.Error.WriteLine(
+                        $"ag4-bench: --antlr-diagnose needs an ANTLR backend; '{langId}' is not one (try --backend antlr)"
+                    );
+                    return 2;
+                }
+
+                AntlrDiagnostics.Run(antlr, files, pr.GetValue(topOpt), Console.Out);
+                return 0;
+            }
+
+            if (!string.IsNullOrWhiteSpace(treeHashesPath))
+            {
+                return 0;
             }
 
             var compileSw = Stopwatch.StartNew();

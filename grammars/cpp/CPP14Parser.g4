@@ -66,8 +66,11 @@ qualifiedId
     : nestedNameSpecifier Template? unqualifiedId
     ;
 
+// ag4: upstream also lists namespaceName here. It matches only an Identifier, which theTypeName
+// already covers and wins as the lower alternative, so it was never chosen and only forced
+// full-context ambiguity checks on every `X::`.
 nestedNameSpecifier
-    : (theTypeName | namespaceName | decltypeSpecifier)? Doublecolon
+    : (theTypeName | decltypeSpecifier)? Doublecolon
     | nestedNameSpecifier ( Identifier | Template? simpleTemplateId) Doublecolon
     ;
 
@@ -492,11 +495,12 @@ simpleTypeSpecifier
     | decltypeSpecifier
     ;
 
+// ag4: upstream adds `| enumName | typedefName | simpleTemplateId`. Each matches only what
+// className (Identifier | simpleTemplateId) matches, and ANTLR resolves the ambiguity to the
+// lowest alternative, so they were never chosen; they only made every type name a full-context
+// LL decision.
 theTypeName
     : className
-    | enumName
-    | typedefName
-    | simpleTemplateId
     ;
 
 decltypeSpecifier
@@ -548,9 +552,9 @@ enumerator
     : Identifier
     ;
 
+// ag4: upstream adds `| namespaceAlias`, which is also just Identifier and never wins.
 namespaceName
     : originalNamespaceName
-    | namespaceAlias
     ;
 
 originalNamespaceName
@@ -955,10 +959,11 @@ templateArgumentList
     : templateArgument Ellipsis? (Comma templateArgument Ellipsis?)*
     ;
 
+// ag4: upstream adds `| idExpression`. Any idExpression is also a constantExpression over the
+// same tokens (down to primaryExpression), and the lower alternative wins, so it never won.
 templateArgument
     : theTypeId
     | constantExpression
-    | idExpression
     ;
 
 typeNameSpecifier

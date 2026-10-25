@@ -46,9 +46,9 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | Metavar diff                              |   4715 |
 | Match rate                                | 59.56% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  19338 |
-| ag4 time (ms)                             | 381659 |
-| Speed ratio (ag4 / ast-grep)              | 19.74x |
+| ast-grep time (ms)                        |  21340 |
+| ag4 time (ms)                             | 209591 |
+| Speed ratio (ag4 / ast-grep)              |  9.82x |
 
 ### C++ — tree-sitter (default)
 
@@ -71,14 +71,14 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | ----------------------------------------- | ------: |
 | Same                                      |    9396 |
 | Only ast-grep                             |    9048 |
-| Only ag4                                  |     775 |
+| Only ag4                                  |     797 |
 | Range diff                                |       1 |
 | Metavar diff                              |    2305 |
-| Match rate                                |  43.65% |
+| Match rate                                |  43.61% |
 | Unexplained (after known-differences.yml) |       0 |
-| ast-grep time (ms)                        |   17851 |
-| ag4 time (ms)                             | 2104623 |
-| Speed ratio (ag4 / ast-grep)              | 117.90x |
+| ast-grep time (ms)                        |   14723 |
+| ag4 time (ms)                             | 1692784 |
+| Speed ratio (ag4 / ast-grep)              | 114.97x |
 
 Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CPP14 limits**. Bench: **75% LL fallback** on leveldb sample.
 

@@ -1,5 +1,20 @@
 # The optimized Java grammar
 
+> **ag4 独自の修正**（grammars-v4 から取り込み直すときは再適用すること）
+>
+> - `JavaParser.g4` の `classType`: 先頭セグメントを囲む `( ... )+` を外し、1 回だけにした。
+>   upstream の `+` は `.` を挟まずに型名を繰り返せるため、SLL が `String s = ...` の `s` まで型として読み、
+>   普通の宣言で LL へやり直していた（commons-lang で 177/264 ファイル → 修正後 4/264）。
+>   有効な Java では繰り返しが起きないので、`.difftest/corpus` の全 Java ファイル（1387）で木は変わらないことを
+>   `ag4-bench --tree-hashes` で確認済み。回帰テストは `tests/AstGrepAntlr.Tests/JavaParseTests.cs`。
+>
+>   ```antlr
+>   // upstream
+>   classType: ( ( packageName '.' annotation* )? typeIdentifier typeArguments? )+ ( '.' annotation* typeIdentifier typeArguments? )* ;
+>   // ag4
+>   classType: ( packageName '.' annotation* )? typeIdentifier typeArguments? ( '.' annotation* typeIdentifier typeArguments? )* ;
+>   ```
+
 This grammar, based on the optimized Java7 grammar by Terence Parr and Sam Harwell,
 is meant to parse the latest for the Java language, and is optimized for
 performance, practical usage, and clarity.

@@ -34,6 +34,20 @@ public class JavaParseTests
         );
     }
 
+    // Guards the local classType fix in grammars/java/JavaParser.g4: with the upstream `( ... )+`
+    // SLL read `String s` as one type and bailed, forcing the slow LL retry on ordinary code.
+    [Theory]
+    [InlineData("class A { void m() { String s = f(); } }")]
+    [InlineData("class A { String m() { return null; } }")]
+    [InlineData("class A { java.util.List<String> xs = new java.util.ArrayList<>(); }")]
+    [InlineData("class A { void m(Object o) { if (o instanceof String s) { g(s); } } }")]
+    [InlineData("class A { Map.Entry<String, Integer> e; }")]
+    public void Typical_code_parses_without_ll_fallback(string code)
+    {
+        var result = new TwoStageParser().Parse(new JavaLanguage(), code);
+        Assert.False(result.UsedLlFallback);
+    }
+
     [Fact]
     public void Matches_println_pattern()
     {

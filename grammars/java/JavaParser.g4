@@ -269,10 +269,12 @@ arrayInitializer
     : '{' (variableInitializer (',' variableInitializer)* ','?)? '}'
     ;
 
+// ag4: upstream wraps the first segment in `( ... )+`, which lets `String s` read as one type
+// with no '.' between. SLL then mispredicts on ordinary declarations and falls back to LL.
+// Valid Java never repeats the segment, so a single occurrence keeps the same trees.
 classType:
-    (
-      ( packageName '.' annotation* )? typeIdentifier typeArguments?
-    )+ ( '.' annotation* typeIdentifier typeArguments? )*
+    ( packageName '.' annotation* )? typeIdentifier typeArguments?
+    ( '.' annotation* typeIdentifier typeArguments? )*
     ;
 
 packageName:
