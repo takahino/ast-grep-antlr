@@ -93,6 +93,8 @@ expr      : expr PLUS expr
 
 [grammars-v4](https://github.com/antlr/grammars-v4) の文法を使うときは、述語やアクションに依存していないか確認してください。依存している場合は、述語なしで成り立つように規則を書き換える必要があります（例：文脈によって変わるキーワード判定を、トークン定義の順序で表現する）。
 
+述語やアクションをそのまま使いたい場合は、`sgconfig.yml` ではなく、文法を C# のコードとして ag4 本体か自分の .NET プロジェクトに組み込みます。手順は [10 章](#10-述語アクションを使う文法を組み込む) を参照してください。
+
 ### 3.3 `.g4` と `.interp` のどちらを指定するか
 
 | 指定するもの | 必要な環境                         | 向いている場面                     |
@@ -391,3 +393,295 @@ ANTLR の予測用 DFA は、同じプロセスで解析を繰り返すほど育
 | `Unknown rule '...' for language '...'`   | `startRule` / `patternRules` / `entry` に文法に無い規則名を書いている                                                                                          |
 | ヒットしない（エラーなし）                | `extensions` が対象ファイルに合っていない、記号トークンを `kind` で指定している、`patternRules` の順番でパターンが別の規則として解釈されている、などを確認する |
 | 言語 ID が見つからない                    | `sgconfig.yml` が自動探索されていない。`-c` で明示する                                                                                                         |
+
+---
+
+## 10. 述語・アクションを使う文法を組み込む
+
+`sgconfig.yml` の `customLanguages` はインタプリタで動くため、`.g4` の隣に `.cs` を置いても実行されません（[3.2](#32-使えない文法機能)）。述語・アクション・`superClass` の基底クラスを使うには、ANTLR が生成した C# パーサと基底クラスを**ビルド時にコンパイルして**組み込みます。組み込み言語の Python・PL/SQL・C++・Java も、この方式で述語付きの grammars-v4 文法を動かしています。
+
+### 10.1 どちらの方法を選ぶか
+
+|                                 | 方法 A: ag4 本体に組み込む | 方法 B: 自分の .NET プロジェクトに組み込む |
+| ------------------------------- | -------------------------- | ------------------------------------------ |
+| ag4 本体の変更                  | 必要（フォークして修正）   | 不要                                       |
+| `ag4 run` / `scan` / `debug`    | 使える                     | 使えない                                   |
+| `ag4 mcp`                       | 使える                     | 使えない                                   |
+| NativeAOT（リリース版バイナリ） | 使える                     | 自分のアプリ次第（AOT でもビルドできる）   |
+| `ag4_native`（C ABI）           | 使える                     | 使えない                                   |
+| .NET から `Searcher` で呼ぶ     | 使える                     | 使える                                     |
+
+CLI や MCP から使いたいなら方法 A、自分の .NET アプリやツールの中で検索できれば十分なら方法 B が手軽です。
+
+どちらの方法でも、文法側の準備は同じです。以下では、`calc` を例に「`pi` と `e` への代入だけを別の規則 `constAssign` として解析する」述語を入れた文法を使います。
+
+```antlr
+// CalcParser.g4
+parser grammar CalcParser;
+
+options { tokenVocab = CalcLexer; superClass = CalcParserBase; }
+
+program     : statement* EOF ;
+statement   : constAssign
+            | assign
+            ;
+// 代入先が予約された定数名のときだけ選ばれる
+constAssign : { IsReserved(CurrentToken.Text) }? ID ASSIGN expr SEMI ;
+assign      : ID ASSIGN expr SEMI ;
+expr        : expr PLUS expr
+            | NUMBER
+            | ID
+            ;
+```
+
+```csharp
+// CSharp/CalcParserBase.cs
+using Antlr4.Runtime;
+
+namespace CalcExt.Calc; // csproj の <Package> と同じ名前空間にする
+
+public abstract class CalcParserBase : Parser
+{
+    protected CalcParserBase(ITokenStream input)
+        : base(input) { }
+
+    protected CalcParserBase(ITokenStream input, TextWriter output, TextWriter errorOutput)
+        : base(input, output, errorOutput) { }
+
+    // Names that must not be reassigned.
+    protected static bool IsReserved(string name) => name is "pi" or "e";
+}
+```
+
+基底クラスには、ANTLR が生成するパーサが呼ぶ 2 つのコンストラクタ（`ITokenStream` だけを受け取るものと、出力先も受け取るもの）を用意してください。
+
+### 10.2 方法 A: ag4 本体に組み込む
+
+既存の組み込み言語と同じ手順です。迷ったら Python（`grammars/python/`、`src/AstGrepAntlr.Languages/Python/`）か PL/SQL の構成をそのまま真似してください。
+
+#### 手順 1. 文法と基底クラスを置く
+
+grammars-v4 と同じ配置にします。
+
+```text
+grammars/calc/
+  CalcLexer.g4
+  CalcParser.g4
+  CSharp/
+    CalcParserBase.cs
+  LICENSE        # 文法のライセンス
+  README.md      # 出典（取得元の URL とコミット）
+```
+
+#### 手順 2. 基底クラスの名前空間を合わせる
+
+ANTLR が生成するクラスは、csproj の `<Package>` で指定した名前空間に入ります。`superClass` で指定した基底クラスも同じ名前空間に置いてください。grammars-v4 から持ってきた基底クラスは、名前空間を書き換えて、冒頭にその旨を書いておきます。
+
+```csharp
+// grammars/python/CSharp/Python3LexerBase.cs（実際のファイル）
+// Vendored from grammars-v4 python/python3/CSharp/Python3LexerBase.cs (MIT).
+// Namespace adjusted to match Antlr4BuildTasks Package setting.
+...
+namespace AstGrepAntlr.Languages.Python;
+
+public abstract class Python3LexerBase : Lexer
+```
+
+#### 手順 3. csproj に登録する
+
+`src/AstGrepAntlr.Languages/AstGrepAntlr.Languages.csproj` の `<ItemGroup>` に、`.g4` を `<Antlr4>` として、基底クラスを `<Compile>` として追加します。ビルド時に Antlr4BuildTasks が C# を生成します（`Antlr4UseCSharpGenerator` が有効なので、ビルドに Java は要りません）。
+
+```xml
+<Antlr4 Include="..\..\grammars\calc\CalcLexer.g4">
+  <Generator>MSBuild:Compile</Generator>
+  <Listener>false</Listener>
+  <Visitor>false</Visitor>
+  <Package>AstGrepAntlr.Languages.Calc</Package>
+</Antlr4>
+<Antlr4 Include="..\..\grammars\calc\CalcParser.g4">
+  <Generator>MSBuild:Compile</Generator>
+  <Listener>false</Listener>
+  <Visitor>false</Visitor>
+  <Package>AstGrepAntlr.Languages.Calc</Package>
+</Antlr4>
+<Compile Include="..\..\grammars\calc\CSharp\CalcParserBase.cs" Link="Calc\CalcParserBase.cs" />
+```
+
+lexer に `superClass` があれば、`XxxLexerBase.cs` も同じように `<Compile>` に追加します。
+
+#### 手順 4. 言語クラスを書く
+
+`src/AstGrepAntlr.Languages/Calc/CalcLanguage.cs` に `IAntlrLanguage` を実装します。いちばん小さい実例は `src/AstGrepAntlr.Languages/Sqlite/SqliteLanguage.cs` です。
+
+```csharp
+using Antlr4.Runtime;
+using AstGrepAntlr.Language;
+using AstGrepAntlr.Languages.Calc;
+
+namespace AstGrepAntlr.Languages;
+
+public sealed class CalcLanguage : IAntlrLanguage
+{
+    public string Id => "calc";
+    public IReadOnlyList<string> Extensions { get; } = [".calc"];
+    public string StartRule => "program";
+    public IReadOnlyList<string> PatternRules { get; } = ["assign", "statement", "expr", "program"];
+    public string MetaVarPlaceholderTemplate => "__MV{0}__";
+    public IReadOnlyList<string> MetaVarVariants { get; } = ["{0}", "{0};"];
+    public bool IgnoreCase => false;
+    public TimeSpan ParseTimeout => TimeSpan.FromSeconds(30);
+    public long MaxFileBytes => 4 * 1024 * 1024;
+    public IReadOnlyList<string> RuleNames => CalcParser.ruleNames;
+    public IVocabulary Vocabulary => CalcLexer.DefaultVocabulary;
+
+    public Lexer CreateLexer(ICharStream stream) => new CalcLexer(stream);
+
+    public Parser CreateParser(ITokenStream tokens) => new CalcParser(tokens);
+
+    // startRule・PatternRules・ルールの entry で使う規則を、生成されたメソッドに振り分ける
+    public ParserRuleContext InvokeRule(Parser parser, string ruleName)
+    {
+        var p = (CalcParser)parser;
+        return ruleName.ToLowerInvariant() switch
+        {
+            "program" => p.program(),
+            "statement" => p.statement(),
+            "constassign" => p.constAssign(),
+            "assign" => p.assign(),
+            "expr" => p.expr(),
+            _ => throw new ArgumentException($"Unknown calc rule '{ruleName}'."),
+        };
+    }
+
+    // Symbol literals such as '=' or '+' are unnamed (like tree-sitter anonymous nodes).
+    public bool IsNamedToken(IToken token, IVocabulary vocabulary)
+    {
+        var literal = vocabulary.GetLiteralName(token.Type);
+        return string.IsNullOrEmpty(literal) && !string.IsNullOrEmpty(vocabulary.GetSymbolicName(token.Type));
+    }
+}
+```
+
+`InvokeRule` は `ruleName.ToLowerInvariant()` で比較しているので、switch の左辺は**小文字**で書きます。
+
+各メンバーは、[4 章](#4-sgconfigyml-に登録する)の `sgconfig.yml` のキーに対応します。
+
+| メンバー                     | `sgconfig.yml` のキー   | 補足                                                                                                  |
+| ---------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `Id`                         | 言語 ID（マップのキー） | `-l` や YAML ルールの `language` で使う                                                               |
+| `Extensions`                 | `extensions`            | こちらは**ドット付き**（`".calc"`）                                                                   |
+| `StartRule`                  | `startRule`             |                                                                                                       |
+| `PatternRules`               | `patternRules`          | 具体的な規則から順に並べる（[4.2](#42-patternrules順番が重要)）                                       |
+| `MetaVarPlaceholderTemplate` | `metaVarPlaceholder`    |                                                                                                       |
+| `MetaVarVariants`            | `metaVarVariants`       |                                                                                                       |
+| `IgnoreCase`                 | `ignoreCase`            |                                                                                                       |
+| `ParseTimeout`               | —                       | 1 ファイルの解析タイムアウト                                                                          |
+| `MaxFileBytes`               | —                       | これより大きいファイルは読み飛ばす                                                                    |
+| `IsNamedToken`               | —                       | `false` を返したトークンは `unnamed` 扱いになり、`kind` で指定できない（[5 章](#5-木の形を確認する)） |
+
+#### 手順 5. 言語を登録する
+
+`src/AstGrepAntlr.Languages/BuiltinLanguages.cs` の `RegisterFixed` に追加します。別名が要るなら `RegisterAlias` も追加します。
+
+```csharp
+private static void RegisterFixed(LanguageRegistry registry)
+{
+    registry.RegisterLazy("sqlite", static () => new SqliteLanguage());
+    registry.RegisterLazy("plsql", static () => new PlSqlLanguage());
+    registry.RegisterAlias("pl/sql", "plsql");
+    registry.RegisterLazy("calc", static () => new CalcLanguage()); // 追加
+}
+```
+
+#### 手順 6. ビルドして確認する
+
+```bash
+dotnet build
+dotnet run --project src/AstGrepAntlr.Cli -- debug parse -l calc --code 'pi = 3; x = 1;'
+dotnet run --project src/AstGrepAntlr.Cli -- debug pattern -l calc -p '$A = $B;'
+dotnet test
+```
+
+`debug parse` で、`pi = 3;` が `constAssign`、`x = 1;` が `assign` になっていれば述語が効いています。テストは `tests/AstGrepAntlr.Tests/PlSqlParseTests.cs` や `PythonParseTests.cs` を参考に追加してください。
+
+NativeAOT 版でも動くことは、リリースと同じコマンドで確認できます。
+
+```bash
+dotnet publish src/AstGrepAntlr.Cli/AstGrepAntlr.Cli.csproj -c Release -r win-x64 -p:PublishAot=true
+```
+
+#### 手順 7. 付随する更新
+
+- `README.md` / `README.en.md` の言語表（Id・拡張子・既定バックエンド）
+- `THIRD-PARTY-NOTICES.md`（文法と基底クラスのライセンス）
+
+### 10.3 方法 B: 自分の .NET プロジェクトに組み込む
+
+ag4 本体は変更せず、ライブラリとして使います。文法・基底クラス・言語クラスは方法 A と同じものを、自分のプロジェクトに置きます（名前空間は自分のものに変えます）。
+
+```xml
+<!-- CalcExt.csproj -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Antlr4UseCSharpGenerator>true</Antlr4UseCSharpGenerator>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    <PackageReference Include="Antlr4BuildTasks" Version="12.10.0" PrivateAssets="all" />
+    <!-- NuGet なら PackageReference、ソースから使うなら ProjectReference -->
+    <PackageReference Include="AstGrepAntlr.Core" Version="..." />
+    <PackageReference Include="AstGrepAntlr.Languages" Version="..." />
+  </ItemGroup>
+  <ItemGroup>
+    <Antlr4 Include="Grammars/CalcLexer.g4">
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>CalcExt.Calc</Package>
+    </Antlr4>
+    <Antlr4 Include="Grammars/CalcParser.g4">
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <Package>CalcExt.Calc</Package>
+    </Antlr4>
+  </ItemGroup>
+</Project>
+```
+
+SDK 形式のプロジェクトでは、プロジェクト配下の `.cs`（`Grammars/CSharp/CalcParserBase.cs` を含む）は自動でコンパイルされるので、`<Compile>` は要りません。
+
+言語を登録してから `Searcher` を呼びます。
+
+```csharp
+using AstGrepAntlr.Languages;
+using AstGrepAntlr.Search;
+using CalcExt;
+
+var registry = BuiltinLanguages.CreateRegistry(); // 組み込み言語も使えるようにする
+registry.Register(new CalcLanguage());
+
+var matches = new Searcher().RunPattern(
+    "$A = $B;",
+    new SearchOptions { Registry = registry, LanguageId = "calc", Paths = ["src"] }
+);
+foreach (var m in matches)
+{
+    Console.WriteLine($"{m.File}:{m.StartLine}: {m.Text}");
+}
+```
+
+`pi = 3;`、`x = 1;`、`y = x + 2;` を含むファイルに対してこのコードを実行すると、`x = 1;` と `y = x + 2;` だけがヒットします。パターン `$A = $B;` は `PatternRules` の先頭の `assign` として解析され、`pi = 3;` は述語によって `constAssign` になっているためです。
+
+### 10.4 注意点
+
+- **述語はパターンの解析でも評価されます。** パターン中のメタ変数は `__MV0__` などのプレースホルダに置き換えてから解析されるので、上の例の `IsReserved` はメタ変数の位置では常に偽になります。述語で分かれた規則を狙うには、次のどちらかにします。
+  - YAML ルールで `kind: constAssign` を使う
+  - 述語の条件を満たす具体的な文字列を書き、`entry` でその規則を指定する（例: `pattern: { context: "pi = $B;", entry: constAssign }`）。`entry` を付けないと、`PatternRules` の先頭の `assign` として解析されてヒットしません
+
+  なお、`$A = $B;` に `entry: constAssign` を付けると、述語が偽になって解析に失敗し、**エラーにならずに**次の候補の `assign` として解析されます。意図した規則で解析されたかは `ag4 debug pattern` の `entry:` 行で確認してください。
+
+- **規則の途中の述語が偽になっても、ノードは消えません。** `statement : name=ID { Check($name.text) }? ...` のように、規則の途中で入力を「拒否する」ための述語は、構文エラー（`rule statement failed predicate: ...`）として記録されます。そのあとエラー回復で解析が続くので、ノードは木に残り、照合の対象にもなります。照合の結果を変えたいなら、上の例のように**代替規則の先頭に述語を置いて、どの規則として解析するかを選ばせる**書き方にしてください。
+- **ランタイムのバージョン。** ag4 は `Antlr4.Runtime.Standard` 4.13.1 を使っています。grammars-v4 の C# 用基底クラスの中には古いランタイム API を前提にしたものがあるので、ビルドエラーが出たら現行 API に合わせて直してください。
+- **性能。** 述語が多い文法や、予測で述語を何度も評価する文法は遅くなることがあります。組み込みの C++（`grammars/cpp/CSharp/CPP14ParserBase.cs`）がその例です。数値は [ast-grep-vs-ag4.html](../ast-grep-vs-ag4.html) の C++ ANTLR を参照してください。
