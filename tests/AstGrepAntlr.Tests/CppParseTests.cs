@@ -1,4 +1,6 @@
+using AstGrepAntlr.Language;
 using AstGrepAntlr.Languages;
+using AstGrepAntlr.Languages.TreeSitter;
 using AstGrepAntlr.Matching;
 using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Pattern;
@@ -53,6 +55,12 @@ public class CppParseTests
     public void Registry_resolves_cpp_aliases()
     {
         var registry = BuiltinLanguages.CreateRegistry();
+        foreach (var alias in new[] { "cpp", "c++", "cc", "cxx" })
+        {
+            Assert.IsType<TreeSitterLanguage>(registry.Get(alias));
+        }
+
+        BuiltinLanguages.ApplyBackend(registry, "cpp", LanguageBackend.Antlr);
         foreach (var alias in new[] { "cpp", "c++", "cc", "cxx" })
         {
             Assert.IsType<CppLanguage>(registry.Get(alias));

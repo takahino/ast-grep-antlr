@@ -150,16 +150,46 @@ public sealed class Searcher
         string? severity
     )
     {
-        var bag = new ConcurrentBag<MatchResult>();
+        if (options.MaxResults >= int.MaxValue)
+        {
+            var bag = new ConcurrentBag<MatchResult>();
+            Parallel.ForEach(
+                files,
+                new ParallelOptions
+                {
+                    CancellationToken = options.CancellationToken,
+                    MaxDegreeOfParallelism = Environment.ProcessorCount,
+                },
+                file =>
+                {
+                    var parsed = TryParseFile(file, language, requiredLiterals, options);
+                    if (parsed is null)
+                    {
+                        return;
+                    }
 
-        Parallel.ForEach(
-            files,
-            new ParallelOptions
-            {
-                CancellationToken = options.CancellationToken,
-                MaxDegreeOfParallelism = Environment.ProcessorCount,
-            },
-            file =>
+                    CollectMatches(
+                        bag,
+                        file,
+                        language.Id,
+                        parsed,
+                        match,
+                        ruleId,
+                        message,
+                        severity,
+                        options.ContextLines
+                    );
+                }
+            );
+
+            return OrderTake(bag, options.MaxResults);
+        }
+
+        var ordered = files.OrderBy(f => f, StringComparer.Ordinal).ToList();
+        return SearchOrdered(
+            ordered,
+            options,
+            (file, bag) =>
             {
                 var parsed = TryParseFile(file, language, requiredLiterals, options);
                 if (parsed is null)
@@ -170,8 +200,6 @@ public sealed class Searcher
                 CollectMatches(bag, file, language.Id, parsed, match, ruleId, message, severity, options.ContextLines);
             }
         );
-
-        return OrderTake(bag, options.MaxResults);
     }
 
     private IEnumerable<MatchResult> SearchSources(
@@ -185,30 +213,155 @@ public sealed class Searcher
         string? severity
     )
     {
-        var bag = new ConcurrentBag<MatchResult>();
+        if (options.MaxResults >= int.MaxValue)
+        {
+            var bag = new ConcurrentBag<MatchResult>();
+            Parallel.ForEach(
+                sources,
+                new ParallelOptions
+                {
+                    CancellationToken = options.CancellationToken,
+                    MaxDegreeOfParallelism = Environment.ProcessorCount,
+                },
+                input =>
+                {
+                    var path = string.IsNullOrEmpty(input.Path) ? "<buffer>" : input.Path;
+                    var source = SourceFile.FromText(path, input.Content ?? "");
+                    var parsed = TryParseSource(source, language, requiredLiterals, options);
+                    if (parsed is null)
+                    {
+                        return;
+                    }
 
-        Parallel.ForEach(
-            sources,
-            new ParallelOptions
+                    CollectMatches(
+                        bag,
+                        path,
+                        language.Id,
+                        parsed,
+                        match,
+                        ruleId,
+                        message,
+                        severity,
+                        options.ContextLines
+                    );
+                }
+            );
+
+            return OrderTake(bag, options.MaxResults);
+        }
+
+        var ordered = sources
+            .Select(s =>
             {
-                CancellationToken = options.CancellationToken,
-                MaxDegreeOfParallelism = Environment.ProcessorCount,
-            },
-            input =>
+                var path = string.IsNullOrEmpty(s.Path) ? "<buffer>" : s.Path;
+                return (Path: path, Content: s.Content ?? "");
+            })
+            .OrderBy(s => s.Path, StringComparer.Ordinal)
+            .ToList();
+
+        return SearchOrdered(
+            ordered,
+            options,
+            (item, bag) =>
             {
-                var path = string.IsNullOrEmpty(input.Path) ? "<buffer>" : input.Path;
-                var source = SourceFile.FromText(path, input.Content ?? "");
+                var source = SourceFile.FromText(item.Path, item.Content);
                 var parsed = TryParseSource(source, language, requiredLiterals, options);
                 if (parsed is null)
                 {
                     return;
                 }
 
-                CollectMatches(bag, path, language.Id, parsed, match, ruleId, message, severity, options.ContextLines);
+                CollectMatches(
+                    bag,
+                    item.Path,
+                    language.Id,
+                    parsed,
+                    match,
+                    ruleId,
+                    message,
+                    severity,
+                    options.ContextLines
+                );
+            }
+        );
+    }
+
+    /// <summary>
+    /// Parallel search over Ordinal-ordered inputs with early stop once a contiguous prefix of
+    /// completed items already covers <see cref="SearchOptions.MaxResults"/>.
+    /// </summary>
+    private static IEnumerable<MatchResult> SearchOrdered<T>(
+        IReadOnlyList<T> ordered,
+        SearchOptions options,
+        Action<T, ConcurrentBag<MatchResult>> process
+    )
+    {
+        var perIndex = new ConcurrentDictionary<int, List<MatchResult>>();
+        var gate = new object();
+        var nextComplete = 0;
+        var prefixCount = 0;
+        var max = options.MaxResults;
+
+        var indexed = new (int Index, T Item)[ordered.Count];
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            indexed[i] = (i, ordered[i]);
+        }
+
+        Parallel.ForEach(
+            Partitioner.Create(indexed, EnumerablePartitionerOptions.NoBuffering),
+            new ParallelOptions
+            {
+                CancellationToken = options.CancellationToken,
+                MaxDegreeOfParallelism = Environment.ProcessorCount,
+            },
+            (entry, state) =>
+            {
+                if (state.ShouldExitCurrentIteration)
+                {
+                    return;
+                }
+
+                var bag = new ConcurrentBag<MatchResult>();
+                process(entry.Item, bag);
+                var list = bag.OrderBy(m => m.Start).ToList();
+                perIndex[entry.Index] = list;
+
+                lock (gate)
+                {
+                    while (nextComplete < ordered.Count && perIndex.ContainsKey(nextComplete))
+                    {
+                        prefixCount += perIndex[nextComplete].Count;
+                        nextComplete++;
+                    }
+
+                    if (prefixCount >= max)
+                    {
+                        state.Stop();
+                    }
+                }
             }
         );
 
-        return OrderTake(bag, options.MaxResults);
+        var results = new List<MatchResult>(Math.Min(max, prefixCount));
+        for (var i = 0; i < nextComplete && results.Count < max; i++)
+        {
+            if (!perIndex.TryGetValue(i, out var list))
+            {
+                continue;
+            }
+
+            foreach (var m in list)
+            {
+                results.Add(m);
+                if (results.Count >= max)
+                {
+                    break;
+                }
+            }
+        }
+
+        return results;
     }
 
     private static void CollectMatches(
@@ -331,7 +484,7 @@ public sealed class Searcher
         int contextLines
     )
     {
-        var n = tree[node];
+        ref readonly var n = ref tree[node];
         var (sl, sc) = lines.Locate(n.Start);
         var (el, ec) = lines.Locate(n.End);
         var (byteStart, byteEnd) = offsets.Utf16RangeToBytes(n.Start, n.End);

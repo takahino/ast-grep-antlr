@@ -4,6 +4,7 @@ using AstGrepAntlr.Language;
 using AstGrepAntlr.Languages;
 using AstGrepAntlr.Languages.TreeSitter;
 using AstGrepAntlr.Matching;
+using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Pattern;
 using AstGrepAntlr.Text;
 
@@ -66,14 +67,18 @@ internal static class Program
                 return 2;
             }
 
+            var compileSw = Stopwatch.StartNew();
             var compiled = new PatternCompiler().Compile(language, new PatternSpec(pattern));
+            compileSw.Stop();
             var matcher = new PatternMatcher();
 
-            long readMs = 0,
-                parseMs = 0,
-                matchMs = 0;
+            long readTicks = 0,
+                parseTicks = 0,
+                matchTicks = 0;
             var nodes = 0L;
             var hits = 0;
+            var llFallbackFiles = 0;
+            var timings = new ParseTimings();
             var sw = new Stopwatch();
 
             // Warmup
@@ -93,16 +98,20 @@ internal static class Program
                     continue;
                 }
 
-                readMs += sw.ElapsedMilliseconds;
+                readTicks += sw.ElapsedTicks;
 
                 sw.Restart();
-                var parsed = language.Parse(source!.Text);
-                parseMs += sw.ElapsedMilliseconds;
+                var parsed = language.Parse(source!.Text, new LanguageParseOptions { Timings = timings });
+                parseTicks += sw.ElapsedTicks;
                 nodes += parsed.Tree.NodeCount;
+                if (parsed.UsedLlFallback)
+                {
+                    llFallbackFiles++;
+                }
 
                 sw.Restart();
                 hits += matcher.MatchAll(parsed.Tree, compiled).Count();
-                matchMs += sw.ElapsedMilliseconds;
+                matchTicks += sw.ElapsedTicks;
             }
 
             var backendLabel = language switch
@@ -113,9 +122,16 @@ internal static class Program
                 _ => "unknown",
             };
 
-            Console.WriteLine($"lang={langId} backend={backendLabel} files={files.Count} pattern={pattern}");
-            Console.WriteLine($"read_ms={readMs} parse_ms={parseMs} match_ms={matchMs} nodes={nodes} hits={hits}");
+            var readMs = TicksToMs(readTicks);
+            var parseMs = TicksToMs(parseTicks);
+            var matchMs = TicksToMs(matchTicks);
+            var compileMs = compileSw.Elapsed.TotalMilliseconds;
             var total = readMs + parseMs + matchMs;
+
+            Console.WriteLine($"lang={langId} backend={backendLabel} files={files.Count} pattern={pattern}");
+            Console.WriteLine(
+                $"compile_ms={compileMs:F1} read_ms={readMs:F1} parse_ms={parseMs:F1} match_ms={matchMs:F1} nodes={nodes} hits={hits}"
+            );
             if (total > 0)
             {
                 Console.WriteLine(
@@ -123,13 +139,24 @@ internal static class Program
                 );
             }
 
+            Console.WriteLine(
+                $"parse_detail lex_ms={timings.Lex.TotalMilliseconds:F1} parse_ms={timings.Parse.TotalMilliseconds:F1} "
+                    + $"ll_ms={timings.LlFallback.TotalMilliseconds:F1} build_ms={timings.Build.TotalMilliseconds:F1} "
+                    + $"diag_ms={timings.Diagnostics.TotalMilliseconds:F1}"
+            );
+            Console.WriteLine(
+                $"ll_fallback_files={llFallbackFiles}/{files.Count} ({Pct(llFallbackFiles, files.Count)}%)"
+            );
+
             return 0;
         });
 
         return await root.Parse(args).InvokeAsync();
     }
 
-    private static int Pct(long part, long total) => (int)Math.Round(100.0 * part / total);
+    private static double TicksToMs(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
+
+    private static int Pct(double part, double total) => total <= 0 ? 0 : (int)Math.Round(100.0 * part / total);
 
     private static IEnumerable<string> EnumerateFiles(IEnumerable<string> roots, IReadOnlyList<string> extensions)
     {

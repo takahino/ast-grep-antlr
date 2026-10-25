@@ -5,11 +5,15 @@ namespace AstGrepAntlr.Text;
 /// <summary>Source file loaded as raw bytes with detected encoding.</summary>
 public sealed class SourceFile
 {
+    private string? _hash;
+
     public required string Path { get; init; }
     public required byte[] Bytes { get; init; }
     public required DetectedEncoding Detected { get; init; }
     public required string Text { get; init; }
-    public required string Hash { get; init; }
+
+    /// <summary>SHA-256 of <see cref="Bytes"/>, computed on first access.</summary>
+    public string Hash => _hash ??= EncodingDetector.Sha256Hex(Bytes);
 
     public string EncodingName => Detected.Name;
 
@@ -24,7 +28,6 @@ public sealed class SourceFile
             Bytes = bytes,
             Detected = detected,
             Text = text,
-            Hash = EncodingDetector.Sha256Hex(bytes),
         };
     }
 
@@ -40,7 +43,6 @@ public sealed class SourceFile
             Bytes = bytes,
             Detected = detected,
             Text = text,
-            Hash = EncodingDetector.Sha256Hex(bytes),
         };
     }
 

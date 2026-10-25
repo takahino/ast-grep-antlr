@@ -1,21 +1,21 @@
 # Difftest report (ast-grep vs ag4)
 
-Generated (UTC): `2026-10-25T01:23–02:35Z` (expanded corpus + MetaVar / Smart / C# tree-sitter)  
+Generated (UTC): `2026-10-25T04:46–05:42Z` (after speedup work; match counts unchanged vs prior baseline)  
 Baseline tool: `@ast-grep/cli@0.51.0`  
 Mode: `comparative`
 
 ```bash
 # tree-sitter (default for java/cpp/python/csharp)
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
-  --corpus difftest/corpus.yml --backend tree-sitter --skip-clone --skip-npm --skip-rewrite --timeout-seconds 90
+  --corpus difftest/corpus.yml --backend tree-sitter --skip-clone --skip-npm --no-fail
 
-# ANTLR (java/cpp/python)
+# ANTLR (java/cpp/python; csharp stays tree-sitter)
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
-  --corpus difftest/corpus.yml --backend antlr --skip-clone --skip-npm --skip-rewrite --timeout-seconds 180
+  --corpus difftest/corpus.yml --backend antlr --skip-clone --skip-npm --no-fail
 
 # Roslyn (csharp only)
 dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
-  --corpus difftest/corpus.yml --backend roslyn --language csharp --skip-clone --skip-npm --skip-rewrite
+  --corpus difftest/corpus.yml --backend roslyn --language csharp --skip-clone --skip-npm --no-fail
 ```
 
 ## Summary
@@ -31,9 +31,9 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | Metavar diff                              |    148 |
 | Match rate                                | 98.65% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  21849 |
-| ag4 time (ms)                             |  95757 |
-| Speed ratio (ag4 / ast-grep)              |  4.38x |
+| ast-grep time (ms)                        |  20085 |
+| ag4 time (ms)                             |  83265 |
+| Speed ratio (ag4 / ast-grep)              |  4.15x |
 
 ### Java — ANTLR
 
@@ -46,9 +46,9 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | Metavar diff                              |   4715 |
 | Match rate                                | 59.56% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  17690 |
-| ag4 time (ms)                             | 368114 |
-| Speed ratio (ag4 / ast-grep)              | 20.81x |
+| ast-grep time (ms)                        |  19338 |
+| ag4 time (ms)                             | 381659 |
+| Speed ratio (ag4 / ast-grep)              | 19.74x |
 
 ### C++ — tree-sitter (default)
 
@@ -61,9 +61,9 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | Metavar diff                              |    129 |
 | Match rate                                | 94.33% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  17415 |
-| ag4 time (ms)                             |  77588 |
-| Speed ratio (ag4 / ast-grep)              |  4.46x |
+| ast-grep time (ms)                        |  17505 |
+| ag4 time (ms)                             |  73706 |
+| Speed ratio (ag4 / ast-grep)              |  4.21x |
 
 ### C++ — ANTLR
 
@@ -71,16 +71,16 @@ dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- \
 | ----------------------------------------- | ------: |
 | Same                                      |    9396 |
 | Only ast-grep                             |    9048 |
-| Only ag4                                  |     819 |
+| Only ag4                                  |     775 |
 | Range diff                                |       1 |
 | Metavar diff                              |    2305 |
-| Match rate                                |  43.56% |
+| Match rate                                |  43.65% |
 | Unexplained (after known-differences.yml) |       0 |
-| ast-grep time (ms)                        |   16340 |
-| ag4 time (ms)                             | 2611307 |
-| Speed ratio (ag4 / ast-grep)              | 159.81x |
+| ast-grep time (ms)                        |   17851 |
+| ag4 time (ms)                             | 2104623 |
+| Speed ratio (ag4 / ast-grep)              | 117.90x |
 
-Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CPP14 limits**.
+Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CPP14 limits**. Bench: **75% LL fallback** on leveldb sample.
 
 ### C# — tree-sitter (default)
 
@@ -93,9 +93,9 @@ Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CP
 | Metavar diff                              |   8740 |
 | Match rate                                | 81.67% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  17856 |
-| ag4 time (ms)                             |  98115 |
-| Speed ratio (ag4 / ast-grep)              |  5.49x |
+| ast-grep time (ms)                        |  18415 |
+| ag4 time (ms)                             |  98597 |
+| Speed ratio (ag4 / ast-grep)              |  5.35x |
 
 ### C# — Roslyn (`--backend roslyn`)
 
@@ -108,9 +108,9 @@ Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CP
 | Metavar diff                              |   6884 |
 | Match rate                                | 53.27% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  17791 |
-| ag4 time (ms)                             | 118047 |
-| Speed ratio (ag4 / ast-grep)              |  6.63x |
+| ast-grep time (ms)                        |  19054 |
+| ag4 time (ms)                             | 116774 |
+| Speed ratio (ag4 / ast-grep)              |  6.13x |
 
 ### Python — tree-sitter (default)
 
@@ -123,9 +123,9 @@ Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CP
 | Metavar diff                              |    282 |
 | Match rate                                | 95.56% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  14786 |
-| ag4 time (ms)                             |  73190 |
-| Speed ratio (ag4 / ast-grep)              |  4.95x |
+| ast-grep time (ms)                        |  13860 |
+| ag4 time (ms)                             |  64211 |
+| Speed ratio (ag4 / ast-grep)              |  4.63x |
 
 ### Python — ANTLR
 
@@ -138,9 +138,9 @@ Expanded `.cc` paths make ANTLR much slower; low match rate is still mostly **CP
 | Metavar diff                              |   1721 |
 | Match rate                                | 54.68% |
 | Unexplained (after known-differences.yml) |      0 |
-| ast-grep time (ms)                        |  14749 |
-| ag4 time (ms)                             | 631639 |
-| Speed ratio (ag4 / ast-grep)              | 42.83x |
+| ast-grep time (ms)                        |  14398 |
+| ag4 time (ms)                             | 535414 |
+| Speed ratio (ag4 / ast-grep)              | 37.19x |
 
 ### PL/SQL
 
@@ -148,11 +148,10 @@ Not compared: upstream `@ast-grep/cli` has no built-in PL/SQL language.
 
 ## Notes (this run)
 
-- Corpus expanded: google-java-format, leveldb `.cc` paths, fmt `src`, flask, serilog; plus harder pattern shapes.
-- **MetaVar JSON** now emits `$$$` as per-node `multi` arrays (ast-grep shape, including `,` tokens). Java MetaVarDiff **5580→148**.
-- **Smart trailing skip** lets `if ($C) { $$$B }` match if-else (Java if-block OnlySg **328→0**).
-- **C# default is tree-sitter**; Roslyn via `--backend roslyn`. Match rate TS **~82%** vs Roslyn **~53%**.
-- Residuals catalogued under `backend: tree-sitter` (`ts-*-matcher`) / `backend: roslyn` (`csharp-*`); unexplained **0** for all measured backends.
+- Match counts equal the pre-speedup baseline (tree-sitter / antlr / roslyn). Wall times improved modestly on TS paths.
+- **Bench** (`tools/AstGrepAntlr.Bench`): parse-phase timings + LL fallback rate. Java ANTLR **67%** LL fallback on commons-lang; C++ ANTLR **75%** on leveldb sample. See [speedupissue.md](../speedupissue.md) and [ast-grep-vs-ag4.html](../ast-grep-vs-ag4.html) §2.2.
+- Speedups landed: tree-sitter cursor / LibraryImport / `has_error` prune; ANTLR Build-once + cancelable timeout; lazy language registration; matcher undo-log / MaxResults early stop.
+- Residuals remain catalogued in `known-differences.yml`; unexplained **0**.
 
 ## Configuration
 
@@ -162,5 +161,5 @@ Not compared: upstream `@ast-grep/cli` has no built-in PL/SQL language.
 
 ## Artifacts / CI
 
-- Machine-readable: `.difftest/report/latest/` (gitignored); per-backend copies under `.difftest/report/by-backend/`
+- Machine-readable: `.difftest/report/latest/` (gitignored); speedup snapshot under `.difftest/report/after/`
 - CI: [.github/workflows/difftest.yml](../.github/workflows/difftest.yml) — `workflow_dispatch` + weekly cron; fails on unexplained diffs

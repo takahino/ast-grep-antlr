@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using AstGrepAntlr.Language;
 using AstGrepAntlr.Languages.CSharp;
 using AstGrepAntlr.Parsing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ArenaTree = AstGrepAntlr.Tree.SyntaxTree;
 using RoslynNode = Microsoft.CodeAnalysis.SyntaxNode;
 
@@ -47,17 +49,60 @@ public sealed class CSharpLanguage : ILanguage
             cts.CancelAfter(ParseTimeout);
         }
 
-        var tree = CSharpSyntaxTree.ParseText(
-            source,
-            new CSharpParseOptions(LanguageVersion.Latest, DocumentationMode.None),
-            cancellationToken: cts.Token
-        );
-        var root = tree.GetCompilationUnitRoot(cts.Token);
-        var syntax = _builder.Build(source, Id, root);
-        var diagnostics = tree.GetDiagnostics(cts.Token)
-            .Where(d => d.Severity == DiagnosticSeverity.Error)
-            .Select(ToDiagnostic)
-            .ToList();
+        var timings = options.Timings;
+        Microsoft.CodeAnalysis.SyntaxTree tree;
+        CompilationUnitSyntax root;
+        if (timings is not null)
+        {
+            var sw = Stopwatch.StartNew();
+            tree = CSharpSyntaxTree.ParseText(
+                source,
+                new CSharpParseOptions(LanguageVersion.Latest, DocumentationMode.None),
+                cancellationToken: cts.Token
+            );
+            root = tree.GetCompilationUnitRoot(cts.Token);
+            timings.AddParse(sw.Elapsed);
+        }
+        else
+        {
+            tree = CSharpSyntaxTree.ParseText(
+                source,
+                new CSharpParseOptions(LanguageVersion.Latest, DocumentationMode.None),
+                cancellationToken: cts.Token
+            );
+            root = tree.GetCompilationUnitRoot(cts.Token);
+        }
+
+        ArenaTree syntax;
+        if (timings is not null)
+        {
+            var sw = Stopwatch.StartNew();
+            syntax = _builder.Build(source, Id, root);
+            timings.AddBuild(sw.Elapsed);
+        }
+        else
+        {
+            syntax = _builder.Build(source, Id, root);
+        }
+
+        List<ParseDiagnostic> diagnostics;
+        if (timings is not null)
+        {
+            var sw = Stopwatch.StartNew();
+            diagnostics = tree.GetDiagnostics(cts.Token)
+                .Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(ToDiagnostic)
+                .ToList();
+            timings.AddDiagnostics(sw.Elapsed);
+        }
+        else
+        {
+            diagnostics = tree.GetDiagnostics(cts.Token)
+                .Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(ToDiagnostic)
+                .ToList();
+        }
+
         var entry = options.EntryRule ?? StartRule;
         return new ParseResult(syntax, diagnostics, entry, UsedLlFallback: false);
     }

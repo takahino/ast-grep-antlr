@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using AstGrepAntlr.Language;
 using AstGrepAntlr.Parsing;
 using AstGrepAntlr.Tree;
@@ -91,14 +92,32 @@ public sealed class TreeSitterLanguage : ILanguage
         options ??= new LanguageParseOptions();
         options.CancellationToken.ThrowIfCancellationRequested();
 
+        var timings = options.Timings;
         var parser = GetThreadParser();
-        var treePtr = TsNative.ts_parser_parse_string_encoding(
-            parser,
-            nint.Zero,
-            source,
-            (uint)source.Length * 2,
-            TsNative.InputEncoding.Utf16Le
-        );
+        nint treePtr;
+        if (timings is not null)
+        {
+            var sw = Stopwatch.StartNew();
+            treePtr = TsNative.ts_parser_parse_string_encoding(
+                parser,
+                nint.Zero,
+                source,
+                (uint)source.Length * 2,
+                TsNative.InputEncoding.Utf16Le
+            );
+            timings.AddParse(sw.Elapsed);
+        }
+        else
+        {
+            treePtr = TsNative.ts_parser_parse_string_encoding(
+                parser,
+                nint.Zero,
+                source,
+                (uint)source.Length * 2,
+                TsNative.InputEncoding.Utf16Le
+            );
+        }
+
         if (treePtr == nint.Zero)
         {
             throw new InvalidOperationException($"tree-sitter failed to parse {Id} source.");
@@ -107,8 +126,30 @@ public sealed class TreeSitterLanguage : ILanguage
         try
         {
             var root = TsNative.ts_tree_root_node(treePtr);
-            var syntax = _builder.Build(source, Id, root);
-            var diagnostics = CollectDiagnostics(root, source);
+            SyntaxTree syntax;
+            if (timings is not null)
+            {
+                var sw = Stopwatch.StartNew();
+                syntax = _builder.Build(source, Id, root);
+                timings.AddBuild(sw.Elapsed);
+            }
+            else
+            {
+                syntax = _builder.Build(source, Id, root);
+            }
+
+            List<ParseDiagnostic> diagnostics;
+            if (timings is not null)
+            {
+                var sw = Stopwatch.StartNew();
+                diagnostics = CollectDiagnostics(root, source);
+                timings.AddDiagnostics(sw.Elapsed);
+            }
+            else
+            {
+                diagnostics = CollectDiagnostics(root, source);
+            }
+
             return new ParseResult(syntax, diagnostics, options.EntryRule ?? StartRule, UsedLlFallback: false);
         }
         finally
@@ -211,6 +252,11 @@ public sealed class TreeSitterLanguage : ILanguage
 
     private static List<ParseDiagnostic> CollectDiagnostics(TsNative.TSNode root, string source)
     {
+        if (!TsNative.ts_node_has_error(root))
+        {
+            return [];
+        }
+
         var list = new List<ParseDiagnostic>();
         WalkErrors(root, source, list);
         return list;
@@ -226,14 +272,31 @@ public sealed class TreeSitterLanguage : ILanguage
             list.Add(new ParseDiagnostic(line, col, $"{kind} at {line}:{col}", IsLexer: false));
         }
 
-        var n = TsNative.ts_node_child_count(node);
-        for (uint i = 0; i < n; i++)
+        if (!TsNative.ts_node_has_error(node))
         {
-            var child = TsNative.ts_node_child(node, i);
-            if (!TsNative.ts_node_is_null(child))
+            return;
+        }
+
+        var cursor = TsNative.ts_tree_cursor_new(node);
+        try
+        {
+            if (!TsNative.ts_tree_cursor_goto_first_child(ref cursor))
             {
-                WalkErrors(child, source, list);
+                return;
             }
+
+            do
+            {
+                var child = TsNative.ts_tree_cursor_current_node(ref cursor);
+                if (!TsNative.ts_node_is_null(child) && TsNative.ts_node_has_error(child))
+                {
+                    WalkErrors(child, source, list);
+                }
+            } while (TsNative.ts_tree_cursor_goto_next_sibling(ref cursor));
+        }
+        finally
+        {
+            TsNative.ts_tree_cursor_delete(ref cursor);
         }
     }
 

@@ -10,27 +10,35 @@ public sealed class PatternMatcher
         CompiledPattern pattern
     )
     {
-        var rootKind = pattern.Tree[pattern.Root].TypeName;
-        IEnumerable<int> candidates = pattern.Tree[pattern.Root].MetaVarName is not null
+        ref readonly var patternRoot = ref pattern.Tree[pattern.Root];
+        var rootKind = patternRoot.TypeName;
+        IEnumerable<int> candidates = patternRoot.MetaVarName is not null
             ? Enumerable.Range(0, target.NodeCount)
             : target.NodesMatchingKind(rootKind);
 
         var seen = new HashSet<(int, int)>();
+        var env = new Dictionary<string, MetaVarValue>(StringComparer.Ordinal);
+        var undo = new List<EnvUndo>();
         foreach (var candidate in candidates)
         {
-            var env = new Dictionary<string, MetaVarValue>(StringComparer.Ordinal);
-            if (!MatchNode(target, candidate, pattern.Tree, pattern.Root, pattern.Strictness, env))
+            env.Clear();
+            undo.Clear();
+            if (!MatchNode(target, candidate, pattern.Tree, pattern.Root, pattern.Strictness, env, undo))
             {
                 continue;
             }
 
-            var key = (target[candidate].Start, target[candidate].End);
+            ref readonly var c = ref target[candidate];
+            var key = (c.Start, c.End);
             if (!seen.Add(key))
             {
                 continue;
             }
 
             yield return (candidate, env);
+            // Caller may retain the yielded dictionary; allocate a fresh one for the next candidate.
+            env = new Dictionary<string, MetaVarValue>(StringComparer.Ordinal);
+            undo = new List<EnvUndo>();
         }
     }
 
@@ -40,11 +48,12 @@ public sealed class PatternMatcher
         SyntaxTree pattern,
         int pIndex,
         Strictness strictness,
-        Dictionary<string, MetaVarValue> env
+        Dictionary<string, MetaVarValue> env,
+        List<EnvUndo> undo
     )
     {
-        var p = pattern[pIndex];
-        var t = target[tIndex];
+        ref readonly var p = ref pattern[pIndex];
+        ref readonly var t = ref target[tIndex];
 
         if (p.MetaVarName is not null)
         {
@@ -78,7 +87,7 @@ public sealed class PatternMatcher
                 return string.Equals(existing.Text, text, StringComparison.Ordinal);
             }
 
-            env[p.MetaVarName] = value;
+            Bind(env, undo, p.MetaVarName, value);
             return true;
         }
 
@@ -89,7 +98,7 @@ public sealed class PatternMatcher
                 // Descend into single-child chains on target.
                 if (t.ChildCount == 1)
                 {
-                    return MatchNode(target, t.FirstChild, pattern, pIndex, strictness, env);
+                    return MatchNode(target, t.FirstChild, pattern, pIndex, strictness, env, undo);
                 }
 
                 return false;
@@ -102,12 +111,12 @@ public sealed class PatternMatcher
         if (strictness != Strictness.Relaxed && !target.KindMatches(tIndex, p.TypeName) && t.TypeName != p.TypeName)
         {
             // Try unwrap single-child on either side.
-            if (t.ChildCount == 1 && MatchNode(target, t.FirstChild, pattern, pIndex, strictness, env))
+            if (t.ChildCount == 1 && MatchNode(target, t.FirstChild, pattern, pIndex, strictness, env, undo))
             {
                 return true;
             }
 
-            if (p.ChildCount == 1 && MatchNode(target, tIndex, pattern, p.FirstChild, strictness, env))
+            if (p.ChildCount == 1 && MatchNode(target, tIndex, pattern, p.FirstChild, strictness, env, undo))
             {
                 return true;
             }
@@ -118,7 +127,7 @@ public sealed class PatternMatcher
             }
         }
 
-        return MatchChildren(target, tIndex, pattern, pIndex, strictness, env);
+        return MatchChildren(target, tIndex, pattern, pIndex, strictness, env, undo);
     }
 
     private static bool MatchChildren(
@@ -127,32 +136,51 @@ public sealed class PatternMatcher
         SyntaxTree pattern,
         int pIndex,
         Strictness strictness,
-        Dictionary<string, MetaVarValue> env
+        Dictionary<string, MetaVarValue> env,
+        List<EnvUndo> undo
     )
     {
-        var pChildren = SelectChildren(pattern, pIndex, strictness).ToList();
-        var tChildren = SelectChildren(target, tIndex, strictness).ToList();
+        var pChildren = new List<int>();
+        var tChildren = new List<int>();
+        SelectChildren(pattern, pIndex, strictness, pChildren);
+        SelectChildren(target, tIndex, strictness, tChildren);
 
-        return MatchSequence(target, tChildren, pattern, pChildren, strictness, env, 0, 0);
+        return MatchSequence(target, tChildren, pattern, pChildren, strictness, env, undo, 0, 0);
     }
 
-    private static IEnumerable<int> SelectChildren(SyntaxTree tree, int index, Strictness strictness)
+    private static void SelectChildren(SyntaxTree tree, int index, Strictness strictness, List<int> into)
     {
         // Smart (default) and Cst keep unnamed tokens. Smart also keeps tree-sitter extras
         // (comments) so $$$ captures match ast-grep's multi array; MatchSequence skips extras
         // when matching non-multi pattern children. Ast/Relaxed drop unnamed + extras up front.
         if (strictness is Strictness.Ast or Strictness.Relaxed)
         {
-            return tree.NamedChildren(index).Where(c => !tree[c].IsExtra);
+            foreach (var c in tree.NamedChildren(index))
+            {
+                if (!tree[c].IsExtra)
+                {
+                    into.Add(c);
+                }
+            }
+
+            return;
         }
 
         if (strictness is Strictness.Cst)
         {
-            return tree.Children(index);
+            foreach (var c in tree.Children(index))
+            {
+                into.Add(c);
+            }
+
+            return;
         }
 
         // Smart: keep extras for multi capture; skip them during ordinary matching.
-        return tree.Children(index);
+        foreach (var c in tree.Children(index))
+        {
+            into.Add(c);
+        }
     }
 
     private static bool MatchSequence(
@@ -162,13 +190,14 @@ public sealed class PatternMatcher
         List<int> pChildren,
         Strictness strictness,
         Dictionary<string, MetaVarValue> env,
+        List<EnvUndo> undo,
         int ti,
         int pi
     )
     {
         while (pi < pChildren.Count && ti <= tChildren.Count)
         {
-            var pNode = pattern[pChildren[pi]];
+            ref readonly var pNode = ref pattern[pChildren[pi]];
             if (pNode.IsMultiMetaVar)
             {
                 // Lazy multi: consume until next pattern matches.
@@ -185,7 +214,7 @@ public sealed class PatternMatcher
                             return false;
                         }
 
-                        env[name] = captured;
+                        Bind(env, undo, name, captured);
                     }
 
                     return true;
@@ -193,27 +222,25 @@ public sealed class PatternMatcher
 
                 for (var end = ti; end <= tChildren.Count; end++)
                 {
-                    var envCopy = new Dictionary<string, MetaVarValue>(env, StringComparer.Ordinal);
-                    if (MatchSequence(target, tChildren, pattern, pChildren, strictness, envCopy, end, pi))
+                    var mark = undo.Count;
+                    if (MatchSequence(target, tChildren, pattern, pChildren, strictness, env, undo, end, pi))
                     {
                         if (name is not ("_" or ""))
                         {
                             var captured = CaptureSlice(target, tChildren, ti, end);
-                            if (envCopy.TryGetValue(name, out var existing) && existing.Text != captured.Text)
+                            if (env.TryGetValue(name, out var existing) && existing.Text != captured.Text)
                             {
+                                Revert(env, undo, mark);
                                 continue;
                             }
 
-                            envCopy[name] = captured;
-                        }
-
-                        foreach (var kv in envCopy)
-                        {
-                            env[kv.Key] = kv.Value;
+                            Bind(env, undo, name, captured);
                         }
 
                         return true;
                     }
+
+                    Revert(env, undo, mark);
                 }
 
                 return false;
@@ -251,7 +278,7 @@ public sealed class PatternMatcher
                 continue;
             }
 
-            if (!MatchNode(target, tChildren[ti], pattern, pChildren[pi], strictness, env))
+            if (!MatchNode(target, tChildren[ti], pattern, pChildren[pi], strictness, env, undo))
             {
                 if (strictness == Strictness.Smart && !target[tChildren[ti]].IsNamed)
                 {
@@ -315,7 +342,7 @@ public sealed class PatternMatcher
         var parts = new List<MetaVarSpan>(to - from);
         for (var i = from; i < to && i < tChildren.Count; i++)
         {
-            var n = target[tChildren[i]];
+            ref readonly var n = ref target[tChildren[i]];
             var piece =
                 n.Start >= 0 && n.End >= n.Start && n.End <= target.Source.Length
                     ? target.Source[n.Start..n.End]
@@ -347,7 +374,7 @@ public sealed class PatternMatcher
 
     private static bool IsSkippableModifier(SyntaxTree target, int index)
     {
-        var n = target[index];
+        ref readonly var n = ref target[index];
         if (n.IsExtra)
         {
             return true;
@@ -384,21 +411,30 @@ public sealed class PatternMatcher
     /// </summary>
     private static bool IsSingleChildListMismatch(SyntaxTree pattern, int pIndex, SyntaxTree target, int tIndex)
     {
-        var pNamed = pattern.NamedChildren(pIndex).ToList();
-        if (pNamed.Count != 1)
+        string? childKind = null;
+        var pNamedCount = 0;
+        foreach (var c in pattern.NamedChildren(pIndex))
         {
-            return false;
+            pNamedCount++;
+            if (pNamedCount == 1)
+            {
+                childKind = pattern[c].TypeName;
+            }
+            else
+            {
+                return false;
+            }
         }
 
-        var childKind = pattern[pNamed[0]].TypeName;
-        if (string.IsNullOrEmpty(childKind))
+        if (pNamedCount != 1 || string.IsNullOrEmpty(childKind))
         {
             return false;
         }
 
         // dotted_name / attribute chains legitimately have multiple identifier children
         // (e.g. `ctypes.wintypes` vs pattern `$M` compiled as a single-identifier dotted_name).
-        var pKind = pattern[pIndex].TypeName;
+        ref readonly var pNode = ref pattern[pIndex];
+        var pKind = pNode.TypeName;
         if (
             string.Equals(pKind, "dotted_name", StringComparison.OrdinalIgnoreCase)
             || string.Equals(pKind, "attribute", StringComparison.OrdinalIgnoreCase)
@@ -433,4 +469,38 @@ public sealed class PatternMatcher
 
         return false;
     }
+
+    private static void Bind(Dictionary<string, MetaVarValue> env, List<EnvUndo> undo, string name, MetaVarValue value)
+    {
+        if (env.TryGetValue(name, out var prev))
+        {
+            undo.Add(new EnvUndo(name, HadPrevious: true, prev));
+        }
+        else
+        {
+            undo.Add(new EnvUndo(name, HadPrevious: false, Previous: null));
+        }
+
+        env[name] = value;
+    }
+
+    private static void Revert(Dictionary<string, MetaVarValue> env, List<EnvUndo> undo, int mark)
+    {
+        for (var i = undo.Count - 1; i >= mark; i--)
+        {
+            var entry = undo[i];
+            if (entry.HadPrevious)
+            {
+                env[entry.Key] = entry.Previous!;
+            }
+            else
+            {
+                env.Remove(entry.Key);
+            }
+        }
+
+        undo.RemoveRange(mark, undo.Count - mark);
+    }
+
+    private readonly record struct EnvUndo(string Key, bool HadPrevious, MetaVarValue? Previous);
 }

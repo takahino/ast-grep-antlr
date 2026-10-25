@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ast-grep と ag4 の差異 — まとめ</title>
+    <title>ast-grep と ag4 の差異 — 現状まとめ</title>
     <link rel="alternate" hreflang="en" href="ast-grep-vs-ag4.en.html" />
     <link rel="alternate" hreflang="ja" href="ast-grep-vs-ag4.html" />
     <style>
@@ -280,56 +280,44 @@
 
       <h1>ast-grep と ag4 の差異</h1>
       <p class="lede">
-        本家 <code>@ast-grep/cli@0.51.0</code>（tree-sitter）と ag4（既定は Java / C++ / Python /
-        C# も tree-sitter、切替で ANTLR または Roslyn）を、実コーパス上で同じパターンで比較した結果の要約です。エンジン不具合ではなく「構文木・照合ロジックの違い」として扱う差分を中心にまとめています。
+        本家 <code>@ast-grep/cli@0.51.0</code> と ag4 を、固定コーパス・同一パターンで比較した
+        <strong>2026-10-25 時点</strong>の要約です。既定バックエンドは tree-sitter（C# 含む）。
+        ANTLR / Roslyn は切替時の数値です。
       </p>
 
       <div class="panel verdict">
-        <strong>方針:</strong> 文字コード・終了コード・byteOffset・パターンコンパイル失敗など ag4
-        側の不具合は修正済み。ag4 は Java / C++ / Python / C# で tree-sitter を既定にできるため、本家との
-        kind 差は縮小します。残差は主に照合（unwrap・modifier 読み飛ばし・MetaVarVariants など）と
-        Roslyn 切替時の CST 差です。<code>--backend antlr</code> /
-        <code>roslyn</code> 時の木のズレは
-        <a href="difftest/known-differences.yml"><code>difftest/known-differences.yml</code></a>
-        （任意の <code>backend:</code> フィールド）に理由付きで記録します。本家と 100%
-        同じヒット集合は目標にしない。
+        <strong>いまの位置づけ:</strong> Java / C++ / Python / C# の既定は
+        tree-sitter。説明不能差分は <code>known-differences.yml</code> 適用後に
+        <strong>0</strong>。本家とヒット集合を 100% 揃えることは目標にしない。ag4 の強みは .NET
+        組み込み・NativeAOT DLL・ANTLR <code>.g4</code>（本家に無い言語含む）にある。
       </div>
 
       <h2>1. 比較の前提</h2>
       <ul class="compact">
         <li>ハーネス: <code>tools/AstGrepAntlr.DiffTest</code></li>
+        <li>対象言語: Java / C++ / C# / Python（PL/SQL は本家に言語が無く表では —）</li>
         <li>
-          本ページの数値比較対象:
-          <strong>Java / C++ / C# / Python</strong>（本家に対応言語があり、固定コーパスで
-          差分計測しているもの）。<strong>PL/SQL</strong>
-          は本家に言語が無いため表では「—（本家なし）」
+          コーパス: commons-lang、java-design-patterns、google-java-format、leveldb、cereal、fmt、
+          Newtonsoft.Json、Humanizer、serilog、click、attrs、flask（tag / SHA 固定）
         </li>
+        <li>パターン: 呼び出し・<code>$$$</code>・文・複合ルール・rewrite など各言語数十件</li>
         <li>
-          コーパス: commons-lang / java-design-patterns / leveldb / cereal / fmt / Newtonsoft.Json /
-          Humanizer / click / attrs（tag・SHA 固定）
-        </li>
-        <li>
-          パターン: 呼び出し・<code>$$$</code>・文・複合ルール（<code>kind</code> なし）・rewrite
-          など各言語約 55 件
-        </li>
-        <li>
-          詳細レポート: <a href="difftest/REPORT.md"><code>difftest/REPORT.md</code></a>
+          詳細表: <a href="difftest/REPORT.md"><code>difftest/REPORT.md</code></a>
         </li>
       </ul>
-
       <div class="panel">
-        <strong>ag4 組み込み言語（現時点）:</strong>
-        Java / C++ / Python / C#（tree-sitter 既定）、Java / C++ / Python は ANTLR 切替、C# は
-        Roslyn 切替、PL/SQL・SQLite は ANTLR。加えて <code>sgconfig.yml</code> の
-        <code>customLanguages</code>（<code>.g4</code> / <code>.interp</code>）で独自 DSL
-        も可。差分テストは <code>--backend</code> で計測できます。
+        <strong>ag4 の言語:</strong> Java / C++ / Python / C# = tree-sitter 既定。Java / C++ /
+        Python は <code>--backend antlr</code>、C# は <code>--backend roslyn</code>。PL/SQL・SQLite
+        は ANTLR。 独自 DSL は <code>sgconfig.yml</code> の <code>customLanguages</code>（<code
+          >.g4</code
+        >
+        / <code>.interp</code>）。
       </div>
 
-      <h2>2. 数値サマリ</h2>
+      <h2>2. 一致率</h2>
       <p>
-        Java / C++ / Python は <strong>ag4（tree-sitter）</strong> /
-        <strong>ag4（ANTLR）</strong>、C# は <strong>TS / Roslyn</strong>（
-        <a href="difftest/REPORT.md">REPORT.md</a>、2026-10-25 再計測・コーパス拡充後）。
+        列は <strong>TS / 代替</strong>（Java・C++・Python = ANTLR、C# = Roslyn）。一致率 = same ÷
+        (same + only-sg + only-ag4 + range + meta)。
       </p>
       <table>
         <thead>
@@ -352,7 +340,7 @@
             <td class="num">—</td>
           </tr>
           <tr>
-            <td>本家のみ (only ast-grep)</td>
+            <td>本家のみ</td>
             <td class="num">68 / 4 705</td>
             <td class="num">162 / 9 048</td>
             <td class="num">10 936 / 47 182</td>
@@ -360,15 +348,15 @@
             <td class="num">—</td>
           </tr>
           <tr>
-            <td>ag4 のみ (only ag4)</td>
+            <td>ag4 のみ</td>
             <td class="num">326 / 11 162</td>
-            <td class="num">938 / 819</td>
+            <td class="num">938 / 775</td>
             <td class="num">3 200 / 5 141</td>
             <td class="num">64 / 842</td>
             <td class="num">—</td>
           </tr>
           <tr>
-            <td>範囲ずれ (range-diff)</td>
+            <td>範囲ずれ</td>
             <td class="num">0 / 0</td>
             <td class="num">0 / 1</td>
             <td class="num">0 / 19</td>
@@ -376,7 +364,7 @@
             <td class="num">—</td>
           </tr>
           <tr>
-            <td>メタ変数ずれ (metavar-diff)</td>
+            <td>メタ変数ずれ</td>
             <td class="num">148 / 4 715</td>
             <td class="num">129 / 2 305</td>
             <td class="num">8 740 / 6 884</td>
@@ -385,22 +373,22 @@
           </tr>
           <tr>
             <td>一致率</td>
-            <td class="num">約 99% / 約 60%</td>
-            <td class="num">約 94% / 約 44%</td>
-            <td class="num">約 82% / 約 53%</td>
-            <td class="num">約 96% / 約 55%</td>
+            <td class="num">98.65% / 59.56%</td>
+            <td class="num">94.33% / 43.65%</td>
+            <td class="num">81.67% / 53.27%</td>
+            <td class="num">95.56% / 54.68%</td>
             <td class="num">—</td>
           </tr>
           <tr>
             <td>速度比 (ag4 ÷ 本家)</td>
-            <td class="num">約 4× / 約 21×</td>
-            <td class="num">約 4× / 約 160×</td>
-            <td class="num">約 5× / 約 7×</td>
-            <td class="num">約 5× / 約 43×</td>
+            <td class="num">4.15× / 19.74×</td>
+            <td class="num">4.21× / 117.9×</td>
+            <td class="num">5.35× / 6.13×</td>
+            <td class="num">4.63× / 37.19×</td>
             <td class="num">—</td>
           </tr>
           <tr>
-            <td>説明不能差分（known 適用後）</td>
+            <td>説明不能差分</td>
             <td class="num">0 / 0</td>
             <td class="num">0 / 0</td>
             <td class="num">0 / 0</td>
@@ -410,42 +398,31 @@
         </tbody>
       </table>
       <p>
-        PL/SQL 列の「—」は<strong>本家に言語が無く比較不可</strong>。$$$ の multi JSON を本家形に揃え、Smart
-        で末尾ノードを読み飛ばすようにした結果、Java MetaVarDiff 5580→148・if-block OnlySg
-        328→0、一致率は Java/C++/Python で約 99% / 94% / 96%。C# 既定も
-        <strong>tree-sitter</strong>（Roslyn は <code>--backend roslyn</code>）。照合残差は
-        <code>known-differences.yml</code> の <code>ts-*-matcher</code> /
-        <code>csharp-*</code>（<code>backend: roslyn</code>）で説明済み。ANTLR C++
-        の遅さは拡充した <code>.cc</code> コーパス＋CPP14 限界。
+        tree-sitter 既定では Java / C++ / Python が 94–99%。C# TS は約 82%（照合・メタ変数の残差）。
+        ANTLR / Roslyn は CST が本家と違うため一致率は下がる。残差は
+        <a href="difftest/known-differences.yml"><code>known-differences.yml</code></a>
+        に理由付きで載せている。
       </p>
 
-      <h2>2.1 所要時間グラフ</h2>
+      <h2>3. 所要時間</h2>
       <p>
-        差分テスト全体の壁時計時間、パターン（ケース）単位の時間、および
-        <code>tools/AstGrepAntlr.Bench</code> によるパース／照合の内訳です（2026-10-25）。PL/SQL
-        は本家に言語が無いため ag4（ANTLR）のみ。コーパスは
-        <code>oracle/oracle-db-examples</code> の <code>plsql/</code>（66 ファイル）。
+        difftest の壁時計合計と、<code>tools/AstGrepAntlr.Bench</code> の parse / match 内訳。
+        棒グラフの合計時間は横対数スケール（C++ ANTLR が桁違いのため）。
       </p>
-
       <div class="charts">
         <div class="chart-card">
           <h3>言語 × バックエンドの合計時間</h3>
-          <p class="caption">
-            difftest 全パターン合算（秒）。PL/SQL は Bench 18 パターン合算。棒は横対数スケール（ANTLR
-            C++ が桁違いのため）。数値ラベルは実測秒。ast-grep 棒が無い行は比較不可。
-          </p>
+          <p class="caption">difftest 全パターン合算（秒）。上段 ast-grep、下段 ag4。</p>
           <div class="chart-legend" aria-hidden="true">
             <span><i class="swatch swatch-sg"></i>ast-grep</span>
             <span><i class="swatch swatch-ag4"></i>ag4</span>
           </div>
           <div id="chart-totals" role="img" aria-label="言語とバックエンドごとの合計所要時間"></div>
         </div>
-
         <div class="chart-card">
           <h3>ノード処理内訳（parse / match）</h3>
           <p class="caption">
-            同一コーパス断片・パターン <code>$F($$$ARGS)</code>（PL/SQL も同パターン）での
-            micro-bench。左軸は合計 ms、右の注記は µs/ノード（parse）。読込時間はほぼ無視できるため省略。
+            Bench・パターン <code>foo($$$A)</code>。右端は µs/ノード（parse）。マッチは数％程度。
           </p>
           <div class="chart-legend" aria-hidden="true">
             <span><i class="swatch swatch-parse"></i>parse</span>
@@ -453,13 +430,11 @@
           </div>
           <div id="chart-nodes" role="img" aria-label="パースと照合の時間内訳"></div>
         </div>
-
         <div class="chart-card">
-          <h3>ケース別（遅いパターン上位）</h3>
+          <h3>ケース別（ag4 が遅い上位）</h3>
           <p class="caption">
-            選択した言語・バックエンドで、ag4 側が遅かったパターン上位 8 件（ms）。C++ ANTLR の一部は
-            タイムアウト（180s）近傍のため除外。PL/SQL は本家比較無しのため ag4 棒のみ（parse
-            支配で差は小さい）。
+            選択した言語・バックエンドで ag4 側が遅かったパターン上位 8（ms）。C++ ANTLR の 120s
+            タイムアウト近傍は除外。
           </p>
           <div class="chart-toolbar">
             <label for="case-lang">対象</label>
@@ -472,126 +447,462 @@
           <div id="chart-cases" role="img" aria-label="パターン別所要時間"></div>
         </div>
       </div>
-
       <script>
         (function () {
           const TOTALS = [
-            { key: "java-ts", label: "Java · tree-sitter", sg: 21.849, ag4: 95.757 },
-            { key: "java-antlr", label: "Java · ANTLR", sg: 17.69, ag4: 368.114 },
-            { key: "cpp-ts", label: "C++ · tree-sitter", sg: 17.415, ag4: 77.588 },
-            { key: "cpp-antlr", label: "C++ · ANTLR", sg: 16.34, ag4: 2611.307 },
-            { key: "csharp-ts", label: "C# · tree-sitter", sg: 17.856, ag4: 98.115 },
-            { key: "csharp-roslyn", label: "C# · Roslyn", sg: 17.791, ag4: 118.047 },
-            { key: "python-ts", label: "Python · tree-sitter", sg: 14.786, ag4: 73.19 },
-            { key: "python-antlr", label: "Python · ANTLR", sg: 14.749, ag4: 631.639 },
-            { key: "plsql-antlr", label: "PL/SQL · ANTLR", sg: null, ag4: 100.875 },
+            {
+              key: "java-ts",
+              label: "Java · tree-sitter",
+              sg: 20.085,
+              ag4: 83.265,
+            },
+            {
+              key: "java-antlr",
+              label: "Java · ANTLR",
+              sg: 19.338,
+              ag4: 381.659,
+            },
+            {
+              key: "cpp-ts",
+              label: "C++ · tree-sitter",
+              sg: 17.505,
+              ag4: 73.706,
+            },
+            {
+              key: "cpp-antlr",
+              label: "C++ · ANTLR",
+              sg: 17.851,
+              ag4: 2104.623,
+            },
+            {
+              key: "csharp-ts",
+              label: "C# · tree-sitter",
+              sg: 18.415,
+              ag4: 98.597,
+            },
+            {
+              key: "csharp-roslyn",
+              label: "C# · Roslyn",
+              sg: 19.054,
+              ag4: 116.774,
+            },
+            {
+              key: "python-ts",
+              label: "Python · tree-sitter",
+              sg: 13.86,
+              ag4: 64.211,
+            },
+            {
+              key: "python-antlr",
+              label: "Python · ANTLR",
+              sg: 14.398,
+              ag4: 535.414,
+            },
           ];
-
           const NODES = [
-            { label: "Java · TS", parse: 263, match: 17, us: 1.31, files: 80, nodes: 201419 },
-            { label: "Java · ANTLR", parse: 1870, match: 49, us: 5.37, files: 80, nodes: 347983 },
-            { label: "C++ · TS", parse: 306, match: 27, us: 2.35, files: 58, nodes: 130436 },
-            { label: "C++ · ANTLR", parse: 11028, match: 205, us: 31.6, files: 40, nodes: 348588 },
-            { label: "C# · TS", parse: 215, match: 10, us: 3.18, files: 48, nodes: 67562 },
-            { label: "C# · Roslyn", parse: 300, match: 23, us: 4.96, files: 48, nodes: 60445 },
-            { label: "Python · TS", parse: 167, match: 10, us: 2.55, files: 16, nodes: 65474 },
-            { label: "Python · ANTLR", parse: 2605, match: 185, us: 13.6, files: 16, nodes: 191587 },
-            { label: "PL/SQL · ANTLR", parse: 5665, match: 36, us: 47.0, files: 66, nodes: 120410 },
+            {
+              label: "Java · TS",
+              parse: 671,
+              match: 25,
+              us: 1.79,
+              files: 264,
+              nodes: 374619,
+            },
+            {
+              label: "Java · ANTLR",
+              parse: 3347,
+              match: 46,
+              us: 5.21,
+              files: 264,
+              nodes: 642825,
+            },
+            {
+              label: "C++ · TS",
+              parse: 298,
+              match: 16,
+              us: 1.27,
+              files: 131,
+              nodes: 235282,
+            },
+            {
+              label: "C++ · ANTLR",
+              parse: 13023,
+              match: 8308,
+              us: 21.8,
+              files: 80,
+              nodes: 597072,
+            },
+            {
+              label: "C# · TS",
+              parse: 4449,
+              match: 84,
+              us: 2.3,
+              files: 1587,
+              nodes: 1934998,
+            },
+            {
+              label: "C# · Roslyn",
+              parse: 3027,
+              match: 154,
+              us: 2.73,
+              files: 500,
+              nodes: 1107966,
+            },
+            {
+              label: "Python · TS",
+              parse: 253,
+              match: 11,
+              us: 1.82,
+              files: 70,
+              nodes: 138847,
+            },
+            {
+              label: "Python · ANTLR",
+              parse: 4882,
+              match: 678,
+              us: 12.8,
+              files: 70,
+              nodes: 380431,
+            },
           ];
-
           const CASES = {
             "java-ts": [
-              { id: "commons-lang/qualified-call", sg: 160, ag4: 1048 },
-              { id: "commons-lang/call-any", sg: 164, ag4: 902 },
-              { id: "commons-lang/public-method", sg: 151, ag4: 873 },
-              { id: "google-java-format/enhanced-for", sg: 261, ag4: 844 },
-              { id: "commons-lang/record-decl", sg: 180, ag4: 808 },
-              { id: "commons-lang/if-block", sg: 150, ag4: 794 },
-              { id: "commons-lang/return-expr", sg: 140, ag4: 782 },
-              { id: "commons-lang/new-array", sg: 193, ag4: 758 },
+              {
+                id: "commons-lang/qualified-call",
+                sg: 150,
+                ag4: 967,
+              },
+              {
+                id: "commons-lang/call-any",
+                sg: 184,
+                ag4: 914,
+              },
+              {
+                id: "commons-lang/new-has-string-arg",
+                sg: 228,
+                ag4: 883,
+              },
+              {
+                id: "commons-lang/throw-not-npe",
+                sg: 179,
+                ag4: 875,
+              },
+              {
+                id: "commons-lang/import-type",
+                sg: 156,
+                ag4: 827,
+              },
+              {
+                id: "commons-lang/return-expr",
+                sg: 205,
+                ag4: 821,
+              },
+              {
+                id: "commons-lang/ternary",
+                sg: 169,
+                ag4: 821,
+              },
+              {
+                id: "commons-lang/null-literal",
+                sg: 173,
+                ag4: 817,
+              },
             ],
             "java-antlr": [
-              { id: "commons-lang/qualified-call", sg: 189, ag4: 7656 },
-              { id: "commons-lang/equals-or-hashcode", sg: 153, ag4: 5854 },
-              { id: "commons-lang/new-has-string-arg", sg: 198, ag4: 5111 },
-              { id: "commons-lang/call-any", sg: 125, ag4: 5074 },
-              { id: "commons-lang/this-call", sg: 139, ag4: 4928 },
-              { id: "commons-lang/if-block", sg: 130, ag4: 4847 },
-              { id: "commons-lang/throw-not-npe", sg: 159, ag4: 4723 },
-              { id: "commons-lang/ternary", sg: 123, ag4: 4608 },
+              {
+                id: "commons-lang/method-ref",
+                sg: 115,
+                ag4: 5994,
+              },
+              {
+                id: "commons-lang/call-any",
+                sg: 156,
+                ag4: 5174,
+              },
+              {
+                id: "commons-lang/throw-not-npe",
+                sg: 158,
+                ag4: 5151,
+              },
+              {
+                id: "commons-lang/equals-or-hashcode",
+                sg: 303,
+                ag4: 5018,
+              },
+              {
+                id: "commons-lang/qualified-call",
+                sg: 138,
+                ag4: 4967,
+              },
+              {
+                id: "commons-lang/for-loop",
+                sg: 130,
+                ag4: 4920,
+              },
+              {
+                id: "commons-lang/new-has-string-arg",
+                sg: 166,
+                ag4: 4861,
+              },
+              {
+                id: "commons-lang/private-field",
+                sg: 143,
+                ag4: 4845,
+              },
             ],
             "cpp-ts": [
-              { id: "leveldb/call-any", sg: 160, ag4: 945 },
-              { id: "leveldb/qualified-call", sg: 106, ag4: 739 },
-              { id: "leveldb/member-call", sg: 138, ag4: 669 },
-              { id: "leveldb/new-expr", sg: 169, ag4: 662 },
-              { id: "leveldb/using-ns", sg: 104, ag4: 620 },
-              { id: "leveldb/reinterpret-cast", sg: 103, ag4: 608 },
-              { id: "fmt/return-precedes-throw", sg: 109, ag4: 595 },
-              { id: "leveldb/ptr-call", sg: 113, ag4: 583 },
+              {
+                id: "leveldb/sizeof-expr",
+                sg: 138,
+                ag4: 1168,
+              },
+              {
+                id: "leveldb/call-any",
+                sg: 130,
+                ag4: 862,
+              },
+              {
+                id: "leveldb/sizeof-type",
+                sg: 168,
+                ag4: 717,
+              },
+              {
+                id: "leveldb/ternary",
+                sg: 152,
+                ag4: 698,
+              },
+              {
+                id: "leveldb/switch-block",
+                sg: 127,
+                ag4: 672,
+              },
+              {
+                id: "leveldb/typedef-decl",
+                sg: 122,
+                ag4: 632,
+              },
+              {
+                id: "leveldb/delete-not-array",
+                sg: 143,
+                ag4: 602,
+              },
+              {
+                id: "leveldb/using-alias",
+                sg: 131,
+                ag4: 597,
+              },
             ],
             "cpp-antlr": [
-              { id: "leveldb/std-move", sg: 90, ag4: 139756 },
-              { id: "leveldb/rewrite-move", sg: 79, ag4: 135713 },
-              { id: "leveldb/qualified-call", sg: 86, ag4: 57951 },
-              { id: "leveldb/return-void", sg: 124, ag4: 25842 },
-              { id: "leveldb/for-loop", sg: 93, ag4: 25176 },
-              { id: "leveldb/return-expr", sg: 103, ag4: 25105 },
-              { id: "fmt/rewrite-move", sg: 216, ag4: 22680 },
-              { id: "leveldb/range-for", sg: 95, ag4: 21167 },
+              {
+                id: "leveldb/qualified-call",
+                sg: 152,
+                ag4: 54246,
+              },
+              {
+                id: "leveldb/call-any",
+                sg: 320,
+                ag4: 24593,
+              },
+              {
+                id: "leveldb/member-call",
+                sg: 114,
+                ag4: 19260,
+              },
+              {
+                id: "fmt/rewrite-move",
+                sg: 94,
+                ag4: 19011,
+              },
+              {
+                id: "leveldb/namespace-body",
+                sg: 109,
+                ag4: 18487,
+              },
+              {
+                id: "fmt/std-move",
+                sg: 116,
+                ag4: 18390,
+              },
+              {
+                id: "leveldb/ptr-call",
+                sg: 106,
+                ag4: 18268,
+              },
+              {
+                id: "leveldb/for-loop",
+                sg: 101,
+                ag4: 18196,
+              },
             ],
             "csharp-ts": [
-              { id: "humanizer/try-catch", sg: 99, ag4: 6190 },
-              { id: "serilog/try-catch", sg: 75, ag4: 5813 },
-              { id: "newtonsoft-json/try-catch", sg: 93, ag4: 5768 },
-              { id: "humanizer/call-inside-method", sg: 154, ag4: 1878 },
-              { id: "newtonsoft-json/call-inside-method", sg: 167, ag4: 1726 },
-              { id: "humanizer/new-inside-method", sg: 227, ag4: 1508 },
-              { id: "newtonsoft-json/kind-identifier", sg: 169, ag4: 1131 },
-              { id: "newtonsoft-json/call-any", sg: 236, ag4: 1036 },
+              {
+                id: "serilog/try-catch",
+                sg: 81,
+                ag4: 6302,
+              },
+              {
+                id: "newtonsoft-json/try-catch",
+                sg: 105,
+                ag4: 6238,
+              },
+              {
+                id: "humanizer/try-catch",
+                sg: 96,
+                ag4: 6008,
+              },
+              {
+                id: "newtonsoft-json/call-inside-method",
+                sg: 185,
+                ag4: 2773,
+              },
+              {
+                id: "newtonsoft-json/kind-identifier",
+                sg: 225,
+                ag4: 1331,
+              },
+              {
+                id: "humanizer/new-inside-method",
+                sg: 152,
+                ag4: 1280,
+              },
+              {
+                id: "newtonsoft-json/new-inside-method",
+                sg: 146,
+                ag4: 1087,
+              },
+              {
+                id: "humanizer/call-inside-method",
+                sg: 145,
+                ag4: 1069,
+              },
             ],
             "csharp-roslyn": [
-              { id: "newtonsoft-json/call-inside-method", sg: 143, ag4: 1608 },
-              { id: "humanizer/new-inside-method", sg: 119, ag4: 1389 },
-              { id: "newtonsoft-json/if-else", sg: 119, ag4: 1187 },
-              { id: "newtonsoft-json/kind-identifier", sg: 209, ag4: 1112 },
-              { id: "humanizer/call-inside-method", sg: 125, ag4: 1111 },
-              { id: "humanizer/kind-identifier", sg: 174, ag4: 1085 },
-              { id: "humanizer/call-any", sg: 101, ag4: 1078 },
-              { id: "newtonsoft-json/new-inside-method", sg: 140, ag4: 1064 },
+              {
+                id: "newtonsoft-json/call-inside-method",
+                sg: 135,
+                ag4: 1745,
+              },
+              {
+                id: "humanizer/new-inside-method",
+                sg: 129,
+                ag4: 1481,
+              },
+              {
+                id: "humanizer/call-inside-method",
+                sg: 439,
+                ag4: 1417,
+              },
+              {
+                id: "newtonsoft-json/kind-identifier",
+                sg: 215,
+                ag4: 1284,
+              },
+              {
+                id: "humanizer/kind-identifier",
+                sg: 188,
+                ag4: 1230,
+              },
+              {
+                id: "newtonsoft-json/new-inside-method",
+                sg: 151,
+                ag4: 1184,
+              },
+              {
+                id: "serilog/call-inside-method",
+                sg: 126,
+                ag4: 1075,
+              },
+              {
+                id: "humanizer/using-directive",
+                sg: 175,
+                ag4: 1049,
+              },
             ],
             "python-ts": [
-              { id: "click/import-from-as", sg: 107, ag4: 739 },
-              { id: "click/return-precedes-raise", sg: 120, ag4: 732 },
-              { id: "click/raise-not-valueerror", sg: 232, ag4: 705 },
-              { id: "click/len-or-isinstance", sg: 114, ag4: 692 },
-              { id: "click/call-has-none", sg: 106, ag4: 648 },
-              { id: "click/len-call", sg: 102, ag4: 645 },
-              { id: "click/rewrite-is-none", sg: 98, ag4: 628 },
-              { id: "click/print-call", sg: 75, ag4: 581 },
+              {
+                id: "click/rewrite-print",
+                sg: 75,
+                ag4: 577,
+              },
+              {
+                id: "click/rewrite-is-none",
+                sg: 89,
+                ag4: 547,
+              },
+              {
+                id: "click/len-or-isinstance",
+                sg: 99,
+                ag4: 524,
+              },
+              {
+                id: "click/rewrite-isinstance",
+                sg: 377,
+                ag4: 517,
+              },
+              {
+                id: "click/raise-not-valueerror",
+                sg: 101,
+                ag4: 491,
+              },
+              {
+                id: "click/call-any",
+                sg: 81,
+                ag4: 480,
+              },
+              {
+                id: "click/attribute-call",
+                sg: 90,
+                ag4: 467,
+              },
+              {
+                id: "flask/raise-not-valueerror",
+                sg: 78,
+                ag4: 454,
+              },
             ],
             "python-antlr": [
-              { id: "click/call-any", sg: 132, ag4: 6587 },
-              { id: "click/isinstance-call", sg: 90, ag4: 6422 },
-              { id: "click/len-or-isinstance", sg: 84, ag4: 5937 },
-              { id: "flask/len-or-isinstance", sg: 137, ag4: 5876 },
-              { id: "click/ternary", sg: 123, ag4: 5525 },
-              { id: "click/list-comp", sg: 105, ag4: 5499 },
-              { id: "click/attribute-call", sg: 110, ag4: 5346 },
-              { id: "click/not-expr", sg: 76, ag4: 5287 },
-            ],
-            "plsql-antlr": [
-              { id: "COUNT($$$A)", sg: null, ag4: 6103 },
-              { id: "NVL($A, $B)", sg: null, ag4: 5978 },
-              { id: "COMMIT", sg: null, ag4: 5959 },
-              { id: "TO_CHAR($A)", sg: null, ag4: 5901 },
-              { id: "BEGIN $$$B END", sg: null, ag4: 5871 },
-              { id: "DBMS_OUTPUT.PUT_LINE($M)", sg: null, ag4: 5801 },
-              { id: "$F($$$ARGS)", sg: null, ag4: 5701 },
-              { id: "DELETE FROM $T", sg: null, ag4: 5671 },
+              {
+                id: "click/attribute-call",
+                sg: 94,
+                ag4: 4872,
+              },
+              {
+                id: "click/len-call",
+                sg: 76,
+                ag4: 4333,
+              },
+              {
+                id: "click/len-or-isinstance",
+                sg: 81,
+                ag4: 4292,
+              },
+              {
+                id: "flask/len-call",
+                sg: 67,
+                ag4: 4274,
+              },
+              {
+                id: "flask/len-or-isinstance",
+                sg: 68,
+                ag4: 4266,
+              },
+              {
+                id: "click/rewrite-isinstance",
+                sg: 68,
+                ag4: 4246,
+              },
+              {
+                id: "click/call-has-none",
+                sg: 85,
+                ag4: 4240,
+              },
+              {
+                id: "click/print-inside-def",
+                sg: 212,
+                ag4: 4171,
+              },
             ],
           };
-
           const CASE_LABELS = {
             "java-ts": "Java · tree-sitter",
             "java-antlr": "Java · ANTLR",
@@ -601,7 +912,6 @@
             "csharp-roslyn": "C# · Roslyn",
             "python-ts": "Python · tree-sitter",
             "python-antlr": "Python · ANTLR",
-            "plsql-antlr": "PL/SQL · ANTLR",
           };
 
           function esc(s) {
@@ -611,71 +921,48 @@
               .replace(/>/g, "&gt;")
               .replace(/"/g, "&quot;");
           }
-
           function fmtSec(v) {
             if (v >= 100) return v.toFixed(0) + "s";
             if (v >= 10) return v.toFixed(1) + "s";
             return v.toFixed(2) + "s";
           }
-
           function fmtMs(v) {
-            if (v >= 10000) return (v / 1000).toFixed(0) + "s";
-            if (v >= 1000) return (v / 1000).toFixed(1) + "s";
-            return v + "ms";
+            if (v >= 10000) return (v / 1000).toFixed(1) + "s";
+            return Math.round(v) + "ms";
           }
 
           function renderTotals(el) {
-            const W = 720;
-            const labelW = 148;
-            const rowH = 36;
-            const padR = 72;
+            const rowH = 34;
+            const labelW = 150;
+            const padR = 56;
+            const W = 640;
             const H = 28 + TOTALS.length * rowH;
-            const barW = W - labelW - padR;
-            const minLog = Math.log10(10);
-            const maxLog = Math.log10(
-              Math.max(...TOTALS.map((d) => Math.max(d.sg == null ? 0 : d.sg, d.ag4)))
-            );
-            const x = (v) => labelW + ((Math.log10(Math.max(v, 10)) - minLog) / (maxLog - minLog)) * barW;
+            const barMax = W - labelW - padR - 8;
+            const maxV = Math.max(...TOTALS.map((d) => Math.max(d.sg == null ? 0 : d.sg, d.ag4)));
+            const logMax = Math.log10(maxV + 1);
+            const x = (v) => (Math.log10(v + 1) / logMax) * barMax;
             let svg =
-              '<svg class="chart-svg" viewBox="0 0 ' +
-              W +
-              " " +
-              H +
-              '" xmlns="http://www.w3.org/2000/svg">';
+              '<svg class="chart-svg" viewBox="0 0 ' + W + " " + H + '" role="presentation">';
             TOTALS.forEach((d, i) => {
-              const y = 16 + i * rowH;
-              svg +=
-                '<text class="axis" x="0" y="' +
-                (y + 14) +
-                '">' +
-                esc(d.label) +
-                "</text>";
-              const ag4W = Math.max(2, x(d.ag4) - labelW);
+              const y = 20 + i * rowH;
+              svg += '<text class="axis" x="0" y="' + (y + 12) + '">' + esc(d.label) + "</text>";
               if (d.sg != null) {
-                const sgW = Math.max(2, x(d.sg) - labelW);
                 svg +=
                   '<rect x="' +
                   labelW +
                   '" y="' +
                   y +
                   '" width="' +
-                  sgW +
-                  '" height="10" fill="#0d6b5c"/>';
+                  Math.max(2, x(d.sg)) +
+                  '" height="11" fill="#0d6b5c"/>';
                 svg +=
                   '<text class="value" x="' +
-                  (labelW + sgW + 4) +
+                  (labelW + Math.max(2, x(d.sg)) + 4) +
                   '" y="' +
-                  (y + 9) +
+                  (y + 10) +
                   '">' +
                   fmtSec(d.sg) +
                   "</text>";
-              } else {
-                svg +=
-                  '<text class="value" x="' +
-                  labelW +
-                  '" y="' +
-                  (y + 9) +
-                  '">—</text>';
               }
               svg +=
                 '<rect x="' +
@@ -683,13 +970,13 @@
                 '" y="' +
                 (y + 13) +
                 '" width="' +
-                ag4W +
-                '" height="10" fill="#8a4b12"/>';
+                Math.max(2, x(d.ag4)) +
+                '" height="11" fill="#8a4b12"/>';
               svg +=
                 '<text class="value" x="' +
-                (labelW + ag4W + 4) +
+                (labelW + Math.max(2, x(d.ag4)) + 4) +
                 '" y="' +
-                (y + 22) +
+                (y + 23) +
                 '">' +
                 fmtSec(d.ag4) +
                 "</text>";
@@ -699,53 +986,41 @@
           }
 
           function renderNodes(el) {
-            const W = 720;
-            const labelW = 118;
-            const rowH = 34;
-            const padR = 88;
-            const H = 20 + NODES.length * rowH;
-            const barW = W - labelW - padR;
-            const max = Math.max(...NODES.map((d) => d.parse + d.match));
+            const rowH = 36;
+            const labelW = 130;
+            const W = 640;
+            const H = 24 + NODES.length * rowH;
+            const barMax = W - labelW - 90;
+            const maxV = Math.max(...NODES.map((d) => d.parse + d.match));
             let svg =
-              '<svg class="chart-svg" viewBox="0 0 ' +
-              W +
-              " " +
-              H +
-              '" xmlns="http://www.w3.org/2000/svg">';
+              '<svg class="chart-svg" viewBox="0 0 ' + W + " " + H + '" role="presentation">';
             NODES.forEach((d, i) => {
-              const y = 12 + i * rowH;
-              const pW = ((d.parse / max) * barW) | 0;
-              const mW = Math.max(2, ((d.match / max) * barW) | 0);
-              svg +=
-                '<text class="axis" x="0" y="' +
-                (y + 14) +
-                '">' +
-                esc(d.label) +
-                "</text>";
+              const y = 16 + i * rowH;
+              const pw = ((d.parse / maxV) * barMax) | 0;
+              const mw = ((d.match / maxV) * barMax) | 0;
+              svg += '<text class="axis" x="0" y="' + (y + 14) + '">' + esc(d.label) + "</text>";
               svg +=
                 '<rect x="' +
                 labelW +
                 '" y="' +
-                (y + 4) +
+                y +
                 '" width="' +
-                pW +
-                '" height="14" fill="#2a6f97"/>';
+                Math.max(1, pw) +
+                '" height="16" fill="#2a6f97"/>';
               svg +=
                 '<rect x="' +
-                (labelW + pW) +
+                (labelW + pw) +
                 '" y="' +
-                (y + 4) +
+                y +
                 '" width="' +
-                mW +
-                '" height="14" fill="#6b7c3c"/>';
+                Math.max(0, mw) +
+                '" height="16" fill="#6b7c3c"/>';
               svg +=
                 '<text class="value" x="' +
-                (labelW + pW + mW + 6) +
+                (labelW + pw + mw + 6) +
                 '" y="' +
-                (y + 14) +
+                (y + 13) +
                 '">' +
-                fmtMs(d.parse + d.match) +
-                " · " +
                 d.us +
                 "µs/n</text>";
             });
@@ -755,64 +1030,42 @@
 
           function renderCases(el, key) {
             const rows = CASES[key] || [];
-            const W = 720;
+            const rowH = 28;
             const labelW = 220;
-            const rowH = 34;
-            const padR = 64;
-            const H = 16 + rows.length * rowH;
-            const barW = W - labelW - padR;
-            const max = Math.max(
-              ...rows.map((d) => Math.max(d.sg == null ? 0 : d.sg, d.ag4)),
-              1
-            );
+            const W = 640;
+            const H = 20 + rows.length * rowH;
+            const barMax = W - labelW - 70;
+            const maxV = Math.max(1, ...rows.map((d) => Math.max(d.sg || 0, d.ag4)));
             let svg =
-              '<svg class="chart-svg" viewBox="0 0 ' +
-              W +
-              " " +
-              H +
-              '" xmlns="http://www.w3.org/2000/svg">';
+              '<svg class="chart-svg" viewBox="0 0 ' + W + " " + H + '" role="presentation">';
             rows.forEach((d, i) => {
-              const y = 10 + i * rowH;
-              const short = d.id.length > 34 ? d.id.slice(0, 32) + "…" : d.id;
-              svg +=
-                '<text class="axis" x="0" y="' +
-                (y + 14) +
-                '">' +
-                esc(short) +
-                "</text>";
-              const ag4W = Math.max(2, ((d.ag4 / max) * barW) | 0);
+              const y = 14 + i * rowH;
+              const aw = ((d.ag4 / maxV) * barMax) | 0;
+              const sw = d.sg == null ? 0 : ((d.sg / maxV) * barMax) | 0;
+              svg += '<text class="axis" x="0" y="' + (y + 12) + '">' + esc(d.id) + "</text>";
               if (d.sg != null) {
-                const sgW = Math.max(2, ((d.sg / max) * barW) | 0);
                 svg +=
                   '<rect x="' +
                   labelW +
                   '" y="' +
                   y +
                   '" width="' +
-                  sgW +
-                  '" height="10" fill="#0d6b5c"/>';
-                svg +=
-                  '<text class="value" x="' +
-                  (labelW + sgW + 4) +
-                  '" y="' +
-                  (y + 9) +
-                  '">' +
-                  fmtMs(d.sg) +
-                  "</text>";
+                  Math.max(1, sw) +
+                  '" height="8" fill="#0d6b5c"/>';
               }
               svg +=
                 '<rect x="' +
                 labelW +
                 '" y="' +
-                (d.sg != null ? y + 13 : y + 4) +
+                (y + 9) +
                 '" width="' +
-                ag4W +
-                '" height="10" fill="#8a4b12"/>';
+                Math.max(1, aw) +
+                '" height="8" fill="#8a4b12"/>';
               svg +=
                 '<text class="value" x="' +
-                (labelW + ag4W + 4) +
+                (labelW + Math.max(1, aw) + 4) +
                 '" y="' +
-                (d.sg != null ? y + 22 : y + 13) +
+                (y + 16) +
                 '">' +
                 fmtMs(d.ag4) +
                 "</text>";
@@ -823,7 +1076,6 @@
 
           renderTotals(document.getElementById("chart-totals"));
           renderNodes(document.getElementById("chart-nodes"));
-
           const sel = document.getElementById("case-lang");
           Object.keys(CASE_LABELS).forEach((k) => {
             const o = document.createElement("option");
@@ -841,166 +1093,127 @@
         })();
       </script>
 
-      <h2>3. 精度をどう見るか</h2>
+      <h2>4. パース性能の現状</h2>
       <p>
-        ast-grep
-        の主目的は「パターンどおりの構文を、意図どおりに拾う／書き換える」ことです。そのときの正解の基準は、事実上
-        <strong>tree-sitter 上のパターン意味</strong>です。
+        ボトルネックはマッチではなくパース。詳細は
+        <a href="speedupissue.md"><code>speedupissue.md</code></a
+        >。
       </p>
       <table>
         <thead>
           <tr>
-            <th>用途</th>
-            <th>どちらが向くか</th>
+            <th>対象</th>
+            <th class="num">parse</th>
+            <th>要点</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>本家と同じ感覚の検索・ルール（Java / C++ / Python、tree-sitter 既定）</td>
-            <td>
-              <strong>本家 ast-grep</strong> または <strong>ag4（tree-sitter）</strong>（kind
-              は揃うが照合差は残る）
-            </td>
+            <td>Java · tree-sitter（commons-lang 264）</td>
+            <td class="num">~0.67s</td>
+            <td>native ≈ arena 変換。エラー無しファイルの diag 走査はほぼ 0</td>
           </tr>
           <tr>
-            <td>
-              ANTLR 文法・独自 DSL・本家に無い言語（例: <strong>PL/SQL</strong>、SQLite、カスタム
-              <code>.g4</code>）
-            </td>
-            <td><strong>ag4</strong></td>
+            <td>Java · ANTLR（同）</td>
+            <td class="num">~3.3s</td>
+            <td><strong>LL フォールバック 67%</strong>（177/264）。SLL 失敗後の全文 LL やり直し</td>
           </tr>
           <tr>
-            <td>C#（Roslyn CST）</td>
-            <td>ag4（Roslyn）／本家（tree-sitter-c-sharp）— 別名で一部吸収</td>
+            <td>C# · tree-sitter（corpus 1587）</td>
+            <td class="num">~4.4s</td>
+            <td>cursor 走査 + 軽い P/Invoke。マッチは全体の数％</td>
+          </tr>
+          <tr>
+            <td>C++ · ANTLR（leveldb 80）</td>
+            <td class="num">~13s</td>
+            <td>LL フォールバック 75%。difftest が桁違いに遅い主因</td>
           </tr>
         </tbody>
       </table>
+      <p>
+        起動（10 回平均、win-x64）: NativeAOT ≈ 42ms、<code>dotnet ag4.dll</code>（JIT）≈ 254ms。
+        リリース exe は AOT。言語は遅延登録。ANTLR の DFA を温めるなら DLL / NuGet / MCP を推奨。
+      </p>
       <div class="panel note">
-        <code>.g4</code> を拡張すれば<strong>パースできる構文は増える</strong>（特に
-        C++）。ただし同じソースでも木の切り方が違う限り、ヒット集合やメタ変数の完全一致には至らない。マクロ前処理も
-        g4 だけではコンパイラ並みにはならない。
+        LL フォールバックの大半は「構文エラーの回復」ではなく、正しい入力でも SLL 予測が足りず LL
+        に落ちるケース。削減の本命は文法側の曖昧さ低減。
       </div>
 
-      <h2>4. 典型的な差異（具体例）</h2>
+      <h2>5. 用途の目安</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>用途</th>
+            <th>向き</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>本家と同じ感覚の検索（Java / C++ / Python / C#）</td>
+            <td>本家、または ag4（tree-sitter 既定）</td>
+          </tr>
+          <tr>
+            <td>ANTLR 文法・独自 DSL・本家に無い言語（PL/SQL、SQLite など）</td>
+            <td>ag4（ANTLR / <code>.g4</code>）</td>
+          </tr>
+          <tr>
+            <td>.NET プロセス内・NativeAOT DLL・MCP</td>
+            <td>ag4</td>
+          </tr>
+          <tr>
+            <td>C# で Roslyn CST が欲しいとき</td>
+            <td>ag4 <code>--backend roslyn</code>（本家との一致率は下がる）</td>
+          </tr>
+        </tbody>
+      </table>
 
-      <h3>tree-sitter 既定で解消・軽減しやすいもの</h3>
+      <h2>6. 残る差の典型</h2>
+      <h3>tree-sitter 既定でも残る照合差</h3>
       <ul class="compact">
-        <li>
-          kind 名の不一致（例 <code>methodDeclaration</code> → <code>method_declaration</code>）
-        </li>
-        <li>C++ の現代構文・Python のインデントブロックなど、ANTLR 文法限界による取りこぼし</li>
+        <li>単一子 unwrap・modifier 読み飛ばし・extra（コメント等）の扱い</li>
+        <li>ag4 の <code>MetaVarVariants</code> によるプレースホルダ展開</li>
+        <li>同じヒットでもメタ変数のキャプチャ範囲がずれる場合（特に C#）</li>
       </ul>
-
-      <h3>ANTLR を選んだときに残る差（下表・例は ANTLR ベースライン）</h3>
-
-      <h3>
-        <span class="tag tag-ag4">ag4 が広い</span>
-        <code>$F($$$ARGS)</code> の取りすぎ
-      </h3>
-      <p>
-        意図（本家寄り）は「普通のメソッド呼び出し」。ag4
-        は呼び出しに見える／似た形を広く拾いやすい。
-      </p>
-      <pre><code>foo(1, 2);      // 両方ヒットしやすい
-obj.bar(x);
-
-new Foo(1, 2);  // コンストラクタっぽい木 → ag4 が拾いやすい
-this(1);        // 明示 this
-super(x);       // 明示 super</code></pre>
-      <p>
-        difftest の <code>call-any</code>（commons-lang）では same ≈ 1 957 に対し
-        <strong>only-ag4 ≈ 6 293</strong>。
-      </p>
-
-      <h3>
-        <span class="tag tag-sg">本家が広い</span>
-        <code>public $TYPE $NAME($$$PARAMS) { $$$BODY }</code> の取りこぼし
-      </h3>
-      <p>意図は本体付き public メソッド全般。ag4 はシンプルな形以外で外れやすい。</p>
-      <pre><code>public int run(int x) { return x; }   // 両方ヒットしやすい
-
-public void run() { }                 // void が $TYPE に乗りにくい
-public &lt;T&gt; T id(T x) { return x; }  // 型パラメータ
-public int f() throws IOException { return 0; }
-@Override
-public String toString() { return ""; }</code></pre>
-      <p>
-        difftest の <code>public-method</code> では same ≈ 290 に対し
-        <strong>only-ast-grep ≈ 1 450</strong>（ag4 の取りこぼし）。
-      </p>
-
-      <h3>その他のよくあるズレ（ANTLR / Roslyn）</h3>
+      <h3>ANTLR 切替時</h3>
       <ul class="compact">
         <li>
-          <strong>Java・本家のみ（ANTLR）:</strong> import / package
-          の分割、アノテーション、multi-catch / try-with-resources、diamond・匿名クラスの
-          <code>new</code>、一部の if ブロック
+          <span class="tag tag-ag4">ag4 が広い</span>
+          呼び出しパターンがコンストラクタ / <code>this</code> / <code>super</code> まで拾いやすい
         </li>
         <li>
-          <strong>Java・ag4 のみ（ANTLR）:</strong> <code>this</code>/<code>super</code>
-          呼び出し、lambda / method-ref、一部 for / class-body
-        </li>
-        <li>
-          <strong>C++・本家のみ（ANTLR）:</strong> 現代構文・マクロで CPP14
-          が弱い（一致率低下の主因）
-        </li>
-        <li>
-          <strong>C#・本家のみ:</strong> 括弧付き式をキャストとみなすケース、
-          <code>identifier</code> の粒度差、await / lambda / typeof・nameof など
-        </li>
-        <li>
-          <strong>C#・ag4 のみ:</strong> 中括弧付き if/for/while/foreach、
-          <code>public $T $N(...)</code> など Roslyn では当たりやすいパターン
+          <span class="tag tag-sg">本家が広い</span>
+          複雑なメソッド宣言・現代 C++ / Python インデントなど、文法限界で取りこぼし
         </li>
       </ul>
-
-      <h3>tree-sitter でも残る差（照合ロジック）</h3>
+      <h3>Roslyn 切替時（C#）</h3>
       <ul class="compact">
-        <li>単一子の unwrap・modifier の読み飛ばし・extra（コメント等）の扱い</li>
-        <li><code>MetaVarVariants</code> など ag4 独自のプレースホルダ展開</li>
-        <li>同じヒットでもメタ変数のキャプチャ範囲がずれる場合</li>
+        <li>括弧付き式とキャスト、identifier の粒度、ブロック括弧の形</li>
+        <li>本家（tree-sitter-c-sharp）との CST 差が一致率約 53% の主因</li>
       </ul>
 
-      <h2>5. 揃えた／近づけた点（差異ではない）</h2>
+      <h2>7. 関連ファイル</h2>
       <ul class="compact">
-        <li>終了コード（run 0/1/2、scan の <code>--error-on</code>）</li>
-        <li>文字コード・BOM 保持、<code>--encoding</code></li>
-        <li>JSON の 0-based 行・列、実ファイルの <code>byteOffset</code></li>
-        <li><code>stopBy</code> 既定 neighbor、<code>precedes</code>/<code>follows</code></li>
-        <li>gitignore・globs・隠しファイル扱い</li>
-        <li>文パターン（if / for / try など）のコンパイル失敗の解消</li>
-        <li>kind 名が本家と同じ（Java / C++ / Python の tree-sitter 既定）</li>
-        <li><code>--backend</code> / <code>languageBackends</code> による ANTLR 切替</li>
-      </ul>
-
-      <h2>6. 関連ファイル</h2>
-      <ul class="compact">
-        <li><a href="difftest/REPORT.md">difftest/REPORT.md</a> — 最新の比較サマリ</li>
+        <li><a href="difftest/REPORT.md">difftest/REPORT.md</a> — 言語別の数値表</li>
         <li>
           <a href="difftest/known-differences.yml">difftest/known-differences.yml</a> —
-          許容差分のカタログ（任意の <code>backend:</code>）
+          許容差分カタログ
         </li>
         <li>
-          <a href="difftest/patterns/java.yml">difftest/patterns/java.yml</a> /
-          <a href="difftest/patterns/cpp.yml">cpp.yml</a> /
-          <a href="difftest/patterns/csharp.yml">csharp.yml</a> /
-          <a href="difftest/patterns/python.yml">python.yml</a> — 比較に使ったパターン
+          <a href="difftest/patterns/">difftest/patterns/</a> /
+          <a href="difftest/corpus.yml">corpus.yml</a>
         </li>
-        <li><a href="difftest/corpus.yml">difftest/corpus.yml</a> — 固定コーパス</li>
-        <li><a href="tools/AstGrepAntlr.Bench">tools/AstGrepAntlr.Bench</a> — パース内訳ベンチ</li>
-        <li><a href="issue.md">issue.md</a> — 不具合・機能対応状況</li>
-        <li><a href="README.md">README.md</a> — 利用方法・オプション</li>
+        <li><a href="tools/AstGrepAntlr.Bench">tools/AstGrepAntlr.Bench</a> — パース内訳</li>
+        <li><a href="speedupissue.md">speedupissue.md</a> — 高速化の計測と実装</li>
+        <li><a href="README.md">README.md</a></li>
       </ul>
 
       <footer>
-        difftest 数値は <a href="difftest/REPORT.md">difftest/REPORT.md</a> 時点（Java / C++ / C# /
-        Python）。言語一覧は <a href="README.md">README.md</a> を参照。再計測は
+        数値は 2026-10-25 の difftest / Bench。再計測:
         <code
           >dotnet run --project tools/AstGrepAntlr.DiffTest -c Release -- --corpus
           difftest/corpus.yml --backend tree-sitter</code
         >
-        ·
-        <a href="ast-grep-vs-ag4.en.html">English version</a>
+        · <a href="ast-grep-vs-ag4.en.html">English</a>
       </footer>
     </main>
   </body>

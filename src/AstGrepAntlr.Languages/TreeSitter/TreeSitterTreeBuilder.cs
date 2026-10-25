@@ -27,7 +27,16 @@ internal sealed class TreeSitterTreeBuilder
     public SyntaxTree Build(string source, string languageId, TsNative.TSNode root)
     {
         var asm = new SyntaxTreeAssembler(collapseChains: false);
-        BuildNode(root, parent: -1, asm);
+        var cursor = TsNative.ts_tree_cursor_new(root);
+        try
+        {
+            BuildNode(ref cursor, parent: -1, asm);
+        }
+        finally
+        {
+            TsNative.ts_tree_cursor_delete(ref cursor);
+        }
+
         return asm.Build(source, languageId);
     }
 
@@ -44,19 +53,29 @@ internal sealed class TreeSitterTreeBuilder
     )
     {
         var asm = new SyntaxTreeAssembler(collapseChains: false);
-        BuildNodeShifted(node, parent: -1, asm, embedStartUtf16, embedEndUtf16, fragment.Length);
+        var cursor = TsNative.ts_tree_cursor_new(node);
+        try
+        {
+            BuildNodeShifted(ref cursor, parent: -1, asm, embedStartUtf16, embedEndUtf16, fragment.Length);
+        }
+        finally
+        {
+            TsNative.ts_tree_cursor_delete(ref cursor);
+        }
+
         return asm.Build(fragment, languageId);
     }
 
-    private int BuildNode(TsNative.TSNode node, int parent, SyntaxTreeAssembler asm)
+    private int BuildNode(ref TsNative.TSTreeCursor cursor, int parent, SyntaxTreeAssembler asm)
     {
+        var node = TsNative.ts_tree_cursor_current_node(ref cursor);
         var index = asm.Begin();
         var symbol = TsNative.ts_node_symbol(node);
         var typeName = NameOf(symbol);
         var isMissing = TsNative.ts_node_is_missing(node);
         var isError = TsNative.ts_node_is_error(node) || typeName == "ERROR";
         var isExtra = TsNative.ts_node_is_extra(node);
-        var childCountNative = TsNative.ts_node_child_count(node);
+        var hasChildren = TsNative.ts_tree_cursor_goto_first_child(ref cursor);
 
         SyntaxNodeKind kind;
         if (isMissing)
@@ -69,7 +88,7 @@ internal sealed class TreeSitterTreeBuilder
             kind = SyntaxNodeKind.Error;
             typeName = "ERROR";
         }
-        else if (childCountNative == 0)
+        else if (!hasChildren)
         {
             kind = SyntaxNodeKind.Token;
         }
@@ -84,26 +103,25 @@ internal sealed class TreeSitterTreeBuilder
         var firstChild = -1;
         var prevChild = -1;
         var childCount = 0;
-        for (uint i = 0; i < childCountNative; i++)
+        if (hasChildren)
         {
-            var child = TsNative.ts_node_child(node, i);
-            if (TsNative.ts_node_is_null(child))
+            do
             {
-                continue;
-            }
+                var childIndex = BuildNode(ref cursor, index, asm);
+                childCount++;
+                if (firstChild < 0)
+                {
+                    firstChild = childIndex;
+                }
+                else
+                {
+                    asm.SetNextSibling(prevChild, childIndex);
+                }
 
-            var childIndex = BuildNode(child, index, asm);
-            childCount++;
-            if (firstChild < 0)
-            {
-                firstChild = childIndex;
-            }
-            else
-            {
-                asm.SetNextSibling(prevChild, childIndex);
-            }
+                prevChild = childIndex;
+            } while (TsNative.ts_tree_cursor_goto_next_sibling(ref cursor));
 
-            prevChild = childIndex;
+            TsNative.ts_tree_cursor_goto_parent(ref cursor);
         }
 
         IReadOnlyList<string>? aliases = null;
@@ -136,7 +154,7 @@ internal sealed class TreeSitterTreeBuilder
     }
 
     private int BuildNodeShifted(
-        TsNative.TSNode node,
+        ref TsNative.TSTreeCursor cursor,
         int parent,
         SyntaxTreeAssembler asm,
         int embedStart,
@@ -144,13 +162,14 @@ internal sealed class TreeSitterTreeBuilder
         int fragmentLength
     )
     {
+        var node = TsNative.ts_tree_cursor_current_node(ref cursor);
         var index = asm.Begin();
         var symbol = TsNative.ts_node_symbol(node);
         var typeName = NameOf(symbol);
         var isMissing = TsNative.ts_node_is_missing(node);
         var isError = TsNative.ts_node_is_error(node) || typeName == "ERROR";
         var isExtra = TsNative.ts_node_is_extra(node);
-        var childCountNative = TsNative.ts_node_child_count(node);
+        var hasChildren = TsNative.ts_tree_cursor_goto_first_child(ref cursor);
 
         SyntaxNodeKind kind;
         if (isMissing)
@@ -163,7 +182,7 @@ internal sealed class TreeSitterTreeBuilder
             kind = SyntaxNodeKind.Error;
             typeName = "ERROR";
         }
-        else if (childCountNative == 0)
+        else if (!hasChildren)
         {
             kind = SyntaxNodeKind.Token;
         }
@@ -180,26 +199,25 @@ internal sealed class TreeSitterTreeBuilder
         var firstChild = -1;
         var prevChild = -1;
         var childCount = 0;
-        for (uint i = 0; i < childCountNative; i++)
+        if (hasChildren)
         {
-            var child = TsNative.ts_node_child(node, i);
-            if (TsNative.ts_node_is_null(child))
+            do
             {
-                continue;
-            }
+                var childIndex = BuildNodeShifted(ref cursor, index, asm, embedStart, embedEnd, fragmentLength);
+                childCount++;
+                if (firstChild < 0)
+                {
+                    firstChild = childIndex;
+                }
+                else
+                {
+                    asm.SetNextSibling(prevChild, childIndex);
+                }
 
-            var childIndex = BuildNodeShifted(child, index, asm, embedStart, embedEnd, fragmentLength);
-            childCount++;
-            if (firstChild < 0)
-            {
-                firstChild = childIndex;
-            }
-            else
-            {
-                asm.SetNextSibling(prevChild, childIndex);
-            }
+                prevChild = childIndex;
+            } while (TsNative.ts_tree_cursor_goto_next_sibling(ref cursor));
 
-            prevChild = childIndex;
+            TsNative.ts_tree_cursor_goto_parent(ref cursor);
         }
 
         IReadOnlyList<string>? aliases = null;

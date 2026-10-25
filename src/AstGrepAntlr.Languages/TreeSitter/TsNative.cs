@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace AstGrepAntlr.Languages.TreeSitter;
@@ -183,117 +184,136 @@ internal static partial class TsNative
     private delegate nint GetLanguage();
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial nint ts_parser_new();
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial void ts_parser_delete(nint self);
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
-    [return: MarshalAs(UnmanagedType.I1)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
     public static partial bool ts_parser_set_language(nint self, nint language);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern nint ts_parser_parse_string_encoding(
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf16)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial nint ts_parser_parse_string_encoding(
         nint self,
         nint oldTree,
-        [MarshalAs(UnmanagedType.LPWStr)] string text,
+        string text,
         uint length,
         InputEncoding encoding
     );
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial void ts_tree_delete(nint self);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern TSNode ts_tree_root_node(nint self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern ushort ts_node_symbol(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern uint ts_node_start_byte(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern uint ts_node_end_byte(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_node_is_named(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_node_is_missing(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_node_is_extra(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_node_is_error(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_node_has_error(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_node_is_null(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern uint ts_node_child_count(TSNode self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern TSNode ts_node_child(TSNode self, uint childIndex);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern TSTreeCursor ts_tree_cursor_new(TSNode node);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void ts_tree_cursor_delete(ref TSTreeCursor self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    public static extern TSNode ts_tree_cursor_current_node(ref TSTreeCursor self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_tree_cursor_goto_first_child(ref TSTreeCursor self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_tree_cursor_goto_next_sibling(ref TSTreeCursor self);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public static extern bool ts_tree_cursor_goto_parent(ref TSTreeCursor self);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    public static partial TSNode ts_tree_root_node(nint self);
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    public static partial ushort ts_node_symbol(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    public static partial uint ts_node_start_byte(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    public static partial uint ts_node_end_byte(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_node_is_named(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_node_is_missing(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_node_is_extra(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_node_is_error(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_node_has_error(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_node_is_null(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    public static partial uint ts_node_child_count(TSNode self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    public static partial TSNode ts_node_child(TSNode self, uint childIndex);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial TSTreeCursor ts_tree_cursor_new(TSNode node);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void ts_tree_cursor_delete(ref TSTreeCursor self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    public static partial TSNode ts_tree_cursor_current_node(ref TSTreeCursor self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_tree_cursor_goto_first_child(ref TSTreeCursor self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_tree_cursor_goto_next_sibling(ref TSTreeCursor self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl), typeof(CallConvSuppressGCTransition)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static partial bool ts_tree_cursor_goto_parent(ref TSTreeCursor self);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial uint ts_language_symbol_count(nint self);
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial nint ts_language_symbol_name(nint self, ushort symbol);
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial nint ts_language_supertypes(nint self, out uint length);
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial nint ts_language_subtypes(nint self, ushort supertype, out uint length);
 
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial ushort ts_language_symbol_for_name(
         nint self,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string name,
         uint length,
-        [MarshalAs(UnmanagedType.I1)] bool isNamed
+        [MarshalAs(UnmanagedType.U1)] bool isNamed
     );
 
     public static string? MarshalAnsi(nint ptr) => ptr == nint.Zero ? null : Marshal.PtrToStringAnsi(ptr);

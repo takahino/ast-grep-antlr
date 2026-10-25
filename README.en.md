@@ -141,6 +141,8 @@ NativeAOT shared library `ag4_native` exposes a small C ABI (`ag4_search` JSON i
 
 In-process .NET: reference `AstGrepAntlr.Core` + `AstGrepAntlr.Languages` and call `Searcher`.
 
+ANTLR backends warm their prediction DFAs across repeated parses in the same process. Prefer **DLL / NuGet (`Searcher`) / MCP** over one-shot CLI invocations when you care about parse speed.
+
 ## Differential tests vs ast-grep
 
 ```bash

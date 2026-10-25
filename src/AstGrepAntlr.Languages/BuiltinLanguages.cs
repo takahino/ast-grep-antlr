@@ -44,27 +44,36 @@ public static class BuiltinLanguages
             backend = DefaultBackendFor(id);
         }
 
-        if (backend == LanguageBackend.TreeSitter && !TreeSitterLanguage.NativesAvailable)
-        {
-            var fallback = FallbackBackend(id);
-            warn?.WriteLine(
-                $"ag4: warning: tree-sitter natives unavailable; falling back to {LanguageBackendNames.ToCli(fallback)} for '{id}'."
-            );
-            backend = fallback;
-        }
+        var chosen = backend;
+        registry.RegisterLazy(
+            id,
+            () =>
+            {
+                var effective = chosen;
+                if (effective == LanguageBackend.TreeSitter && !TreeSitterLanguage.NativesAvailable)
+                {
+                    var fallback = FallbackBackend(id);
+                    warn?.WriteLine(
+                        $"ag4: warning: tree-sitter natives unavailable; falling back to {LanguageBackendNames.ToCli(fallback)} for '{id}'."
+                    );
+                    effective = fallback;
+                }
 
-        try
-        {
-            registry.Register(CreateLanguage(id, backend));
-        }
-        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
-        {
-            var fallback = FallbackBackend(id);
-            warn?.WriteLine(
-                $"ag4: warning: {ex.Message}; falling back to {LanguageBackendNames.ToCli(fallback)} for '{id}'."
-            );
-            registry.Register(CreateLanguage(id, fallback));
-        }
+                try
+                {
+                    return CreateLanguage(id, effective);
+                }
+                catch (Exception ex)
+                    when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+                {
+                    var fallback = FallbackBackend(id);
+                    warn?.WriteLine(
+                        $"ag4: warning: {ex.Message}; falling back to {LanguageBackendNames.ToCli(fallback)} for '{id}'."
+                    );
+                    return CreateLanguage(id, fallback);
+                }
+            }
+        );
 
         RebindAliases(registry, id);
     }
@@ -151,8 +160,8 @@ public static class BuiltinLanguages
 
     private static void RegisterFixed(LanguageRegistry registry)
     {
-        registry.Register(new SqliteLanguage());
-        registry.Register(new PlSqlLanguage());
+        registry.RegisterLazy("sqlite", static () => new SqliteLanguage());
+        registry.RegisterLazy("plsql", static () => new PlSqlLanguage());
         registry.RegisterAlias("pl/sql", "plsql");
     }
 

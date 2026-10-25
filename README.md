@@ -180,6 +180,8 @@ Java と `tools/antlr-4.13.2-complete.jar` が必要です（探索順：`--antl
 
 .NET からプロセス内で使う場合は、`AstGrepAntlr.Core` と `AstGrepAntlr.Languages` を参照して `Searcher` を直接呼ぶこともできます。
 
+ANTLR バックエンドは、同じプロセス内でパースを繰り返すと予測用 DFA が温まります。1 回きりの CLI 起動より、**DLL / NuGet（`Searcher`）/ MCP** のようにプロセスを使い続ける形の方が高速です。
+
 ## ast-grep との差分テスト
 
 実在の Java / C++ / C# / Python コーパスで、バージョンを固定した `@ast-grep/cli@0.51.0` と ag4 の結果を比較します。

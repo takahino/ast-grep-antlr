@@ -41,12 +41,15 @@ public sealed class LanguageRegistry
         {
             if (_byId.TryGetValue(languageId, out var language))
             {
+                _lazy.Remove(alias);
                 _byId[alias] = language;
                 return;
             }
 
             if (_lazy.ContainsKey(languageId))
             {
+                // Drop a stale eager binding so ApplyBackend + rebind keeps aliases lazy.
+                _byId.Remove(alias);
                 _lazy[alias] = () => Get(languageId);
                 return;
             }

@@ -35,4 +35,9 @@ public sealed class LanguageParseOptions
     public bool PreferSll { get; init; } = true;
     public string? EntryRule { get; init; }
     public CancellationToken CancellationToken { get; init; }
+
+    /// <summary>
+    /// Optional accumulator for per-phase parse timings. When null, parsers skip Stopwatch work.
+    /// </summary>
+    public ParseTimings? Timings { get; init; }
 }
