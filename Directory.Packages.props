@@ -23,6 +23,6 @@
     <PackageVersion Include="Avalonia.Controls.DataGrid" Version="11.3.13" />
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="11.4.1" />
     <PackageVersion Include="AvaloniaEdit.TextMate" Version="11.4.1" />
-    <PackageVersion Include="TextMateSharp.Grammars" Version="2.0.4" />
+    <PackageVersion Include="TextMateSharp.Grammars" Version="2.0.5" />
   </ItemGroup>
 </Project>
